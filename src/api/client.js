@@ -1,3 +1,7 @@
+// In development this is '' (empty) so Vite's proxy forwards /api/* to localhost:5001.
+// In production this is set in .env.production to the Vercel backend URL.
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
+
 export async function apiGet(path) {
   return apiRequest(path)
 }
@@ -23,7 +27,8 @@ export async function apiDelete(path) {
 }
 
 async function apiRequest(path, options = {}) {
-  const response = await fetch(path, {
+  const url = `${API_BASE}${path}`
+  const response = await fetch(url, {
     credentials: 'include',
     headers: {
       Accept: 'application/json',
