@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}{{ vendor.name }} | Finance{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Finance Module</p>
+        <h1>{{ vendor.name }}</h1>
+        <p class="muted">{{ vendor.contact_person or "No contact person" }} · {{ vendor.email or "No email" }} · {{ vendor.phone or "No phone" }}</p>
+    </div>
+    <div class="action-row">
+        <button class="button" onclick="document.getElementById('editModal').style.display='flex'">Edit Vendor</button>
+        <a class="button secondary" href="{{ url_for('finance_vendors') }}">Back to Vendors</a>
+    </div>
+</section>
+
+<section class="record-layout">
+    <div class="form-grid record-card">
+        <div class="span-2 card-section-title">
+            <h2>Vendor Details</h2>
+        </div>
+        <label>Vendor Name
+            <input readonly value="{{ vendor.name }}">
+        </label>
+        <label>Contact Person
+            <input readonly value="{{ vendor.contact_person or '' }}">
+        </label>
+        <label>Email
+            <input readonly value="{{ vendor.email or '' }}">
+        </label>
+        <label>Phone
+            <input readonly value="{{ vendor.phone or '' }}">
+        </label>
+        <label>Category
+            <input readonly value="{{ vendor.category or '' }}">
+        </label>
+        <label class="span-2">Notes
+            <textarea readonly rows="4">{{ vendor.notes or '' }}</textarea>
+        </label>
+        {% if custom_fields %}
+            {% for field in custom_fields %}
+                {% set field_value = custom_values.get(field.id) %}
+                <label class="{% if field.field_type == 'Long Text' %}span-2{% endif %}">{{ field.label }}
+                    {% if field.field_type == 'Long Text' %}
+                        <textarea readonly rows="5">{{ field_value or '' }}</textarea>
+                    {% elif field.field_type == 'Number' %}
+                        <input readonly type="number" step="0.01" value="{{ field_value if field_value is not none else '' }}">
+                    {% elif field.field_type == 'Date' %}
+                        <input readonly type="date" value="{{ field_value or '' }}">
+                    {% elif field.field_type == 'Checkbox' %}
+                        <span class="checkbox-label"><input type="checkbox" disabled {% if field_value %}checked{% endif %}> {{ "Checked" if field_value else "Unchecked" }}</span>
+                    {% elif field.field_type == 'Dropdown' %}
+                        <input readonly value="{{ field_value or '' }}">
+                    {% else %}
+                        <input readonly value="{{ field_value or '' }}">
+                    {% endif %}
+                </label>
+            {% endfor %}
+        {% endif %}
+    </div>
+</section>
+
+<div id="editModal" class="modal-page" style="display: none;">
+    <div class="modal-container">
+        <header class="modal-header">
+            <div>
+                <p class="eyebrow">Finance Module</p>
+                <h1>Edit Vendor</h1>
+            </div>
+            <div class="modal-close" onclick="document.getElementById('editModal').style.display='none'">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </div>
+        </header>
+        
+        <form method="post" action="{{ url_for('finance_vendor_edit', vendor_id=vendor.id) }}">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <label>Vendor Name
+                        <input required name="name" value="{{ vendor.name }}" placeholder="e.g. Amazon Web Services">
+                    </label>
+                    <label>Contact Person
+                        <input name="contact_person" value="{{ vendor.contact_person or '' }}">
+                    </label>
+                    <label>Email
+                        <input type="email" name="email" value="{{ vendor.email or '' }}">
+                    </label>
+                    <label>Phone
+                        <input name="phone" value="{{ vendor.phone or '' }}">
+                    </label>
+                    <label>Category
+                        <input name="category" value="{{ vendor.category or '' }}" placeholder="e.g. IT Services, Office Supplies">
+                    </label>
+                    <label class="span-2">Notes
+                        <textarea name="notes" rows="4">{{ vendor.notes or '' }}</textarea>
+                    </label>
+                    {% if custom_fields %}
+                        {% include "_custom_fields.html" with context %}
+                    {% endif %}
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <button class="button secondary" type="button" onclick="document.getElementById('editModal').style.display='none'">Cancel</button>
+                <button class="button" type="submit">Save Changes</button>
+            </footer>
+        </form>
+    </div>
+</div>
+{% endblock %}

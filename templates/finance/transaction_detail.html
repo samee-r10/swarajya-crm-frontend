@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Transaction #{{ transaction.id }} | Finance{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Finance Module</p>
+        <h1>Transaction #{{ transaction.id }}</h1>
+        <p class="muted">{{ transaction.transaction_date }} · {{ transaction.account_name }} · {{ transaction.type }}</p>
+    </div>
+    <div class="action-row">
+        <a class="button secondary" href="{{ url_for('finance_transactions') }}">Back to Ledger</a>
+    </div>
+</section>
+
+<section class="record-layout">
+    <div class="form-grid record-card full-width-card">
+        <div class="span-2 card-section-title">
+            <h2>Entry Details</h2>
+        </div>
+        <label>Record ID
+            <input readonly value="#{{ transaction.id }}">
+        </label>
+        <label>Transaction Date
+            <input readonly type="date" value="{{ transaction.transaction_date }}">
+        </label>
+        <label>Type
+            <input readonly value="{{ transaction.type }}">
+        </label>
+        <label>Account
+            <input readonly value="{{ transaction.account_name }}">
+        </label>
+        <label>Party
+            <input readonly value="{% if transaction.type == 'Income' %}Customer: {{ transaction.customer_name or 'Unknown' }}{% else %}Vendor: {{ transaction.vendor_name or 'Unknown' }}{% endif %}">
+        </label>
+        <label>Category
+            <input readonly value="{{ transaction.category or '' }}">
+        </label>
+        <label>Currency
+            <input readonly value="{{ transaction.currency }}">
+        </label>
+        <label>Base Amount
+            <input readonly value="{{ CURRENCY_SYMBOLS.get(transaction.currency, '$') }}{{ '{:,.2f}'.format(transaction.amount) }}">
+        </label>
+        <label>CGST Percent
+            <input readonly value="{{ '{:.2f}'.format(transaction.cgst_percent or 0) }}%">
+        </label>
+        <label>CGST Amount
+            <input readonly value="{{ CURRENCY_SYMBOLS.get(transaction.currency, '$') }}{{ '{:,.2f}'.format(transaction.cgst_amount or 0) }}">
+        </label>
+        <label>IGST Percent
+            <input readonly value="{{ '{:.2f}'.format(transaction.igst_percent or 0) }}%">
+        </label>
+        <label>IGST Amount
+            <input readonly value="{{ CURRENCY_SYMBOLS.get(transaction.currency, '$') }}{{ '{:,.2f}'.format(transaction.igst_amount or 0) }}">
+        </label>
+        <label>TDS Percent
+            <input readonly value="{{ '{:.2f}'.format(transaction.tds_percent or 0) }}%">
+        </label>
+        <label>TDS Amount
+            <input readonly value="{{ CURRENCY_SYMBOLS.get(transaction.currency, '$') }}{{ '{:,.2f}'.format(transaction.tds_amount or 0) }}">
+        </label>
+        <label>Total Amount
+            <input readonly value="{{ '+' if transaction.type == 'Income' else '-' }}{{ CURRENCY_SYMBOLS.get(transaction.currency, '$') }}{{ '{:,.2f}'.format(transaction.total_amount if transaction.total_amount else transaction.amount) }}">
+        </label>
+        <label>Created At
+            <input readonly value="{{ transaction.created_at }}">
+        </label>
+        <label class="span-2">Description
+            <textarea readonly rows="5">{{ transaction.description or '' }}</textarea>
+        </label>
+
+        {% if custom_fields %}
+            <div class="span-2 card-section-title">
+                <h2>Additional Fields</h2>
+            </div>
+            {% for field in custom_fields %}
+                {% set field_value = custom_values.get(field.id) %}
+                <label class="{% if field.field_type == 'Long Text' %}span-2{% endif %}">{{ field.label }}
+                    {% if field.field_type == 'Long Text' %}
+                        <textarea readonly rows="5">{{ field_value or '' }}</textarea>
+                    {% elif field.field_type == 'Number' %}
+                        <input readonly type="number" step="0.01" value="{{ field_value if field_value is not none else '' }}">
+                    {% elif field.field_type == 'Date' %}
+                        <input readonly type="date" value="{{ field_value or '' }}">
+                    {% elif field.field_type == 'Checkbox' %}
+                        <span class="checkbox-label"><input type="checkbox" disabled {% if field_value %}checked{% endif %}> {{ "Checked" if field_value else "Unchecked" }}</span>
+                    {% else %}
+                        <input readonly value="{{ field_value or '' }}">
+                    {% endif %}
+                </label>
+            {% endfor %}
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

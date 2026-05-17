@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ custom_object.label }} Field Security | Setup{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Field Level Security</p>
+        <h1>{{ role.name }} · {{ custom_object.label }}</h1>
+        <p class="muted">{{ custom_object.api_name }}</p>
+    </div>
+    <div class="action-row">
+        <a class="button secondary" href="{{ url_for('setup_role_security', role_id=role.id) }}">Back to Objects</a>
+        <a class="button" href="{{ url_for('object_manager_detail', object_id=custom_object.id) }}">Manage Fields</a>
+    </div>
+</section>
+
+<form class="table-wrap" method="post">
+    <table>
+        <thead>
+            <tr>
+                <th>Field</th>
+                <th>Type</th>
+                <th>Required</th>
+                <th>Visible</th>
+                <th>Editable</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for field in fields %}
+                <tr>
+                    <td><strong>{{ field.label }}</strong><br><span>{{ field.api_name }} · {{ "Standard Field" if field.is_native else "Custom Field" }}</span></td>
+                    <td>{{ field.field_type }}</td>
+                    <td>{{ "Yes" if field.is_required else "No" }}</td>
+                    <td><input class="table-checkbox" type="checkbox" name="can_view" value="{{ field.id }}" {% if field.can_view %}checked{% endif %}></td>
+                    <td><input class="table-checkbox" type="checkbox" name="can_edit" value="{{ field.id }}" {% if field.can_edit %}checked{% endif %}></td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="5" class="empty">
+                        No fields exist for this object yet. Use Manage Fields to add fields first.
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="table-footer-actions">
+        <button class="button" type="submit">Save Field Security</button>
+    </div>
+</form>
+{% endblock %}

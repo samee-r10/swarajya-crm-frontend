@@ -1,0 +1,26 @@
+{% for field in custom_fields %}
+    {% set field_value = custom_values.get(field.id) %}
+    <label class="{% if field.field_type == 'Long Text' %}span-2{% endif %}">{{ field.label }}{% if field.is_required %} *{% endif %}
+        {% if field.field_type == 'Long Text' %}
+            <textarea name="{{ field.api_name }}" rows="5" {% if field.is_required %}required{% endif %}>{{ field_value or '' }}</textarea>
+        {% elif field.field_type == 'Number' %}
+            <input type="number" step="0.01" name="{{ field.api_name }}" value="{{ field_value if field_value is not none else '' }}" {% if field.is_required %}required{% endif %}>
+        {% elif field.field_type == 'Date' %}
+            <input type="date" name="{{ field.api_name }}" value="{{ field_value or '' }}" {% if field.is_required %}required{% endif %}>
+        {% elif field.field_type == 'Checkbox' %}
+            <span class="checkbox-label"><input type="checkbox" name="{{ field.api_name }}" {% if field_value %}checked{% endif %}> Checked</span>
+        {% elif field.field_type == 'Dropdown' %}
+            <select name="{{ field.api_name }}" {% if field.is_required %}required{% endif %}>
+                <option value="">-- Select --</option>
+                {% for option in field.picklist_options.split('\n') %}
+                    {% set opt = option.strip() %}
+                    {% if opt %}
+                        <option value="{{ opt }}" {% if field_value == opt %}selected{% endif %}>{{ opt }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        {% else %}
+            <input name="{{ field.api_name }}" value="{{ field_value or '' }}" {% if field.is_required %}required{% endif %}>
+        {% endif %}
+    </label>
+{% endfor %}

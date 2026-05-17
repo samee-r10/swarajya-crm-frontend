@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ custom_object.plural_label }} | Lead Management CRM{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Custom Object</p>
+        <h1>{{ custom_object.plural_label }}</h1>
+    </div>
+    <div class="action-row">
+        <a class="button secondary" href="{{ url_for('object_manager_detail', object_id=custom_object.id) }}">Manage Object</a>
+        <a class="button" href="{{ url_for('custom_object_record_new', api_name=custom_object.api_name) }}">New {{ custom_object.label }}</a>
+    </div>
+</section>
+
+<section class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                {% for field in fields %}
+                    <th>{{ field.label }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in records %}
+                <tr>
+                    <td><strong>{{ record.name }}</strong></td>
+                    {% for field in fields %}
+                        <td>{{ record.data.get(field.api_name, "-") }}</td>
+                    {% endfor %}
+                </tr>
+            {% else %}
+                <tr><td colspan="{{ fields|length + 1 }}" class="empty">No records yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

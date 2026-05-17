@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}{{ opportunity.title }} | Lead Management CRM{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Opportunity Card</p>
+        <h1>{{ opportunity.title }}</h1>
+        <p class="muted">{{ opportunity.company_name }} · {{ opportunity.opportunity_number or "No ID" }} · {{ CURRENCY_SYMBOLS.get(opportunity.currency, '$') }}{{ "{:,.2f}".format(opportunity.value) }}</p>
+    </div>
+</section>
+
+{% set main_stages = ['Draft', 'Discussion', 'Contractual negotiations'] %}
+{% set closed_stages = ['DA Signed', 'Lost to competitor', 'Rejected by SC', 'Lost'] %}
+{% set is_closed = opportunity.stage in closed_stages %}
+
+<div class="stage-path">
+    {% for s in main_stages %}
+        {% set active = (opportunity.stage == s) %}
+        {% set completed = false %}
+        {% if is_closed %}
+            {% set completed = true %}
+        {% else %}
+            {% if opportunity.stage in main_stages %}
+                {% if loop.index0 < main_stages.index(opportunity.stage) %}
+                    {% set completed = true %}
+                {% endif %}
+            {% endif %}
+        {% endif %}
+        
+        <div class="stage-item {{ 'active' if active else '' }} {{ 'completed' if completed else '' }}" 
+             onclick="updateStage('{{ s }}')">
+            {{ s }}
+        </div>
+    {% endfor %}
+
+    <details class="stage-item stage-dropdown {{ 'active' if is_closed else '' }}" {{ 'open' if false else '' }}>
+        <summary>
+            <span>{{ opportunity.stage if is_closed else 'Closed' }}</span>
+            <svg style="margin-left: 8px;" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
+        <div class="stage-dropdown-menu">
+            {% for s in closed_stages %}
+                <div class="stage-dropdown-item {{ 'active' if opportunity.stage == s else '' }}" 
+                     onclick="updateStage('{{ s }}')">
+                    {{ s }}
+                </div>
+            {% endfor %}
+        </div>
+    </details>
+</div>
+
+<script>
+    function updateStage(newStage) {
+        const stageSelect = document.querySelector('select[name="stage"]');
+        if (stageSelect) {
+            stageSelect.value = newStage;
+            stageSelect.closest('form').submit();
+        }
+    }
+</script>
+
+<section class="record-layout">
+    <form class="form-grid record-card" method="post" action="{{ url_for('opportunity_edit', opportunity_id=opportunity.id) }}">
+        <div class="span-2 card-section-title">
+            <h2>Opportunity Details</h2>
+            <button class="button" type="submit">Save Changes</button>
+        </div>
+        <label>Customer
+            <select required name="customer_id">
+                {% for customer in customers %}
+                    <option value="{{ customer.id }}" {% if opportunity.customer_id == customer.id %}selected{% endif %}>{{ customer.company_name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>Country
+            <select name="country" id="countrySelect">
+                <option value="">Select Country</option>
+                <option value="India" {% if opportunity.country == 'India' %}selected{% endif %}>India</option>
+                <option value="USA" {% if opportunity.country == 'USA' %}selected{% endif %}>USA</option>
+                <option value="UK" {% if opportunity.country == 'UK' %}selected{% endif %}>UK</option>
+                <option value="Australia" {% if opportunity.country == 'Australia' %}selected{% endif %}>Australia</option>
+                <option value="Canada" {% if opportunity.country == 'Canada' %}selected{% endif %}>Canada</option>
+            </select>
+        </label>
+        <label>Opportunity Title
+            <input required name="title" value="{{ opportunity.title }}">
+        </label>
+        <label>Opportunity Number
+            <input type="text" name="opportunity_number" id="opportunityNumber" value="{{ opportunity.opportunity_number or '' }}" readonly>
+        </label>
+        <div style="display: grid; grid-template-columns: 100px 1fr; gap: 12px;">
+            <label>Currency
+                <select name="currency">
+                    {% for c in currencies %}
+                        <option value="{{ c.code }}" {% if opportunity.currency == c.code %}selected{% endif %}>{{ c.symbol }} ({{ c.code }})</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Value
+                <input type="number" step="0.01" min="0" name="value" value="{{ opportunity.value }}">
+            </label>
+        </div>
+        <label>Stage
+            <select name="stage">
+                {% for stage in stages %}
+                    <option value="{{ stage }}" {% if opportunity.stage == stage %}selected{% endif %}>{{ stage }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>Expected Close
+            <input type="date" name="expected_close" value="{{ opportunity.expected_close if opportunity.expected_close else '' }}">
+        </label>
+        <label>Next Action
+            <input name="next_action" value="{{ opportunity.next_action or '' }}">
+        </label>
+        {% include "_custom_fields.html" %}
+        <label class="span-2">Client Requirements
+            <textarea name="requirements" rows="7">{{ opportunity.requirements or '' }}</textarea>
+        </label>
+    </form>
+
+    <aside class="related-pane">
+        <div class="panel">
+            <h2>Related Objects</h2>
+            <div class="related-section">
+                <div class="related-heading">
+                    <span>Customer</span>
+                </div>
+                <a class="list-item" href="{{ url_for('customer_detail', customer_id=opportunity.customer_id) }}">
+                    <div>
+                        <strong>{{ opportunity.company_name }}</strong>
+                        <span>{{ opportunity.contact_name }} · {{ opportunity.email or "No email" }}</span>
+                    </div>
+                </a>
+            </div>
+            <div class="related-section">
+                <div class="related-heading">
+                    <span>Projects</span>
+                    <a href="{{ url_for('project_new') }}">New</a>
+                </div>
+                <div class="list compact">
+                    {% for project in projects %}
+                        <a class="list-item" href="{{ url_for('project_detail', project_id=project.id) }}">
+                            <div>
+                                <strong>{{ project.project_name }}</strong>
+                                <span>{{ project.delivery_timeline|date_or_dash }} · {{ project.owner or "Unassigned" }}</span>
+                            </div>
+                            <span class="pill">{{ project.status }}</span>
+                        </a>
+                    {% else %}
+                        <p class="empty">No projects mapped.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </aside>
+</section>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const countrySelect = document.getElementById("countrySelect");
+        const oppNumberInput = document.getElementById("opportunityNumber");
+        const frozenSequence = "{{ frozen_sequence }}";
+        
+        function updateOpportunityNumber() {
+            const country = countrySelect.value;
+            if (!country) {
+                if (!"{{ opportunity.id if opportunity else '' }}") {
+                    oppNumberInput.value = "";
+                }
+                return;
+            }
+            const prefix = country.substring(0, 2).toUpperCase();
+            const now = new Date();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const yy = String(now.getFullYear()).substring(2, 4);
+            oppNumberInput.value = prefix + mm + yy + frozenSequence;
+        }
+
+        countrySelect.addEventListener("change", updateOpportunityNumber);
+        if (!"{{ opportunity.id if opportunity else '' }}" && countrySelect.value) {
+             updateOpportunityNumber();
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,461 @@
+{% extends "base.html" %}
+{% block title %}{% if preview %}Preview Transaction{% else %}Record Transaction{% endif %} | Finance{% endblock %}
+
+{% block content %}
+<style>
+    .transaction-entry {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 15px;
+        background: #f9f9f9;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+    }
+    
+    .entry-field {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .entry-field label {
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+        color: #666;
+        margin-bottom: 8px;
+        letter-spacing: 0.5px;
+    }
+    
+    .entry-field input,
+    .entry-field select,
+    .entry-field textarea {
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        font-family: inherit;
+    }
+    
+    .entry-field input:focus,
+    .entry-field select:focus,
+    .entry-field textarea:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    }
+    
+    .calculation-section {
+        background: white;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+    }
+    
+    .calc-row {
+        display: grid;
+        grid-template-columns: 1fr 120px 120px;
+        gap: 20px;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .calc-row:last-child {
+        border-bottom: none;
+    }
+    
+    .calc-label {
+        font-weight: 500;
+        color: #333;
+    }
+    
+    .calc-value {
+        text-align: right;
+        font-family: 'Monaco', 'Courier New', monospace;
+        font-size: 14px;
+    }
+    
+    .calc-total {
+        background: #e8f5e9;
+        padding: 12px;
+        border-radius: 4px;
+        font-size: 16px;
+        font-weight: 700;
+        color: #2e7d32;
+    }
+    
+    .preview-section {
+        background: #f0f4f8;
+        border: 2px solid #2196f3;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 30px 0;
+    }
+    
+    .preview-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1565c0;
+        margin-bottom: 15px;
+    }
+    
+    .preview-row {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: 15px;
+        padding: 10px 0;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .preview-row:last-child {
+        border-bottom: none;
+    }
+    
+    .preview-label {
+        font-weight: 600;
+        color: #666;
+    }
+    
+    .preview-value {
+        color: #333;
+        word-break: break-word;
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    .custom-field-section {
+        margin: 20px 0;
+    }
+
+    .custom-field-section h2 {
+        font-size: 16px;
+        margin: 0 0 12px;
+    }
+
+    .custom-field-section .form-grid {
+        background: #f9f9f9;
+        padding: 20px;
+        border-radius: 8px;
+    }
+    
+    .button.primary {
+        background: #4caf50;
+        border-color: #4caf50;
+    }
+    
+    .button.primary:hover {
+        background: #45a049;
+        border-color: #45a049;
+    }
+</style>
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Finance Module</p>
+        <h1>{% if preview %}Preview Transaction{% else %}Record Transaction{% endif %}</h1>
+    </div>
+</section>
+
+{% if not preview %}
+    <form method="post" id="transactionForm">
+        <input type="hidden" name="action" id="actionField" value="preview">
+        
+        <div class="transaction-entry">
+            {% for field in transaction_fields %}
+                {% set field_value = custom_values.get(field.id) %}
+                {% set is_readonly_native = field.api_name in ["id", "created_at", "cgst_amount", "igst_amount", "tds_amount", "total_amount"] %}
+                <div class="entry-field {% if field.api_name == 'customer_id' %}party-customer{% elif field.api_name == 'vendor_id' %}party-vendor{% endif %}" {% if field.api_name == "vendor_id" %}style="display: none;"{% endif %}>
+                    <label for="{{ field.api_name }}">{{ field.label }}{% if field.is_required and not is_readonly_native %} *{% endif %}</label>
+                    {% if field.api_name == "transaction_date" %}
+                        <input type="date" id="transaction_date" name="transaction_date" required>
+                    {% elif field.api_name == "type" %}
+                        <select id="type" name="type" required onchange="toggleParty()">
+                            <option value="Income">Income (+)</option>
+                            <option value="Expense">Expense (-)</option>
+                        </select>
+                    {% elif field.api_name == "account_id" %}
+                        <select id="account_id" name="account_id" required>
+                            {% for acc in accounts %}
+                                <option value="{{ acc.id }}">{{ acc.name }}</option>
+                            {% endfor %}
+                        </select>
+                    {% elif field.api_name == "currency" %}
+                        <select id="currency" name="currency">
+                            {% for c in currencies %}
+                                <option value="{{ c.code }}" {{ 'selected' if c.code == 'USD' else '' }}>{{ c.code }}</option>
+                            {% endfor %}
+                        </select>
+                    {% elif field.api_name == "amount" %}
+                        <input type="number" id="amount" name="amount" step="0.01" min="0.01" required placeholder="0.00" oninput="calculateTotals()">
+                    {% elif field.api_name in ["cgst_percent", "igst_percent", "tds_percent"] %}
+                        <input type="number" id="{{ field.api_name }}" name="{{ field.api_name }}" step="0.01" min="0" value="0" oninput="calculateTotals()">
+                    {% elif field.api_name in ["cgst_amount", "igst_amount", "tds_amount", "total_amount"] %}
+                        <input type="number" id="{{ field.api_name }}" value="0.00" readonly>
+                    {% elif field.api_name == "customer_id" %}
+                        <select id="customer_id" name="customer_id">
+                            <option value="">-- Select Customer --</option>
+                            {% for c in customers %}
+                                <option value="{{ c.id }}">{{ c.company_name }}</option>
+                            {% endfor %}
+                        </select>
+                    {% elif field.api_name == "vendor_id" %}
+                        <select id="vendor_id" name="vendor_id">
+                            <option value="">-- Select Vendor --</option>
+                            {% for v in vendors %}
+                                <option value="{{ v.id }}">{{ v.name }}</option>
+                            {% endfor %}
+                        </select>
+                    {% elif field.api_name == "description" or field.field_type == "Long Text" %}
+                        <textarea id="{{ field.api_name }}" name="{{ field.api_name }}" {% if field.is_required and not field.is_native %}required{% endif %}>{{ field_value or '' }}</textarea>
+                    {% elif field.api_name in ["id", "created_at"] %}
+                        <input id="{{ field.api_name }}" value="Auto generated" readonly>
+                    {% elif field.field_type == "Number" %}
+                        <input type="number" step="0.01" id="{{ field.api_name }}" name="{{ field.api_name }}" value="{{ field_value if field_value is not none else '' }}" {% if field.is_required and not field.is_native %}required{% endif %}>
+                    {% elif field.field_type == "Date" %}
+                        <input type="date" id="{{ field.api_name }}" name="{{ field.api_name }}" value="{{ field_value or '' }}" {% if field.is_required and not field.is_native %}required{% endif %}>
+                    {% elif field.field_type == "Checkbox" %}
+                        <span class="checkbox-label"><input type="checkbox" id="{{ field.api_name }}" name="{{ field.api_name }}" {% if field_value %}checked{% endif %}> Checked</span>
+                    {% elif field.field_type == "Dropdown" %}
+                        <select id="{{ field.api_name }}" name="{{ field.api_name }}" {% if field.is_required and not field.is_native %}required{% endif %}>
+                            <option value="">-- Select --</option>
+                            {% for option in field.picklist_options.split('\n') %}
+                                {% set opt = option.strip() %}
+                                {% if opt %}
+                                    <option value="{{ opt }}" {% if field_value == opt %}selected{% endif %}>{{ opt }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    {% else %}
+                        <input id="{{ field.api_name }}" name="{{ field.api_name }}" value="{{ field_value or '' }}" {% if field.is_required and not field.is_native %}required{% endif %}>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        
+        <div class="calculation-section">
+            <div class="calc-row">
+                <div class="calc-label">Base Amount</div>
+                <div></div>
+                <div class="calc-value" id="baseAmount">0.00</div>
+            </div>
+            <div class="calc-row">
+                <div class="calc-label">+ CGST</div>
+                <div class="calc-value" id="cgstLabel">0%</div>
+                <div class="calc-value" id="cgstAmount">0.00</div>
+            </div>
+            <div class="calc-row">
+                <div class="calc-label">+ IGST</div>
+                <div class="calc-value" id="igstLabel">0%</div>
+                <div class="calc-value" id="igstAmount">0.00</div>
+            </div>
+            <div class="calc-row">
+                <div class="calc-label">- TDS</div>
+                <div class="calc-value" id="tdsLabel">0%</div>
+                <div class="calc-value" id="tdsAmount">0.00</div>
+            </div>
+            <div class="calc-row">
+                <div class="calc-label calc-total">TOTAL AMOUNT</div>
+                <div></div>
+                <div class="calc-value calc-total" id="totalAmount">0.00</div>
+            </div>
+        </div>
+        
+        <div class="form-actions">
+            <a class="button secondary" href="{{ url_for('finance_transactions') }}">Cancel</a>
+            <button class="button" type="submit">Preview & Post</button>
+        </div>
+    </form>
+{% else %}
+    <!-- Preview Section -->
+    <form method="post">
+        <input type="hidden" name="action" value="post">
+        <input type="hidden" name="transaction_date" value="{{ preview.transaction_date }}">
+        <input type="hidden" name="type" value="{{ preview.type }}">
+        <input type="hidden" name="account_id" value="{{ preview.account_id }}">
+        <input type="hidden" name="currency" value="{{ preview.currency }}">
+        <input type="hidden" name="amount" value="{{ preview.amount }}">
+        <input type="hidden" name="cgst_percent" value="{{ preview.cgst_percent }}">
+        <input type="hidden" name="igst_percent" value="{{ preview.igst_percent }}">
+        <input type="hidden" name="tds_percent" value="{{ preview.tds_percent }}">
+        <input type="hidden" name="customer_id" value="{{ preview.customer_id }}">
+        <input type="hidden" name="vendor_id" value="{{ preview.vendor_id }}">
+        <input type="hidden" name="category" value="{{ preview.category }}">
+        <input type="hidden" name="description" value="{{ preview.description }}">
+        {% for field in custom_fields %}
+            {% set field_value = custom_values.get(field.id) %}
+            {% if field.field_type == "Checkbox" %}
+                {% if field_value %}
+                    <input type="hidden" name="{{ field.api_name }}" value="on">
+                {% endif %}
+            {% else %}
+                <input type="hidden" name="{{ field.api_name }}" value="{{ field_value or '' }}">
+            {% endif %}
+        {% endfor %}
+        
+        <div class="preview-section">
+            <div class="preview-title">✓ Transaction Summary - Ready to Post</div>
+            
+            <div class="preview-row">
+                <div class="preview-label">Transaction Date</div>
+                <div class="preview-value">{{ preview.transaction_date }}</div>
+            </div>
+            <div class="preview-row">
+                <div class="preview-label">Type</div>
+                <div class="preview-value">{{ preview.type }}</div>
+            </div>
+            <div class="preview-row">
+                <div class="preview-label">Account</div>
+                <div class="preview-value">{{ accounts | selectattr('id', 'equalto', preview.account_id|int) | map(attribute='name') | first }}</div>
+            </div>
+            <div class="preview-row">
+                <div class="preview-label">Currency</div>
+                <div class="preview-value">{{ preview.currency }}</div>
+            </div>
+            <div class="preview-row">
+                <div class="preview-label">Base Amount</div>
+                <div class="preview-value"><strong>{{ "%.2f" | format(preview.amount) }}</strong></div>
+            </div>
+            {% if preview.cgst_percent > 0 %}
+                <div class="preview-row">
+                    <div class="preview-label">CGST ({{ "%.2f" | format(preview.cgst_percent) }}%)</div>
+                    <div class="preview-value" style="color: #4caf50;">+ {{ "%.2f" | format(preview.cgst_amount) }}</div>
+                </div>
+            {% endif %}
+            {% if preview.igst_percent > 0 %}
+                <div class="preview-row">
+                    <div class="preview-label">IGST ({{ "%.2f" | format(preview.igst_percent) }}%)</div>
+                    <div class="preview-value" style="color: #4caf50;">+ {{ "%.2f" | format(preview.igst_amount) }}</div>
+                </div>
+            {% endif %}
+            {% if preview.tds_percent > 0 %}
+                <div class="preview-row">
+                    <div class="preview-label">TDS ({{ "%.2f" | format(preview.tds_percent) }}%)</div>
+                    <div class="preview-value" style="color: #f44336;">- {{ "%.2f" | format(preview.tds_amount) }}</div>
+                </div>
+            {% endif %}
+            <div class="preview-row">
+                <div class="preview-label"><strong>TOTAL AMOUNT</strong></div>
+                <div class="preview-value" style="font-size: 18px; font-weight: 700; color: #2e7d32;">{{ "%.2f" | format(preview.total_amount) }}</div>
+            </div>
+            
+            {% if preview.type == "Income" %}
+                {% set customer_name = customers | selectattr('id', 'equalto', preview.customer_id|int) | map(attribute='company_name') | first %}
+                {% if customer_name %}
+                    <div class="preview-row">
+                        <div class="preview-label">Customer</div>
+                        <div class="preview-value">{{ customer_name }}</div>
+                    </div>
+                {% endif %}
+            {% else %}
+                {% set vendor_name = vendors | selectattr('id', 'equalto', preview.vendor_id|int) | map(attribute='name') | first %}
+                {% if vendor_name %}
+                    <div class="preview-row">
+                        <div class="preview-label">Vendor</div>
+                        <div class="preview-value">{{ vendor_name }}</div>
+                    </div>
+                {% endif %}
+            {% endif %}
+            
+            {% if preview.category %}
+                <div class="preview-row">
+                    <div class="preview-label">Category</div>
+                    <div class="preview-value">{{ preview.category }}</div>
+                </div>
+            {% endif %}
+            
+            {% if preview.description %}
+                <div class="preview-row">
+                    <div class="preview-label">Description</div>
+                    <div class="preview-value">{{ preview.description }}</div>
+                </div>
+            {% endif %}
+
+            {% for field in custom_fields %}
+                {% set field_value = custom_values.get(field.id) %}
+                {% if field_value is not none and field_value != "" and field_value != false %}
+                    <div class="preview-row">
+                        <div class="preview-label">{{ field.label }}</div>
+                        <div class="preview-value">
+                            {% if field.field_type == "Checkbox" %}
+                                Yes
+                            {% else %}
+                                {{ field_value }}
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        
+        <div class="form-actions">
+            <a class="button secondary" href="{{ url_for('finance_transaction_new') }}">← Back to Edit</a>
+            <button class="button primary" type="submit">✓ Post Transaction</button>
+        </div>
+    </form>
+{% endif %}
+
+<script>
+    function toggleParty() {
+        const type = document.getElementById('type').value;
+        const customerField = document.querySelector('.party-customer');
+        const customerSelect = document.getElementById('customer_id');
+        const vendorField = document.querySelector('.party-vendor');
+        const vendorSelect = document.getElementById('vendor_id');
+        
+        if (type === 'Income') {
+            if (customerField) customerField.style.display = 'flex';
+            if (vendorField) vendorField.style.display = 'none';
+            if (customerSelect) customerSelect.required = false;
+            if (vendorSelect) vendorSelect.required = false;
+        } else {
+            if (customerField) customerField.style.display = 'none';
+            if (vendorField) vendorField.style.display = 'flex';
+            if (customerSelect) customerSelect.required = false;
+            if (vendorSelect) vendorSelect.required = false;
+        }
+    }
+    
+    function calculateTotals() {
+        const amount = parseFloat(document.getElementById('amount').value) || 0;
+        const cgstPercent = parseFloat(document.getElementById('cgst_percent').value) || 0;
+        const igstPercent = parseFloat(document.getElementById('igst_percent').value) || 0;
+        const tdsPercent = parseFloat(document.getElementById('tds_percent').value) || 0;
+        
+        const cgstAmount = amount * cgstPercent / 100;
+        const igstAmount = amount * igstPercent / 100;
+        const tdsAmount = amount * tdsPercent / 100;
+        const totalAmount = amount + cgstAmount + igstAmount - tdsAmount;
+        
+        // Update display
+        document.getElementById('baseAmount').textContent = amount.toFixed(2);
+        document.getElementById('cgstLabel').textContent = cgstPercent > 0 ? cgstPercent.toFixed(2) + '%' : '0%';
+        document.getElementById('cgstAmount').textContent = cgstAmount.toFixed(2);
+        document.getElementById('igstLabel').textContent = igstPercent > 0 ? igstPercent.toFixed(2) + '%' : '0%';
+        document.getElementById('igstAmount').textContent = igstAmount.toFixed(2);
+        document.getElementById('tdsLabel').textContent = tdsPercent > 0 ? tdsPercent.toFixed(2) + '%' : '0%';
+        document.getElementById('tdsAmount').textContent = tdsAmount.toFixed(2);
+        document.getElementById('totalAmount').textContent = totalAmount.toFixed(2);
+        if (document.getElementById('cgst_amount')) document.getElementById('cgst_amount').value = cgstAmount.toFixed(2);
+        if (document.getElementById('igst_amount')) document.getElementById('igst_amount').value = igstAmount.toFixed(2);
+        if (document.getElementById('tds_amount')) document.getElementById('tds_amount').value = tdsAmount.toFixed(2);
+        if (document.getElementById('total_amount')) document.getElementById('total_amount').value = totalAmount.toFixed(2);
+    }
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const dateInput = document.querySelector('input[name="transaction_date"]');
+        if (dateInput && !dateInput.value) {
+            dateInput.value = new Date().toISOString().split('T')[0];
+        }
+        toggleParty();
+        calculateTotals();
+    });
+</script>
+
+{% endblock %}

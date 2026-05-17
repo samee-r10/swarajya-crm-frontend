@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}Dashboard | Lead Management CRM{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Insights & Performance</p>
+        <h1>Executive Dashboard</h1>
+    </div>
+</section>
+
+<section class="metrics-grid">
+    <article class="metric">
+        <div class="metric-icon" style="background: #fff7ed; color: #f97316;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div>
+            <span>Total Customers</span>
+            <strong>{{ metrics.customers }}</strong>
+        </div>
+    </article>
+    <article class="metric">
+        <div class="metric-icon" style="background: #f0fdf4; color: #16a34a;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <div>
+            <span>Pipeline Value</span>
+            {% for v in metrics.pipeline_values %}
+                <strong style="font-size: {% if metrics.pipeline_values|length > 1 %}18px{% else %}28px{% endif %};">
+                    {{ CURRENCY_SYMBOLS.get(v.currency, '$') }}{{ "{:,.0f}".format(v.total) }}
+                </strong>
+            {% else %}
+                <strong>$0</strong>
+            {% endfor %}
+        </div>
+    </article>
+    <article class="metric">
+        <div class="metric-icon" style="background: #eff6ff; color: #2563eb;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        </div>
+        <div>
+            <span>Open Deals</span>
+            <strong>{{ metrics.open_opportunities }}</strong>
+        </div>
+    </article>
+    <article class="metric">
+        <div class="metric-icon" style="background: #faf5ff; color: #9333ea;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        </div>
+        <div>
+            <span>Active Projects</span>
+            <strong>{{ metrics.active_projects }}</strong>
+        </div>
+    </article>
+</section>
+
+<section class="analytics-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Opportunity Distribution</h2>
+        </div>
+        <div style="height: 300px; padding: 20px;">
+            <canvas id="stageChart"></canvas>
+        </div>
+    </div>
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Pipeline Value by Stage</h2>
+        </div>
+        <div style="height: 300px; padding: 20px;">
+            <canvas id="valueChart"></canvas>
+        </div>
+    </div>
+</section>
+
+<section class="two-column">
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Recent Opportunities</h2>
+            <a href="{{ url_for('opportunities') }}">View all</a>
+        </div>
+        <div class="list">
+            {% for opportunity in recent_opportunities %}
+                <a class="list-item" href="{{ url_for('opportunity_detail', opportunity_id=opportunity.id) }}">
+                    <div>
+                        <strong>{{ opportunity.title }}</strong>
+                        <span>{{ opportunity.company_name }}</span>
+                    </div>
+                    <span class="pill stage">{{ opportunity.stage }}</span>
+                </a>
+            {% else %}
+                <p class="empty">No opportunities yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Upcoming Deliveries</h2>
+            <a href="{{ url_for('projects') }}">View all</a>
+        </div>
+        <div class="list">
+            {% for project in upcoming_projects %}
+                <a class="list-item" href="{{ url_for('project_detail', project_id=project.id) }}">
+                    <div>
+                        <strong>{{ project.project_name }}</strong>
+                        <span>{{ project.company_name }} · {{ project.delivery_timeline|date_or_dash }}</span>
+                    </div>
+                    <span class="pill status">{{ project.status }}</span>
+                </a>
+            {% else %}
+                <p class="empty">No active project deliveries.</p>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const stageCtx = document.getElementById('stageChart').getContext('2d');
+    const valueCtx = document.getElementById('valueChart').getContext('2d');
+
+    const stageData = {
+        labels: [{% for s in opportunities_by_stage %}'{{ s.stage }}',{% endfor %}],
+        datasets: [{
+            data: [{% for s in opportunities_by_stage %}{{ s.count }},{% endfor %}],
+            backgroundColor: ['#f97316', '#fb923c', '#fdba74', '#fed7aa', '#ffedd5', '#10b981', '#ef4444'],
+            borderWidth: 0
+        }]
+    };
+
+    const valueData = {
+        labels: [{% for s in pipeline_value_by_stage %}'{{ s.stage }}',{% endfor %}],
+        datasets: [{
+            label: 'Value ($)',
+            data: [{% for s in pipeline_value_by_stage %}{{ s.total }},{% endfor %}],
+            backgroundColor: 'rgba(249, 115, 22, 0.2)',
+            borderColor: '#f97316',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4
+        }]
+    };
+
+    new Chart(stageCtx, {
+        type: 'doughnut',
+        data: stageData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            },
+            cutout: '70%'
+        }
+    });
+
+    new Chart(valueCtx, {
+        type: 'line',
+        data: valueData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true, grid: { display: false } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

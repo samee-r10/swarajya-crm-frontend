@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Transaction Ledger | Finance{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Finance Module</p>
+        <h1>Transaction Ledger</h1>
+    </div>
+    <div class="action-row">
+        <a class="button secondary" href="{{ url_for('finance_dashboard') }}">Back</a>
+        <a class="button" href="{{ url_for('finance_transaction_new') }}">New Transaction</a>
+    </div>
+</section>
+
+<section class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Record ID</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Account</th>
+                <th>Party</th>
+                <th>Base Amount</th>
+                <th>GST/TDS</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in transactions %}
+                <tr>
+                    <td><a class="name-link" href="{{ url_for('finance_transaction_detail', transaction_id=t.id) }}"><strong>#{{ t.id }}</strong></a></td>
+                    <td>{{ t.transaction_date }}</td>
+                    <td>
+                        <span class="pill" style="background: {% if t.type == 'Income' %}#dcfce7; color: #166534{% else %}#fee2e2; color: #991b1b{% endif %};">
+                            {{ t.type }}
+                        </span>
+                    </td>
+                    <td>
+                        <strong>{{ t.category or '--' }}</strong><br>
+                        <span class="muted">{{ t.description or '' }}</span>
+                    </td>
+                    <td>{{ t.account_name }}</td>
+                    <td>
+                        {% if t.type == 'Income' %}
+                            <span class="pill secondary">Customer: {{ t.customer_name or 'Unknown' }}</span>
+                        {% else %}
+                            <span class="pill secondary">Vendor: {{ t.vendor_name or 'Unknown' }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-weight: 800; color: {% if t.type == 'Income' %}#16a34a{% else %}#dc2626{% endif %};">
+                        {{ CURRENCY_SYMBOLS.get(t.currency, '$') }}{{ "{:,.2f}".format(t.amount) }}
+                    </td>
+                    <td>
+                        {% if t.cgst_amount or t.igst_amount or t.tds_amount %}
+                            <small>
+                                {% if t.cgst_amount %}CGST: {{ "{:.2f}".format(t.cgst_amount) }}<br>{% endif %}
+                                {% if t.igst_amount %}IGST: {{ "{:.2f}".format(t.igst_amount) }}<br>{% endif %}
+                                {% if t.tds_amount %}TDS: {{ "{:.2f}".format(t.tds_amount) }}<br>{% endif %}
+                            </small>
+                        {% else %}
+                            --
+                        {% endif %}
+                    </td>
+                    <td style="font-weight: 800; color: {% if t.type == 'Income' %}#16a34a{% else %}#dc2626{% endif %}; background: #f0f0f0; padding: 8px; border-radius: 4px;">
+                        {{ '+' if t.type == 'Income' else '-' }}{{ CURRENCY_SYMBOLS.get(t.currency, '$') }}{{ "{:,.2f}".format(t.total_amount if t.total_amount else t.amount) }}
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="9" class="empty">No transactions found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

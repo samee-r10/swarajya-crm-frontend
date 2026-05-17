@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Finance Dashboard | Lead Management CRM{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Finance Module</p>
+        <h1>Financial Overview</h1>
+    </div>
+    <div class="action-row">
+        <a class="button secondary" href="{{ url_for('finance_vendor_new') }}">New Vendor</a>
+        <a class="button" href="{{ url_for('finance_transaction_new') }}">New Transaction</a>
+    </div>
+</section>
+
+<section class="metrics-grid">
+    <article class="metric">
+        <div class="metric-icon" style="background: #f0fdf4; color: #16a34a;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <div>
+            <span>Cash on Hand</span>
+            <strong>${{ "{:,.2f}".format(metrics.cash_on_hand) }}</strong>
+        </div>
+    </article>
+    <article class="metric">
+        <div class="metric-icon" style="background: #eff6ff; color: #2563eb;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20M5 20V8m5 12V4m5 12v-8m5 12v-4"/></svg>
+        </div>
+        <div>
+            <span>Bank Balance</span>
+            <strong>${{ "{:,.2f}".format(metrics.bank_balance) }}</strong>
+        </div>
+    </article>
+    <article class="metric">
+        <div class="metric-icon" style="background: #fff7ed; color: #f97316;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <div>
+            <span>Total Revenue</span>
+            <strong>${{ "{:,.2f}".format(metrics.total_revenue) }}</strong>
+        </div>
+    </article>
+    <article class="metric">
+        <div class="metric-icon" style="background: #fef2f2; color: #dc2626;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <div>
+            <span>Total Expenses</span>
+            <strong>${{ "{:,.2f}".format(metrics.total_expenses) }}</strong>
+        </div>
+    </article>
+</section>
+
+<section class="two-column">
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Recent Transactions</h2>
+            <a href="{{ url_for('finance_transactions') }}">View Ledger</a>
+        </div>
+        <div class="list">
+            {% for t in recent_transactions %}
+                <div class="list-item">
+                    <div>
+                        <strong>{{ t.description or t.category }}</strong>
+                        <span>{{ t.transaction_date }} · {{ t.account_name }}</span>
+                    </div>
+                    <span class="pill" style="background: {% if t.type == 'Income' %}#dcfce7; color: #166534{% else %}#fee2e2; color: #991b1b{% endif %};">
+                        {{ '+' if t.type == 'Income' else '-' }}{{ CURRENCY_SYMBOLS.get(t.currency, '$') }}{{ "{:,.2f}".format(t.amount) }}
+                    </span>
+                </div>
+            {% else %}
+                <p class="empty">No transactions yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Finance Shortcuts</h2>
+        </div>
+        <div class="list">
+            <a class="list-item" href="{{ url_for('finance_vendors') }}">
+                <div>
+                    <strong>Manage Vendors</strong>
+                    <span>Suppliers and service providers</span>
+                </div>
+            </a>
+            <a class="list-item" href="{{ url_for('finance_transactions', type='Income') }}">
+                <div>
+                    <strong>Income Tracker</strong>
+                    <span>Payments from customers</span>
+                </div>
+            </a>
+            <a class="list-item" href="{{ url_for('finance_transactions', type='Expense') }}">
+                <div>
+                    <strong>Expense Tracker</strong>
+                    <span>Business costs and outgoings</span>
+                </div>
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Projects | Lead Management CRM{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Projects Module</p>
+        <h1>Projects</h1>
+        <p class="muted">Quick access to the customer, opportunity, and project objects.</p>
+    </div>
+</section>
+
+<section class="setup-grid">
+    <a class="setup-tile" href="{{ url_for('customers') }}">
+        <strong>Customers</strong>
+        <span>Open customer records and manage customer data.</span>
+    </a>
+    <a class="setup-tile" href="{{ url_for('opportunities') }}">
+        <strong>Opportunities</strong>
+        <span>Open opportunity records and view the sales pipeline.</span>
+    </a>
+    <a class="setup-tile" href="{{ url_for('projects') }}">
+        <strong>Projects</strong>
+        <span>Open project records and manage delivery work.</span>
+    </a>
+</section>
+{% endblock %}

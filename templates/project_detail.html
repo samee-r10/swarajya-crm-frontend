@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}{{ project.project_name }} | Lead Management CRM{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Project Card</p>
+        <h1>{{ project.project_name }}</h1>
+        <p class="muted">{{ project.company_name }} · {{ project.status }} · {{ project.delivery_timeline|date_or_dash }}</p>
+    </div>
+</section>
+
+<section class="record-layout">
+    <form class="form-grid record-card" method="post" action="{{ url_for('project_edit', project_id=project.id) }}">
+        <div class="span-2 card-section-title">
+            <h2>Project Details</h2>
+            <button class="button" type="submit">Save Changes</button>
+        </div>
+        <label>Customer
+            <select required name="customer_id">
+                {% for customer in customers %}
+                    <option value="{{ customer.id }}" {% if project.customer_id == customer.id %}selected{% endif %}>{{ customer.company_name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>Related Opportunity
+            <select required name="opportunity_id">
+                <option value="">Select opportunity</option>
+                {% for opportunity in opportunities %}
+                    <option value="{{ opportunity.id }}" {% if project.opportunity_id == opportunity.id %}selected{% endif %}>{{ opportunity.company_name }} - {{ opportunity.title }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>Project Name
+            <input required name="project_name" value="{{ project.project_name }}">
+        </label>
+        <label>Status
+            <select name="status">
+                {% for status in statuses %}
+                    <option value="{{ status }}" {% if project.status == status %}selected{% endif %}>{{ status }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>Delivery Timeline
+            <input type="date" name="delivery_timeline" value="{{ project.delivery_timeline if project.delivery_timeline else '' }}">
+        </label>
+        <label>Owner
+            <input name="owner" value="{{ project.owner or '' }}">
+        </label>
+        <label class="span-2">Product Delivery Status
+            <input name="product_delivery_status" value="{{ project.product_delivery_status or '' }}">
+        </label>
+        {% include "_custom_fields.html" %}
+        <label class="span-2">Client Requirements
+            <textarea name="client_requirements" rows="6">{{ project.client_requirements or '' }}</textarea>
+        </label>
+        <label class="span-2">Latest Update
+            <textarea name="last_update" rows="5">{{ project.last_update or '' }}</textarea>
+        </label>
+    </form>
+
+    <aside class="related-pane">
+        <div class="panel">
+            <h2>Related Objects</h2>
+            <div class="related-section">
+                <div class="related-heading">
+                    <span>Customer</span>
+                </div>
+                <a class="list-item" href="{{ url_for('customer_detail', customer_id=project.customer_id) }}">
+                    <div>
+                        <strong>{{ project.company_name }}</strong>
+                        <span>{{ project.contact_name }} · {{ project.email or "No email" }}</span>
+                    </div>
+                </a>
+            </div>
+            <div class="related-section">
+                <div class="related-heading">
+                    <span>Opportunity</span>
+                </div>
+                {% if project.opportunity_id and project.opportunity_title %}
+                    <a class="list-item" href="{{ url_for('opportunity_detail', opportunity_id=project.opportunity_id) }}">
+                        <div>
+                            <strong>{{ project.opportunity_title }}</strong>
+                            <span>{{ project.opportunity_stage }} · {{ "%.2f"|format(project.opportunity_value) }}</span>
+                        </div>
+                    </a>
+                {% else %}
+                    <p class="empty">No opportunity mapped. Select one and save this project.</p>
+                {% endif %}
+            </div>
+        </div>
+    </aside>
+</section>
+{% endblock %}

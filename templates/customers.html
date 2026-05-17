@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Customers | Lead Management CRM{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Accounts</p>
+        <h1>Customers</h1>
+    </div>
+    <a class="button" href="{{ url_for('customer_new') }}">Add Customer</a>
+</section>
+
+<form class="filters" method="get">
+    <input type="search" name="search" placeholder="Search company, contact, or email" value="{{ search }}">
+    <select name="status">
+        <option value="">All statuses</option>
+        {% for status in statuses %}
+            <option value="{{ status }}" {% if selected_status == status %}selected{% endif %}>{{ status }}</option>
+        {% endfor %}
+    </select>
+    <button class="button secondary" type="submit">Filter</button>
+</form>
+
+<section class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Company</th>
+                <th>Contact</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for customer in customers %}
+                <tr>
+                    <td><a class="name-link" href="{{ url_for('customer_detail', customer_id=customer.id) }}"><strong>{{ customer.company_name }}</strong></a><br><span>{{ customer.industry or "-" }}</span></td>
+                    <td>{{ customer.contact_name }}</td>
+                    <td>{{ customer.email or "-" }}</td>
+                    <td>{{ customer.phone or "-" }}</td>
+                    <td><span class="pill">{{ customer.status }}</span></td>
+                </tr>
+            {% else %}
+                <tr><td colspan="5" class="empty">No customers found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

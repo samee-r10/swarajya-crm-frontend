@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Field Security | Setup{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Field Level Security</p>
+        <h1>{{ role.name }}</h1>
+        <p class="muted">Select an object to configure field visibility and edit access.</p>
+    </div>
+    <a class="button secondary" href="{{ url_for('setup_roles') }}">Back to Roles</a>
+</section>
+
+<section class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Object</th>
+                <th>Type</th>
+                <th>API Name</th>
+                <th>Fields</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for object in objects %}
+                <tr>
+                    <td>
+                        <a class="name-link" href="{{ url_for('setup_role_object_security', role_id=role.id, object_id=object.id) }}">
+                            <strong>{{ object.label }}</strong>
+                        </a>
+                        <br><span>{{ object.plural_label }}</span>
+                    </td>
+                    <td><span class="pill">{{ "Standard" if object.is_standard else "Custom" }}</span></td>
+                    <td>{{ object.api_name }}</td>
+                    <td>{{ object.field_count }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="4" class="empty">No objects found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

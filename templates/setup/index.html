@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Setup | Lead Management CRM{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Administration</p>
+        <h1>Setup</h1>
+    </div>
+</section>
+
+<section class="metrics-grid">
+    <article class="metric"><span>Users</span><strong>{{ metrics.users }}</strong></article>
+    <article class="metric"><span>Roles</span><strong>{{ metrics.roles }}</strong></article>
+    <article class="metric"><span>Custom Objects</span><strong>{{ metrics.objects }}</strong></article>
+    <article class="metric"><span>Custom Fields</span><strong>{{ metrics.fields }}</strong></article>
+</section>
+
+<section class="setup-grid">
+    <a class="setup-tile" href="{{ url_for('setup_users') }}">
+        <strong>Users</strong>
+        <span>Create users and assign roles.</span>
+    </a>
+    <a class="setup-tile" href="{{ url_for('setup_roles') }}">
+        <strong>Roles</strong>
+        <span>Add roles and configure field level security.</span>
+    </a>
+    <a class="setup-tile" href="{{ url_for('object_manager') }}">
+        <strong>Object Manager</strong>
+        <span>Create custom objects and required fields.</span>
+    </a>
+</section>
+{% endblock %}

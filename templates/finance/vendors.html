@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Vendors | Finance{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Finance Module</p>
+        <h1>Vendors</h1>
+    </div>
+    <div class="action-row">
+        <a class="button secondary" href="{{ url_for('finance_dashboard') }}">Back to Dashboard</a>
+        <a class="button" href="{{ url_for('finance_vendor_new') }}">New Vendor</a>
+    </div>
+</section>
+
+<section class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Vendor Name</th>
+                <th>Category</th>
+                <th>Contact Person</th>
+                <th>Email / Phone</th>
+                <th>Created At</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for vendor in vendors %}
+                <tr>
+                    <td><a class="name-link" href="{{ url_for('finance_vendor_detail', vendor_id=vendor.id) }}"><strong>{{ vendor.name }}</strong></a><br><span>{{ vendor.category or "-" }}</span></td>
+                    <td>{{ vendor.contact_person or "--" }}</td>
+                    <td>{{ vendor.email or "-" }}</td>
+                    <td>{{ vendor.phone or "-" }}</td>
+                    <td>{{ vendor.created_at.strftime('%Y-%m-%d') }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="5" class="empty">No vendors yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

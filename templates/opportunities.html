@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Opportunities | Lead Management CRM{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Sales Pipeline</p>
+        <h1>Opportunities</h1>
+    </div>
+    <a class="button" href="{{ url_for('opportunity_new') }}">Add Opportunity</a>
+</section>
+
+<form class="filters" method="get">
+    <select name="stage">
+        <option value="">All stages</option>
+        {% for stage in stages %}
+            <option value="{{ stage }}" {% if selected_stage == stage %}selected{% endif %}>{{ stage }}</option>
+        {% endfor %}
+    </select>
+    <button class="button secondary" type="submit">Filter</button>
+</form>
+
+<section class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Opportunity</th>
+                <th>Customer</th>
+                <th>Value</th>
+                <th>Stage</th>
+                <th>Expected Close</th>
+                <th>Next Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for opportunity in opportunities %}
+                <tr>
+                    <td><a class="name-link" href="{{ url_for('opportunity_detail', opportunity_id=opportunity.id) }}"><strong>{{ opportunity.title }}</strong></a></td>
+                    <td><a class="name-link" href="{{ url_for('customer_detail', customer_id=opportunity.customer_id) }}">{{ opportunity.company_name }}</a></td>
+                    <td>{{ "%.2f"|format(opportunity.value) }}</td>
+                    <td><span class="pill">{{ opportunity.stage }}</span></td>
+                    <td>{{ opportunity.expected_close|date_or_dash }}</td>
+                    <td>{{ opportunity.next_action or "-" }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="6" class="empty">No opportunities found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

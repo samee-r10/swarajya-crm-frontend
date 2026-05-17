@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Object Manager | Setup{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Setup</p>
+        <h1>Object Manager</h1>
+    </div>
+    <div class="action-row">
+        <button class="button" onclick="document.getElementById('newObjectModal').style.display='flex'">New Object</button>
+    </div>
+</section>
+
+<section class="table-wrap">
+    <table>
+        <thead><tr><th>Object</th><th>Type</th><th>API Name</th><th>Fields</th></tr></thead>
+        <tbody>
+            {% for object in objects %}
+                <tr>
+                    <td><a class="name-link" href="{{ url_for('object_manager_detail', object_id=object.id) }}"><strong>{{ object.label }}</strong></a><br><span>{{ object.plural_label }}</span></td>
+                    <td><span class="pill">{{ "Standard" if object.is_standard else "Custom" }}</span></td>
+                    <td>{{ object.api_name }}</td>
+                    <td>{{ object.field_count }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="4" class="empty">No objects yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<div id="newObjectModal" class="modal-page" style="display: none;">
+    <div class="modal-container">
+        <header class="modal-header">
+            <div>
+                <p class="eyebrow">Setup</p>
+                <h1>Create Object</h1>
+            </div>
+            <div class="modal-close" onclick="document.getElementById('newObjectModal').style.display='none'">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </div>
+        </header>
+        <form method="post">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <label>Label
+                        <input id="objectLabelInput" required name="label" placeholder="e.g. Invoice">
+                    </label>
+                    <label>Plural Label
+                        <input id="objectPluralLabelInput" name="plural_label" placeholder="e.g. Invoices">
+                    </label>
+                    <label>API Name
+                        <input id="objectApiNameInput" name="api_name" placeholder="e.g. invoice__c">
+                    </label>
+                    <label class="span-2">Description
+                        <textarea name="description" rows="3" placeholder="Describe the object..."></textarea>
+                    </label>
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <button type="button" class="button secondary" onclick="document.getElementById('newObjectModal').style.display='none'">Cancel</button>
+                <button type="submit" class="button">Create Object</button>
+            </footer>
+        </form>
+    </div>
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const labelInput = document.getElementById("objectLabelInput");
+        const apiInput = document.getElementById("objectApiNameInput");
+        const pluralInput = document.getElementById("objectPluralLabelInput");
+
+        function slugifyApiName(value) {
+            let slug = value
+                .trim()
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, "_")
+                .replace(/^_+|_+$/g, "")
+                .replace(/_+/g, "_");
+            if (slug && !slug.endsWith("__c")) {
+                slug += "__c";
+            }
+            return slug;
+        }
+
+        function updateFields() {
+            if (!labelInput) {
+                return;
+            }
+            const labelValue = labelInput.value;
+            if (apiInput && !apiInput.value.trim()) {
+                apiInput.value = slugifyApiName(labelValue);
+            }
+            if (pluralInput && !pluralInput.value.trim() && labelValue) {
+                pluralInput.value = `${labelValue}s`;
+            }
+        }
+
+        if (labelInput) {
+            labelInput.addEventListener("input", updateFields);
+            updateFields();
+        }
+    });
+</script>
+{% endblock %}

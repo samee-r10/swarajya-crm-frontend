@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit" if customer else "New" }} Customer | Lead Management CRM{% endblock %}
+
+{% block content %}
+<div class="modal-page">
+    <div class="modal-container">
+        <header class="modal-header">
+            <div>
+                <p class="eyebrow">Customer</p>
+                <h1>{{ "Edit Customer" if customer else "New Customer" }}</h1>
+            </div>
+            <a href="{{ url_for('customers') }}" class="modal-close">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </a>
+        </header>
+        
+        <form method="post">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <label>Company Name
+                        <input required name="company_name" value="{{ customer.company_name if customer else '' }}" placeholder="Enter company name">
+                    </label>
+                    <label>Contact Name
+                        <input required name="contact_name" value="{{ customer.contact_name if customer else '' }}" placeholder="Enter contact name">
+                    </label>
+                    <label>Email
+                        <input type="email" name="email" value="{{ customer.email if customer else '' }}" placeholder="email@example.com">
+                    </label>
+                    <label>Phone
+                        <input name="phone" value="{{ customer.phone if customer else '' }}" placeholder="+1 (555) 000-0000">
+                    </label>
+                    <label>Industry
+                        <input name="industry" value="{{ customer.industry if customer else '' }}" placeholder="e.g. Technology, Finance">
+                    </label>
+                    <label>Status
+                        <select name="status">
+                            {% for status in statuses %}
+                                <option value="{{ status }}" {% if customer and customer.status == status %}selected{% endif %}>{{ status }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label class="span-2">Notes
+                        <textarea name="notes" rows="4" placeholder="Additional details...">{{ customer.notes if customer else '' }}</textarea>
+                    </label>
+                    {% if custom_fields %}
+                        {% include "_custom_fields.html" with context %}
+                    {% endif %}
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <a class="button secondary" href="{{ url_for('customers') }}">Cancel</a>
+                <button class="button" type="submit">Save Customer</button>
+            </footer>
+        </form>
+    </div>
+</div>
+{% endblock %}

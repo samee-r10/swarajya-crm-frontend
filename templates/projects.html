@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Projects | Lead Management CRM{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Delivery</p>
+        <h1>Projects</h1>
+    </div>
+    <a class="button" href="{{ url_for('project_new') }}">Add Project</a>
+</section>
+
+<form class="filters" method="get">
+    <select name="status">
+        <option value="">All statuses</option>
+        {% for status in statuses %}
+            <option value="{{ status }}" {% if selected_status == status %}selected{% endif %}>{{ status }}</option>
+        {% endfor %}
+    </select>
+    <button class="button secondary" type="submit">Filter</button>
+</form>
+
+<section class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Project</th>
+                <th>Customer</th>
+                <th>Status</th>
+                <th>Timeline</th>
+                <th>Delivery</th>
+                <th>Owner</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for project in projects %}
+                <tr>
+                    <td><a class="name-link" href="{{ url_for('project_detail', project_id=project.id) }}"><strong>{{ project.project_name }}</strong></a><br><span>{{ project.opportunity_title }}</span></td>
+                    <td><a class="name-link" href="{{ url_for('customer_detail', customer_id=project.customer_id) }}">{{ project.company_name }}</a></td>
+                    <td><span class="pill">{{ project.status }}</span></td>
+                    <td>{{ project.delivery_timeline|date_or_dash }}</td>
+                    <td>{{ project.product_delivery_status or "-" }}</td>
+                    <td>{{ project.owner or "-" }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="6" class="empty">No projects found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

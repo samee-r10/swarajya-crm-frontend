@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}{{ customer.company_name }} | Lead Management CRM{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Customer Card</p>
+        <h1>{{ customer.company_name }}</h1>
+        <p class="muted">{{ customer.contact_name }} · {{ customer.email or "No email" }} · {{ customer.phone or "No phone" }}</p>
+    </div>
+</section>
+
+<section class="record-layout">
+    <form class="form-grid record-card" method="post" action="{{ url_for('customer_edit', customer_id=customer.id) }}">
+        <div class="span-2 card-section-title">
+            <h2>Customer Details</h2>
+            <button class="button" type="submit">Save Changes</button>
+        </div>
+        <label>Company Name
+            <input required name="company_name" value="{{ customer.company_name }}">
+        </label>
+        <label>Contact Name
+            <input required name="contact_name" value="{{ customer.contact_name }}">
+        </label>
+        <label>Email
+            <input type="email" name="email" value="{{ customer.email or '' }}">
+        </label>
+        <label>Phone
+            <input name="phone" value="{{ customer.phone or '' }}">
+        </label>
+        <label>Industry
+            <input name="industry" value="{{ customer.industry or '' }}">
+        </label>
+        <label>Status
+            <select name="status">
+                {% for status in statuses %}
+                    <option value="{{ status }}" {% if customer.status == status %}selected{% endif %}>{{ status }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        {% include "_custom_fields.html" %}
+        <label class="span-2">Notes
+            <textarea name="notes" rows="7">{{ customer.notes or '' }}</textarea>
+        </label>
+    </form>
+
+    <aside class="related-pane">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Related Objects</h2>
+            </div>
+            <div class="related-section">
+                <div class="related-heading">
+                    <span>Opportunities</span>
+                    <a href="{{ url_for('opportunity_new') }}">New</a>
+                </div>
+                <div class="list compact">
+                    {% for opportunity in opportunities %}
+                        <a class="list-item" href="{{ url_for('opportunity_detail', opportunity_id=opportunity.id) }}">
+                            <div>
+                                <strong>{{ opportunity.title }}</strong>
+                                <span>{{ opportunity.expected_close|date_or_dash }} · {{ "%.2f"|format(opportunity.value) }}</span>
+                            </div>
+                            <span class="pill">{{ opportunity.stage }}</span>
+                        </a>
+                    {% else %}
+                        <p class="empty">No opportunities mapped.</p>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="related-section">
+                <div class="related-heading">
+                    <span>Projects</span>
+                    <a href="{{ url_for('project_new') }}">New</a>
+                </div>
+                <div class="list compact">
+                    {% for project in projects %}
+                        <a class="list-item" href="{{ url_for('project_detail', project_id=project.id) }}">
+                            <div>
+                                <strong>{{ project.project_name }}</strong>
+                                <span>{{ project.delivery_timeline|date_or_dash }} · {{ project.owner or "Unassigned" }}</span>
+                            </div>
+                            <span class="pill">{{ project.status }}</span>
+                        </a>
+                    {% else %}
+                        <p class="empty">No projects mapped.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </aside>
+</section>
+{% endblock %}

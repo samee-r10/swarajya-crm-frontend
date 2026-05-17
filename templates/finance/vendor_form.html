@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if vendor else 'New' }} Vendor | Finance{% endblock %}
+
+{% block content %}
+<div class="modal-page">
+    <div class="modal-container">
+        <header class="modal-header">
+            <div>
+                <p class="eyebrow">Finance Module</p>
+                <h1>{{ 'Edit' if vendor else 'New' }} Vendor</h1>
+            </div>
+            <a href="{{ url_for('finance_vendors') }}" class="modal-close">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </a>
+        </header>
+        
+        <form method="post" {% if vendor %}action="{{ url_for('finance_vendor_edit', vendor_id=vendor.id) }}"{% endif %}>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <label>Vendor Name
+                        <input required name="name" value="{{ vendor.name if vendor else '' }}" placeholder="e.g. Amazon Web Services">
+                    </label>
+                    <label>Contact Person
+                        <input name="contact_person" value="{{ vendor.contact_person if vendor else '' }}">
+                    </label>
+                    <label>Email
+                        <input type="email" name="email" value="{{ vendor.email if vendor else '' }}">
+                    </label>
+                    <label>Phone
+                        <input name="phone" value="{{ vendor.phone if vendor else '' }}">
+                    </label>
+                    <label>Category
+                        <input name="category" value="{{ vendor.category if vendor else '' }}" placeholder="e.g. IT Services, Office Supplies">
+                    </label>
+                    <label class="span-2">Notes
+                        <textarea name="notes" rows="4">{{ vendor.notes if vendor else '' }}</textarea>
+                    </label>
+                    {% if custom_fields %}
+                        {% include "_custom_fields.html" with context %}
+                    {% endif %}
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <a class="button secondary" href="{{ url_for('finance_vendors') }}">Cancel</a>
+                <button class="button" type="submit">{{ 'Save Changes' if vendor else 'Save Vendor' }}</button>
+            </footer>
+        </form>
+    </div>
+</div>
+{% endblock %}

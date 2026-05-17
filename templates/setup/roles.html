@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Roles | Setup{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Setup</p>
+        <h1>Roles</h1>
+    </div>
+</section>
+
+<section class="two-column">
+    <form class="form-grid single-column" method="post">
+        <h2 class="span-2">Create Role</h2>
+        <label class="span-2">Role Name
+            <input required name="name">
+        </label>
+        <label class="span-2">Description
+            <textarea name="description" rows="5"></textarea>
+        </label>
+        <button class="button span-2" type="submit">Create Role</button>
+    </form>
+
+    <section class="table-wrap">
+        <table>
+            <thead><tr><th>Role</th><th>Description</th><th>Security</th></tr></thead>
+            <tbody>
+                {% for role in roles %}
+                    <tr>
+                        <td><strong>{{ role.name }}</strong></td>
+                        <td>{{ role.description or "-" }}</td>
+                        <td><a class="name-link" href="{{ url_for('setup_role_security', role_id=role.id) }}">Field Security</a></td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="3" class="empty">No roles yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</section>
+{% endblock %}

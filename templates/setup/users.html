@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Users | Setup{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Setup</p>
+        <h1>Users</h1>
+    </div>
+</section>
+
+<section class="two-column">
+    <form class="form-grid single-column" method="post">
+        <h2 class="span-2">Create User</h2>
+        <label class="span-2">Full Name
+            <input required name="full_name">
+        </label>
+        <label class="span-2">Email
+            <input required type="email" name="email">
+        </label>
+        <label class="span-2">Password
+            <input required type="password" name="password" minlength="6">
+        </label>
+        <label class="span-2">Role
+            <select name="role_id">
+                <option value="">No role</option>
+                {% for role in roles %}
+                    <option value="{{ role.id }}">{{ role.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="checkbox-label span-2">
+            <input type="checkbox" name="is_active" checked>
+            Active
+        </label>
+        <button class="button span-2" type="submit">Create User</button>
+    </form>
+
+    <section class="table-wrap">
+        <table>
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+                {% for user in users %}
+                    <tr>
+                        <td><a class="name-link" href="{{ url_for('setup_user_edit', user_id=user.id) }}"><strong>{{ user.full_name }}</strong></a></td>
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.role_name or "-" }}</td>
+                        <td><span class="pill">{{ "Active" if user.is_active else "Inactive" }}</span></td>
+                        <td><a class="name-link" href="{{ url_for('setup_user_edit', user_id=user.id) }}">Edit</a></td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="5" class="empty">No users yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</section>
+{% endblock %}

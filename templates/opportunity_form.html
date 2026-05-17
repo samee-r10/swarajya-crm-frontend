@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit" if opportunity else "New" }} Opportunity | Lead Management CRM{% endblock %}
+
+{% block content %}
+<div class="modal-page">
+    <div class="modal-container">
+        <header class="modal-header">
+            <div>
+                <p class="eyebrow">Pipeline</p>
+                <h1>{{ "Edit Opportunity" if opportunity else "New Opportunity" }}</h1>
+            </div>
+            <a href="{{ url_for('opportunities') }}" class="modal-close">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </a>
+        </header>
+        
+        <form method="post">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <label>Customer
+                        <select required name="customer_id">
+                            <option value="">Select customer</option>
+                            {% for customer in customers %}
+                                <option value="{{ customer.id }}" {% if opportunity and opportunity.customer_id == customer.id %}selected{% endif %}>{{ customer.company_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>Country
+                        <select name="country" id="countrySelect">
+                            <option value="">Select Country</option>
+                            <option value="India" {% if opportunity and opportunity.country == 'India' %}selected{% endif %}>India</option>
+                            <option value="USA" {% if opportunity and opportunity.country == 'USA' %}selected{% endif %}>USA</option>
+                            <option value="UK" {% if opportunity and opportunity.country == 'UK' %}selected{% endif %}>UK</option>
+                            <option value="Australia" {% if opportunity and opportunity.country == 'Australia' %}selected{% endif %}>Australia</option>
+                            <option value="Canada" {% if opportunity and opportunity.country == 'Canada' %}selected{% endif %}>Canada</option>
+                        </select>
+                    </label>
+                    <label>Opportunity Title
+                        <input required name="title" value="{{ opportunity.title if opportunity else '' }}" placeholder="Enter title">
+                    </label>
+                    <label>Opportunity Number
+                        <input type="text" name="opportunity_number" id="opportunityNumber" value="{{ opportunity.opportunity_number if opportunity else '' }}" readonly>
+                    </label>
+                    <div style="display: grid; grid-template-columns: 100px 1fr; gap: 12px;">
+                        <label>Currency
+                            <select name="currency">
+                                {% for c in currencies %}
+                                    <option value="{{ c.code }}" {% if opportunity and opportunity.currency == c.code %}selected{% elif not opportunity and c.code == 'USD' %}selected{% endif %}>{{ c.symbol }} ({{ c.code }})</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label>Value
+                            <input type="number" step="0.01" min="0" name="value" value="{{ opportunity.value if opportunity else '0' }}">
+                        </label>
+                    </div>
+                    <label>Stage
+                        <select name="stage">
+                            {% for stage in stages %}
+                                <option value="{{ stage }}" {% if opportunity and opportunity.stage == stage %}selected{% endif %}>{{ stage }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>Expected Close
+                        <input type="date" name="expected_close" value="{{ opportunity.expected_close if opportunity and opportunity.expected_close else '' }}">
+                    </label>
+                    <label>Next Action
+                        <input name="next_action" value="{{ opportunity.next_action if opportunity else '' }}" placeholder="What's next?">
+                    </label>
+                    <label class="span-2">Client Requirements
+                        <textarea name="requirements" rows="4" placeholder="Describe requirements...">{{ opportunity.requirements if opportunity else '' }}</textarea>
+                    </label>
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <a class="button secondary" href="{{ url_for('opportunities') }}">Cancel</a>
+                <button class="button" type="submit">Save Opportunity</button>
+            </footer>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const countrySelect = document.getElementById("countrySelect");
+        const oppNumberInput = document.getElementById("opportunityNumber");
+        const frozenSequence = "{{ frozen_sequence }}";
+        
+        function updateOpportunityNumber() {
+            const country = countrySelect.value;
+            if (!country) {
+                if (!"{{ opportunity.id if opportunity else '' }}") {
+                    oppNumberInput.value = "";
+                }
+                return;
+            }
+            const prefix = country.substring(0, 2).toUpperCase();
+            const now = new Date();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const yy = String(now.getFullYear()).substring(2, 4);
+            oppNumberInput.value = prefix + mm + yy + frozenSequence;
+        }
+
+        countrySelect.addEventListener("change", updateOpportunityNumber);
+        if (!"{{ opportunity.id if opportunity else '' }}" && countrySelect.value) {
+             updateOpportunityNumber();
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Database Error | Lead Management CRM{% endblock %}
+
+{% block content %}
+<section class="panel single">
+    <p class="eyebrow">Database Error</p>
+    <h1>MySQL connection needs attention</h1>
+    <p class="muted">{{ error }}</p>
+    <p>Check your `.env` values, make sure MySQL is running, then run `flask init-db` before opening the app.</p>
+</section>
+{% endblock %}

@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}{{ custom_object.label }} | Object Manager{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Object Manager</p>
+        <h1>{{ custom_object.label }}</h1>
+        <p class="muted">{{ custom_object.api_name }}</p>
+    </div>
+    <div class="action-row">
+        <a class="button secondary" href="{{ url_for('object_manager') }}">Back</a>
+        <button class="button" type="button" onclick="openModal('newFieldModal')">New Field</button>
+        {% if custom_object.is_standard and custom_object.api_name == "customers" %}
+            <a class="button secondary" href="{{ url_for('customers') }}">Open Records</a>
+        {% elif custom_object.is_standard and custom_object.api_name == "opportunities" %}
+            <a class="button secondary" href="{{ url_for('opportunities') }}">Open Records</a>
+        {% elif custom_object.is_standard and custom_object.api_name == "projects" %}
+            <a class="button secondary" href="{{ url_for('projects') }}">Open Records</a>
+        {% elif custom_object.is_standard and custom_object.api_name == "vendors" %}
+            <a class="button secondary" href="{{ url_for('finance_vendors') }}">Open Records</a>
+        {% elif custom_object.is_standard and custom_object.api_name == "transactions" %}
+            <a class="button secondary" href="{{ url_for('finance_transactions') }}">Open Records</a>
+        {% elif custom_object.is_standard and custom_object.api_name == "accounts" %}
+            <a class="button secondary" href="{{ url_for('finance_dashboard') }}">Open Records</a>
+        {% else %}
+            <a class="button secondary" href="{{ url_for('custom_object_records', api_name=custom_object.api_name) }}">Open Records</a>
+        {% endif %}
+    </div>
+</section>
+
+<section class="table-wrap">
+    <table>
+        <thead><tr><th>Field</th><th>Kind</th><th>API Name</th><th>Type</th><th>Required</th><th>Actions</th></tr></thead>
+        <tbody>
+            {% for field in fields %}
+                <tr>
+                    <td><strong>{{ field.label }}</strong></td>
+                    <td><span class="pill">{{ "Standard" if field.is_native else "Custom" }}</span></td>
+                    <td>{{ field.api_name }}</td>
+                    <td>{{ field.field_type }}</td>
+                    <td>{{ "Yes" if field.is_required else "No" }}</td>
+                    <td>
+                        <a class="button-link secondary" href="{{ url_for('object_manager_field_edit', field_id=field.id) }}" title="Edit Field" style="margin-right: 0.5rem;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 3 5 5L8 21H3v-5L16 3Z"/><path d="M18 8l-6 6"/></svg>
+                        </a>
+                        <form action="{{ url_for('object_manager_field_delete', field_id=field.id) }}" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this field from Object Manager?')">
+                            <button type="submit" class="button-link danger" title="Delete Field">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6m4-6v6"/></svg>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="6" class="empty">No fields yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<div id="newFieldModal" class="modal-page" style="display: none;">
+    <div class="modal-container">
+        <header class="modal-header">
+            <div>
+                <p class="eyebrow">{{ custom_object.label }}</p>
+                <h1>Add Field</h1>
+            </div>
+            <div class="modal-close" onclick="closeModal('newFieldModal')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </div>
+        </header>
+        <form method="post">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <label>Field Label
+                        <input required name="label" placeholder="e.g. Due Date">
+                    </label>
+                    <label>API Name
+                        <input name="api_name" placeholder="e.g. due_date__c">
+                    </label>
+                    <label>Type
+                        <select name="field_type" id="fieldTypeSelect" onchange="togglePicklistOptions()">
+                            {% for type in field_types %}
+                                <option value="{{ type }}">{{ type }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label class="span-2" id="picklistOptionsLabel" style="display: none;">Picklist Options (One per line)
+                        <textarea name="picklist_options" rows="4" placeholder="Option 1&#10;Option 2&#10;Option 3"></textarea>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="is_required">
+                        Required
+                    </label>
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <button type="button" class="button secondary" onclick="closeModal('newFieldModal')">Cancel</button>
+                <button type="submit" class="button">Add Field</button>
+            </footer>
+        </form>
+    </div>
+</div>
+
+<div id="editFieldModal" class="modal-page" style="display: {{ 'flex' if edit_field else 'none' }};">
+    <div class="modal-container">
+        <header class="modal-header">
+            <div>
+                <p class="eyebrow">{{ custom_object.label }}</p>
+                <h1>Edit Field</h1>
+            </div>
+            <div class="modal-close" onclick="closeModal('editFieldModal')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </div>
+        </header>
+        {% if edit_field %}
+        <form method="post" action="{{ url_for('object_manager_field_edit', field_id=edit_field.id) }}">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <label>Field Label
+                        <input required name="label" value="{{ edit_field.label }}" placeholder="e.g. Due Date">
+                    </label>
+                    <label>API Name
+                        <input name="api_name" value="{{ edit_field.api_name }}" placeholder="e.g. due_date__c" {% if edit_field.is_native %}readonly{% endif %}>
+                    </label>
+                    <label>Type
+                        <select name="field_type" id="editFieldTypeSelect" onchange="togglePicklistOptions('edit')">
+                            {% for type in field_types %}
+                                <option value="{{ type }}" {% if edit_field.field_type == type %}selected{% endif %}>{{ type }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label class="span-2" id="editPicklistOptionsLabel" style="display: none;">Picklist Options (One per line)
+                        <textarea name="picklist_options" rows="4" placeholder="Option 1&#10;Option 2&#10;Option 3">{{ edit_field.picklist_options or '' }}</textarea>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="is_required" {% if edit_field.is_required %}checked{% endif %}>
+                        Required
+                    </label>
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <button type="button" class="button secondary" onclick="closeModal('editFieldModal')">Cancel</button>
+                <button type="submit" class="button">Save Changes</button>
+            </footer>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    function openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        modal.style.display = 'flex';
+        document.body.classList.add('modal-open');
+    }
+
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        modal.style.display = 'none';
+        document.body.classList.remove('modal-open');
+    }
+
+    function togglePicklistOptions(prefix = '') {
+        const select = document.getElementById(prefix + 'FieldTypeSelect');
+        const label = document.getElementById(prefix + 'PicklistOptionsLabel');
+        if (!select || !label) {
+            return;
+        }
+        label.style.display = select.value === 'Dropdown' ? 'grid' : 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        if (document.getElementById('editFieldModal').style.display === 'flex') {
+            document.body.classList.add('modal-open');
+        }
+        togglePicklistOptions();
+        togglePicklistOptions('edit');
+    });
+</script>
+{% endblock %}

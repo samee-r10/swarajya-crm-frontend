@@ -1,0 +1,154 @@
+@import '../../static/css/styles.css';
+
+#app {
+  min-height: 100vh;
+}
+
+.router-link-active {
+  color: var(--primary);
+}
+
+.vue-state {
+  padding: 24px;
+}
+
+.vue-nav {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.vue-nav a {
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 800;
+  padding: 10px 12px;
+}
+
+.vue-nav a:hover,
+.vue-nav .router-link-active {
+  background: var(--surface-soft);
+  color: var(--primary);
+}
+
+.vue-auth-page {
+  align-items: center;
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(20, 184, 166, 0.08)),
+    var(--background);
+  display: grid;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.vue-auth-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 28px;
+  margin: 0 auto;
+  max-width: 460px;
+  padding: 34px;
+  width: 100%;
+}
+
+.vue-auth-brand {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+}
+
+.vue-auth-brand h1,
+.vue-auth-copy h2 {
+  margin: 0;
+}
+
+.vue-auth-brand p,
+.vue-auth-copy p {
+  margin: 6px 0 0;
+}
+
+.vue-auth-mark {
+  height: 48px;
+  width: 48px;
+}
+
+.setup-section {
+  margin-top: 20px;
+}
+
+.user-menu {
+  width: 230px;
+}
+
+.user-menu-profile {
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 2px;
+  padding: 10px 16px 12px;
+}
+
+.user-menu-profile span,
+.user-menu-profile small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.user-menu a {
+  color: var(--text);
+  display: block;
+  font-size: 14px;
+  padding: 8px 16px;
+}
+
+.user-menu a:hover {
+  background: var(--surface-soft);
+}
+
+.modal-form {
+  padding: 20px 24px 24px;
+}
+
+@media print {
+  @page {
+    margin: 0;
+    /* Hides browser headers and footers */
+  }
+
+  body {
+    margin: 1cm;
+    /* Add some margin back to the body so content isn't on the edge */
+  }
+
+  .global-header,
+  .top-bar,
+  .no-print,
+  .actions,
+  header,
+  nav,
+  .back-button {
+    display: none !important;
+  }
+
+  .main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  body,
+  #app,
+  .invoice-container {
+    background: white !important;
+  }
+
+  .invoice-document {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 20px !important;
+    margin: 0 !important;
+    min-height: auto !important;
+  }
+}

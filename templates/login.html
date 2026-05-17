@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Login | Lead Management CRM</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body class="auth-body">
+    <main class="auth-shell">
+        <section class="auth-card">
+            <div class="auth-brand">
+                <span class="brand-mark">LM</span>
+                <div>
+                    <p class="eyebrow">Lead Manager</p>
+                    <h1>Login</h1>
+                </div>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-stack">
+                        {% for category, message in messages %}
+                            <div class="flash {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <form method="post" class="auth-form">
+                <label>Email
+                    <input required type="email" name="email" autofocus>
+                </label>
+                <label>Password
+                    <input required type="password" name="password">
+                </label>
+                <button class="button" type="submit">Login</button>
+            </form>
+            <p class="muted auth-note">Default first login after setup: admin@example.com / admin123</p>
+        </section>
+    </main>
+</body>
+</html>

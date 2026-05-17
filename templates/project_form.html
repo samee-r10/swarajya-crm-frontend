@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit" if project else "New" }} Project | Lead Management CRM{% endblock %}
+
+{% block content %}
+<div class="modal-page">
+    <div class="modal-container">
+        <header class="modal-header">
+            <div>
+                <p class="eyebrow">Delivery</p>
+                <h1>{{ "Edit Project" if project else "New Project" }}</h1>
+            </div>
+            <a href="{{ url_for('projects') }}" class="modal-close">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </a>
+        </header>
+        
+        <form method="post">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <label>Customer
+                        <select required name="customer_id">
+                            <option value="">Select customer</option>
+                            {% for customer in customers %}
+                                <option value="{{ customer.id }}" {% if project and project.customer_id == customer.id %}selected{% endif %}>{{ customer.company_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>Related Opportunity
+                        <select required name="opportunity_id">
+                            <option value="">Select opportunity</option>
+                            {% for opportunity in opportunities %}
+                                <option value="{{ opportunity.id }}" {% if project and project.opportunity_id == opportunity.id %}selected{% endif %}>{{ opportunity.company_name }} - {{ opportunity.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>Project Name
+                        <input required name="project_name" value="{{ project.project_name if project else '' }}" placeholder="Enter project name">
+                    </label>
+                    <label>Status
+                        <select name="status">
+                            {% for status in statuses %}
+                                <option value="{{ status }}" {% if project and project.status == status %}selected{% endif %}>{{ status }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>Delivery Timeline
+                        <input type="date" name="delivery_timeline" value="{{ project.delivery_timeline if project and project.delivery_timeline else '' }}">
+                    </label>
+                    <label>Owner
+                        <input name="owner" value="{{ project.owner if project else '' }}" placeholder="Project owner">
+                    </label>
+                    <label class="span-2">Product Delivery Status
+                        <input name="product_delivery_status" value="{{ project.product_delivery_status if project else '' }}" placeholder="Current delivery status">
+                    </label>
+                    <label class="span-2">Client Requirements
+                        <textarea name="client_requirements" rows="4" placeholder="Specific client needs...">{{ project.client_requirements if project else '' }}</textarea>
+                    </label>
+                    <label class="span-2">Latest Update
+                        <textarea name="last_update" rows="3" placeholder="Latest progress update...">{{ project.last_update if project else '' }}</textarea>
+                    </label>
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <a class="button secondary" href="{{ url_for('projects') }}">Cancel</a>
+                <button class="button" type="submit">Save Project</button>
+            </footer>
+        </form>
+    </div>
+</div>
+{% endblock %}
