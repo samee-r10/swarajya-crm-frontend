@@ -33,7 +33,7 @@
             <th>Opportunity</th>
             <th>Customer</th>
             <th>Stage</th>
-            <th class="right">Value</th>
+            <th class="right" v-if="hasField('value')">Value</th>
             <th>Expected Close</th>
           </tr>
         </thead>
@@ -49,7 +49,7 @@
               <RouterLink :to="`/customers/${opp.customer_id}`" class="link" @click.stop>{{ opp.company_name }}</RouterLink>
             </td>
             <td><span class="pill stage">{{ opp.stage }}</span></td>
-            <td class="right money-cell">
+            <td class="right money-cell" v-if="hasField('value')">
               {{ opp.currency }} {{ Number(opp.value || 0).toLocaleString() }}
             </td>
             <td class="date-col">{{ formatDate(opp.expected_close) }}</td>
@@ -191,6 +191,10 @@ const defaultFields = [
   { label: 'Next Action', api_name: 'next_action', field_type: 'Text', is_required: false }
 ]
 const oppFields = ref([...defaultFields])
+
+function hasField(apiName) {
+  return oppFields.value.some(f => f.api_name === apiName)
+}
 
 function isSpan2(field) {
   return field.field_type === 'Long Text' || field.api_name === 'requirements' || field.api_name === 'next_action'

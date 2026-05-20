@@ -32,7 +32,7 @@ import { useRouter } from 'vue-router'
 import { apiPost } from '../api/client'
 
 const router = useRouter()
-const form = reactive({ email: 'admin@example.com', password: 'admin123' })
+const form = reactive({ email: '', password: '' })
 const loading = ref(false)
 const error = ref('')
 

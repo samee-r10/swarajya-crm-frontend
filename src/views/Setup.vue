@@ -468,8 +468,8 @@ async function configureFLS(roleId, obj) {
 
 async function saveFLS() {
   await apiPost(`/api/setup/roles/${flsConfig.value.roleId}/security/${flsConfig.value.object.id}`, {
-    permissions: flsConfig.value.fields.map(f => ({
-      field_id: f.id,
+    fields: flsConfig.value.fields.map(f => ({
+      id: f.id,
       can_view: f.can_view,
       can_edit: f.can_edit
     }))

@@ -167,12 +167,16 @@ onMounted(async () => {
 })
 
 async function save() {
-  if (props.id) {
-    await apiPut(`/api/opportunities/${props.id}`, form)
-    router.push(`/opportunities/${props.id}`)
-  } else {
-    const data = await apiPost('/api/opportunities', form)
-    router.push(`/opportunities/${data.opportunity.id}`)
+  try {
+    if (props.id) {
+      await apiPut(`/api/opportunities/${props.id}`, form)
+      router.push(`/opportunities/${props.id}`)
+    } else {
+      const data = await apiPost('/api/opportunities', form)
+      router.push(`/opportunities/${data.opportunity.id}`)
+    }
+  } catch (err) {
+    alert(err.message || 'Failed to save')
   }
 }
 </script>
