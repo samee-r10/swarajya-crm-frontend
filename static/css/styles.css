@@ -58,6 +58,8 @@ a {
 
 .launcher-dropdown {
     position: relative;
+    display: inline-flex;
+    align-items: center;
 }
 
 .launcher-dropdown summary {
@@ -130,6 +132,8 @@ a {
 /* User Dropdown */
 .user-dropdown {
     position: relative;
+    display: inline-flex;
+    align-items: center;
 }
 
 .user-dropdown summary {
@@ -138,18 +142,43 @@ a {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 12px;
-    border-radius: 8px;
-    color: var(--muted);
-    transition: background 0.2s, color 0.2s;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--line);
+    background: #ffffff;
+    color: var(--text);
+    transition: all 0.2s ease;
     font-size: 14px;
     font-weight: 600;
 }
 
-.user-dropdown summary:hover,
+.user-dropdown summary:hover {
+    background: var(--surface-soft);
+    border-color: rgba(249, 115, 22, 0.3);
+    color: var(--primary);
+}
+
 .user-dropdown[open] summary {
     background: var(--surface-soft);
+    border-color: var(--primary);
     color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+}
+
+.user-dropdown summary .icon-user {
+    background: rgba(249, 115, 22, 0.08);
+    color: var(--primary);
+    border-radius: 50%;
+    padding: 3px;
+    width: 26px;
+    height: 26px;
+    transition: all 0.2s ease;
+}
+
+.user-dropdown summary:hover .icon-user,
+.user-dropdown[open] summary .icon-user {
+    background: var(--primary);
+    color: #ffffff;
 }
 
 .user-dropdown summary::-webkit-details-marker {

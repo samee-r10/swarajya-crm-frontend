@@ -41,8 +41,6 @@
         <RouterLink to="/customers">Customers</RouterLink>
         <RouterLink to="/opportunities">Opportunities</RouterLink>
         <RouterLink to="/projects">Projects</RouterLink>
-        <RouterLink v-if="hasFinanceAccess" to="/finance">Finance</RouterLink>
-        <RouterLink v-if="hasTreasuryAccess" to="/treasury">Treasury</RouterLink>
         <RouterLink v-if="userProfile === 'System Administrator'" to="/setup">Setup</RouterLink>
       </nav>
     </div>
@@ -196,53 +194,80 @@ async function logout() {
 
 <style scoped>
 .user-menu {
-  width: 240px;
+  width: 260px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  background: #ffffff;
+  margin-top: 6px;
 }
 
 .user-menu-profile {
-  padding: 16px;
+  padding: 18px 20px;
   border-bottom: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
+  background: #fafaf9;
+}
+
+.user-menu-profile strong {
+  font-family: 'Outfit', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1c1917;
+  line-height: 1.2;
 }
 
 .profile-pill {
   display: inline-block;
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 800;
   text-transform: uppercase;
-  background: var(--surface-soft);
+  letter-spacing: 0.8px;
+  background: rgba(249, 115, 22, 0.08);
   color: var(--primary);
-  padding: 2px 8px;
-  border-radius: 4px;
+  border: 1px solid rgba(249, 115, 22, 0.2);
+  padding: 4px 8px;
+  border-radius: 6px;
   width: fit-content;
+}
+
+.user-menu-profile small {
+  font-size: 12px;
+  color: #78716c;
+  word-break: break-all;
+  line-height: 1.4;
 }
 
 .user-menu-actions {
   padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .user-menu-actions a,
 .logout-link {
   display: flex;
   align-items: center;
+  gap: 10px;
   width: 100%;
-  padding: 10px 12px;
+  padding: 10px 14px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--text);
-  border-radius: 6px;
+  color: #44403c;
+  border-radius: 8px;
   text-decoration: none;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
   background: none;
   border: none;
   cursor: pointer;
   text-align: left;
 }
 
-.user-menu-actions a:hover,
-.logout-link:hover {
+.user-menu-actions a:hover {
   background: var(--surface-soft);
   color: var(--primary);
 }

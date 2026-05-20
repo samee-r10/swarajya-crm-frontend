@@ -14,6 +14,7 @@
       <button :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'">User Management</button>
       <button :class="{ active: activeTab === 'company' }" @click="activeTab = 'company'">Company Information</button>
       <button :class="{ active: activeTab === 'rates' }" @click="activeTab = 'rates'">Exchange Rates</button>
+      <button :class="{ active: activeTab === 'logs' }" @click="activeTab = 'logs'">Activity Logs</button>
     </nav>
 
     <main class="setup-content">
@@ -192,10 +193,97 @@
                 <td><span class="pill" :class="u.is_active ? 'status-success' : 'status-muted'">{{ u.is_active ? 'Active' : 'Inactive' }}</span></td>
                 <td class="table-actions">
                   <a href="#" @click.prevent="openEditUserModal(u)">Edit</a>
+                  <a href="#" style="margin-left: 8px; color: var(--muted);" @click.prevent="openResetPasswordModal(u)">Reset Password</a>
                 </td>
               </tr>
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <!-- Activity Logs Tab -->
+      <section v-if="activeTab === 'logs'" class="activity-logs-setup">
+        <div class="table-container shadow-premium">
+          <div class="panel-header" style="display: flex; flex-direction: column; gap: 16px; align-items: stretch; background: #f8fafc;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <h2 style="font-size: 18px; font-weight: 800; color: var(--primary);">System Activity Logs</h2>
+              <button class="button secondary small" @click="resetFilters">Reset Filters</button>
+            </div>
+            <div class="form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 8px;">
+              <label style="display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; color: var(--muted);">Module
+                <select v-model="filters.module_name" @change="fetchLogs(0)" style="padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; font-size: 13px; background: #ffffff;">
+                  <option value="">All Modules</option>
+                  <option value="Setup">Setup</option>
+                  <option value="Finance">Finance</option>
+                </select>
+              </label>
+              <label style="display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; color: var(--muted);">Action
+                <select v-model="filters.action_type" @change="fetchLogs(0)" style="padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; font-size: 13px; background: #ffffff;">
+                  <option value="">All Actions</option>
+                  <option value="CREATE">CREATE</option>
+                  <option value="UPDATE">UPDATE</option>
+                  <option value="DELETE">DELETE</option>
+                </select>
+              </label>
+              <label style="display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; color: var(--muted);">User Name
+                <input v-model="filters.user_name" @input="debounceFetchLogs" placeholder="Search user..." style="padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; font-size: 13px; background: #ffffff;">
+              </label>
+              <label style="display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; color: var(--muted);">Record ID
+                <input v-model.number="filters.record_id" type="number" @input="debounceFetchLogs" placeholder="ID..." style="padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; font-size: 13px; background: #ffffff;">
+              </label>
+            </div>
+          </div>
+          
+          <div v-if="logsLoading" class="empty-state">
+            <p>Loading activity logs...</p>
+          </div>
+          <div v-else-if="activityLogs.length === 0" class="empty-state">
+            No activity logs matched the specified filters.
+          </div>
+          <table v-else class="record-table compact">
+            <thead>
+              <tr>
+                <th style="width: 70px;">ID</th>
+                <th>Timestamp</th>
+                <th>User</th>
+                <th>Module</th>
+                <th>Entity</th>
+                <th style="width: 100px;">Record ID</th>
+                <th style="width: 100px;">Action</th>
+                <th>Reference</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="log in activityLogs" :key="log.id">
+                <td><span class="muted small font-mono">#{{ log.id }}</span></td>
+                <td style="white-space: nowrap;"><span class="small font-mono">{{ formatTimestamp(log.timestamp) }}</span></td>
+                <td><strong>{{ log.user_name }}</strong></td>
+                <td><span class="pill" :class="log.module_name === 'Setup' ? 'status-muted' : 'status-success'">{{ log.module_name }}</span></td>
+                <td>{{ log.entity_name }}</td>
+                <td><span class="pill font-mono" style="background: #f1f5f9; color: #475569;">#{{ log.record_id }}</span></td>
+                <td>
+                  <span class="pill font-bold small" :class="getActionClass(log.action_type)">
+                    {{ log.action_type }}
+                  </span>
+                </td>
+                <td><span v-if="log.reference_number" class="font-mono small">{{ log.reference_number }}</span><span v-else class="muted">-</span></td>
+                <td class="table-actions">
+                  <a href="#" @click.prevent="viewLogDetails(log)">Inspect Diff</a>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <div v-if="activityLogs.length > 0" class="panel-header" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--line); border-bottom: none; background: #ffffff; padding: 12px 24px;">
+            <span class="small muted">
+              Showing {{ pagination.skip + 1 }} - {{ Math.min(pagination.skip + pagination.limit, pagination.total) }} of {{ pagination.total }} logs
+            </span>
+            <div style="display: flex; gap: 8px;">
+              <button class="button secondary small" :disabled="pagination.skip === 0" @click="changePage(-1)">Previous</button>
+              <button class="button secondary small" :disabled="pagination.skip + pagination.limit >= pagination.total" @click="changePage(1)">Next</button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -306,12 +394,108 @@
           </form>
         </div>
       </div>
+
+      <!-- Reset Password Modal -->
+      <div v-if="showResetPasswordModal" class="modal-overlay" @click="showResetPasswordModal = false">
+        <div class="modal-content" @click.stop>
+          <div class="modal-header">
+            <h2>Reset Password</h2>
+            <button class="modal-close" @click="showResetPasswordModal = false">&times;</button>
+          </div>
+          <form class="modal-form p-24" @submit.prevent="submitResetPassword">
+            <div class="form-grid single-column">
+              <p class="muted" style="margin-bottom: 12px;">Resetting password for <strong>{{ resetUserForm.email }}</strong>. They will be forced to change it upon their next login.</p>
+              <label>New Temporary Password
+                <input v-model="resetUserForm.password" type="password" required minlength="8" style="padding: 10px 14px; border: 1.5px solid var(--line); border-radius: 8px; font-size: 15px; background: #ffffff; color: var(--primary);">
+                <span class="password-hint">Min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char</span>
+              </label>
+              <label>Confirm Temporary Password
+                <input v-model="resetUserForm.confirm_password" type="password" required style="padding: 10px 14px; border: 1.5px solid var(--line); border-radius: 8px; font-size: 15px; background: #ffffff; color: var(--primary);">
+              </label>
+            </div>
+            <div v-if="resetError" class="flash warning" style="margin-top: 16px; background: #fee2e2; border: 1px solid #ef4444; color: #991b1b; padding: 12px; border-radius: 8px; font-size: 14px;">{{ resetError }}</div>
+            <div v-if="resetSuccess" class="flash success" style="margin-top: 16px; background: #ecfdf5; border: 1px solid #10b981; color: #065f46; padding: 12px; border-radius: 8px; font-size: 14px;">{{ resetSuccess }}</div>
+            <div class="form-actions mt-16" style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+              <button type="button" class="button secondary" @click="showResetPasswordModal = false">Cancel</button>
+              <button type="submit" class="button" :disabled="resetLoading" style="padding: 10px 20px; background: var(--primary); color: #ffffff; border-radius: 8px; border: none; font-weight: 750; cursor: pointer;">
+                {{ resetLoading ? 'Saving...' : 'Reset Password' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Log Details Diff Inspector Modal -->
+      <div v-if="selectedLog" class="modal-overlay" @click="selectedLog = null">
+        <div class="modal-content large" @click.stop style="max-width: 900px; border-radius: 12px; background: #ffffff;">
+          <div class="modal-header" style="border-bottom: 1.5px solid var(--line); display: flex; justify-content: space-between; align-items: center; padding: 20px 24px;">
+            <div>
+              <h2 style="margin: 0; font-size: 18px; font-weight: 800; color: var(--primary);">
+                Inspect Diff: {{ selectedLog.entity_name }} #{{ selectedLog.record_id }}
+              </h2>
+              <p class="muted small" style="margin: 4px 0 0 0;">
+                Logged by {{ selectedLog.user_name }} on {{ formatTimestamp(selectedLog.timestamp) }}
+              </p>
+            </div>
+            <button class="modal-close" @click="selectedLog = null" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--muted);">&times;</button>
+          </div>
+          
+          <div class="modal-body p-24" style="max-height: 60vh; overflow-y: auto;">
+            <div class="form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid var(--line);">
+              <div>
+                <span style="font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; display: block; margin-bottom: 2px;">Action Type</span>
+                <span class="pill font-bold" :class="getActionClass(selectedLog.action_type)">{{ selectedLog.action_type }}</span>
+              </div>
+              <div>
+                <span style="font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; display: block; margin-bottom: 2px;">Source Screen/API</span>
+                <span class="font-mono small" style="word-break: break-all;">{{ selectedLog.source_screen || '-' }}</span>
+              </div>
+              <div>
+                <span style="font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; display: block; margin-bottom: 2px;">Reference/Doc Number</span>
+                <span class="font-mono small">{{ selectedLog.reference_number || '-' }}</span>
+              </div>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+              <span style="font-size: 13px; font-weight: 800; color: var(--primary); display: block; margin-bottom: 8px;">
+                Fields Changed ({{ selectedLog.fields_changed ? selectedLog.fields_changed.length : 0 }})
+              </span>
+              <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                <span v-for="f in selectedLog.fields_changed" :key="f" class="pill" style="background: #e2e8f0; color: #1e293b; font-family: monospace; font-size: 12px;">
+                  {{ f }}
+                </span>
+                <span v-if="!selectedLog.fields_changed || selectedLog.fields_changed.length === 0" class="muted small">None</span>
+              </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; font-size: 13px; font-weight: 700; color: #991b1b; text-align: center;">
+                  OLD VALUE(S)
+                </div>
+                <pre class="font-mono" style="background: #fafafa; border: 1px solid var(--line); border-radius: 8px; padding: 16px; font-size: 12px; overflow-x: auto; margin: 0; min-height: 150px; color: #dc2626; text-align: left;">{{ formatJSON(selectedLog.old_values) }}</pre>
+              </div>
+              
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; font-size: 13px; font-weight: 700; color: #166534; text-align: center;">
+                  NEW VALUE(S)
+                </div>
+                <pre class="font-mono" style="background: #fafafa; border: 1px solid var(--line); border-radius: 8px; padding: 16px; font-size: 12px; overflow-x: auto; margin: 0; min-height: 150px; color: #16a34a; text-align: left;">{{ formatJSON(selectedLog.new_values) }}</pre>
+              </div>
+            </div>
+          </div>
+          
+          <div class="modal-footer p-24" style="border-top: 1px solid var(--line); display: flex; justify-content: flex-end; padding: 16px 24px;">
+            <button class="button secondary" @click="selectedLog = null">Close Details</button>
+          </div>
+        </div>
+      </div>
     </main>
   </div>
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet, apiPost, apiPut, apiDelete } from '../api/client'
 
@@ -349,9 +533,115 @@ const newRole = reactive({ id: null, name: '', description: '' })
 const showUserModal = ref(false)
 const userForm = reactive({ id: null, full_name: '', email: '', password: '', role_id: '', is_active: true, has_treasury_access: false, has_finance_access: false })
 
+// Reset Password Modal
+const showResetPasswordModal = ref(false)
+const resetLoading = ref(false)
+const resetError = ref('')
+const resetSuccess = ref('')
+const resetUserForm = reactive({ id: null, email: '', password: '', confirm_password: '' })
+
 // FLS
 const selectedRoleForSecurity = ref(null)
 const flsConfig = ref(null)
+
+// Activity Logs State
+const activityLogs = ref([])
+const logsLoading = ref(false)
+const selectedLog = ref(null)
+const filters = reactive({
+  module_name: '',
+  action_type: '',
+  user_name: '',
+  record_id: ''
+})
+const pagination = reactive({
+  skip: 0,
+  limit: 20,
+  total: 0
+})
+let debounceTimer = null
+
+watch(activeTab, (newTab) => {
+  if (newTab === 'logs') {
+    fetchLogs(0)
+  }
+})
+
+async function fetchLogs(skip = 0) {
+  logsLoading.value = true
+  try {
+    const params = new URLSearchParams()
+    if (filters.module_name) params.append('module_name', filters.module_name)
+    if (filters.action_type) params.append('action_type', filters.action_type)
+    if (filters.user_name) params.append('user_name', filters.user_name)
+    if (filters.record_id !== null && filters.record_id !== undefined && filters.record_id !== '') {
+      params.append('record_id', filters.record_id.toString())
+    }
+    params.append('skip', skip.toString())
+    params.append('limit', pagination.limit.toString())
+
+    const res = await apiGet(`/api/setup/activity-logs?${params.toString()}`)
+    activityLogs.value = res.logs || []
+    pagination.total = res.total || 0
+    pagination.skip = res.skip || 0
+  } catch (err) {
+    console.error('Failed to load activity logs', err)
+  } finally {
+    logsLoading.value = false
+  }
+}
+
+function debounceFetchLogs() {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    fetchLogs(0)
+  }, 300)
+}
+
+function resetFilters() {
+  Object.assign(filters, { module_name: '', action_type: '', user_name: '', record_id: '' })
+  fetchLogs(0)
+}
+
+function changePage(direction) {
+  const newSkip = pagination.skip + direction * pagination.limit
+  if (newSkip >= 0 && newSkip < pagination.total) {
+    fetchLogs(newSkip)
+  }
+}
+
+function formatTimestamp(isoString) {
+  if (!isoString) return '-'
+  const dateObj = new Date(isoString)
+  return dateObj.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+}
+
+function getActionClass(action) {
+  if (action === 'CREATE') return 'status-success'
+  if (action === 'UPDATE') return 'status-warning'
+  if (action === 'DELETE') return 'status-danger'
+  return 'status-muted'
+}
+
+function viewLogDetails(log) {
+  selectedLog.value = log
+}
+
+function formatJSON(val) {
+  if (!val) return '{}'
+  try {
+    return JSON.stringify(val, null, 2)
+  } catch (e) {
+    return String(val)
+  }
+}
 
 onMounted(async () => {
   loadData()
@@ -450,6 +740,61 @@ async function saveUser() {
   }
   showUserModal.value = false
   loadData()
+}
+
+function openResetPasswordModal(user) {
+  resetError.value = ''
+  resetSuccess.value = ''
+  Object.assign(resetUserForm, { id: user.id, email: user.email, password: '', confirm_password: '' })
+  showResetPasswordModal.value = true
+}
+
+function validateResetLocal() {
+  if (resetUserForm.password !== resetUserForm.confirm_password) {
+    return "Passwords do not match."
+  }
+  if (resetUserForm.password.length < 8) {
+    return "Password must be at least 8 characters long."
+  }
+  if (!/[A-Z]/.test(resetUserForm.password)) {
+    return "Password must contain at least one uppercase letter."
+  }
+  if (!/[a-z]/.test(resetUserForm.password)) {
+    return "Password must contain at least one lowercase letter."
+  }
+  if (!/\d/.test(resetUserForm.password)) {
+    return "Password must contain at least one number."
+  }
+  if (!/[!@#$%^&*(),.?\":{}|<>]/.test(resetUserForm.password)) {
+    return "Password must contain at least one special character."
+  }
+  return null
+}
+
+async function submitResetPassword() {
+  resetError.value = ''
+  resetSuccess.value = ''
+  
+  const localError = validateResetLocal()
+  if (localError) {
+    resetError.value = localError
+    return
+  }
+  
+  resetLoading.value = true
+  try {
+    await apiPost(`/api/setup/users/${resetUserForm.id}/reset-password`, {
+      password: resetUserForm.password
+    })
+    resetSuccess.value = 'Password reset successfully! User will be forced to change it on next login.'
+    setTimeout(() => {
+      showResetPasswordModal.value = false
+    }, 2000)
+  } catch (err) {
+    resetError.value = err.message
+  } finally {
+    resetLoading.value = false
+  }
 }
 
 function manageSecurity(role) {
@@ -595,5 +940,32 @@ async function saveRates() {
 
 .compact td, .compact th {
   padding: 10px 16px;
+}
+
+.password-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.status-warning {
+  background-color: #fef3c7 !important;
+  color: #b45309 !important;
+}
+
+.status-danger {
+  background-color: #fee2e2 !important;
+  color: #b91c1c !important;
+}
+
+.font-mono {
+  font-family: monospace;
+}
+
+.font-bold {
+  font-weight: 700;
 }
 </style>

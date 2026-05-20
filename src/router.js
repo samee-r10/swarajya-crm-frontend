@@ -25,6 +25,8 @@ import InvoiceDetail from './views/InvoiceDetail.vue'
 import ObjectDetail from './views/ObjectDetail.vue'
 import GLReport from './views/GLReport.vue'
 import Treasury from './views/Treasury.vue'
+import ForceChangePassword from './views/ForceChangePassword.vue'
+
 
 
 const routes = [
@@ -58,7 +60,8 @@ const routes = [
   { path: '/finance/invoices/:id/edit', name: 'invoice-edit', component: InvoiceForm, props: true },
   { path: '/finance/reports/general-ledger', name: 'gl-report', component: GLReport },
   { path: '/treasury', name: 'treasury', component: Treasury },
-  { path: '/profile', name: 'profile', component: Profile }
+  { path: '/profile', name: 'profile', component: Profile },
+  { path: '/force-change-password', name: 'force-change-password', component: ForceChangePassword }
 ]
 
 const router = createRouter({
@@ -74,35 +77,45 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const userJson = window.localStorage.getItem('lms_user')
-  if (to.name !== 'login' && !userJson) {
+  let user = null
+  if (userJson) {
+    try {
+      user = JSON.parse(userJson)
+    } catch (e) {}
+  }
+
+  if (to.name !== 'login' && !user) {
     return { name: 'login' }
   }
-  if (to.name === 'login' && userJson) {
+  if (to.name === 'login' && user) {
     return { name: 'dashboard' }
   }
-  if (to.path.startsWith('/setup') && userJson) {
-    try {
-      const user = JSON.parse(userJson)
-      if (user.role_name !== 'System Administrator') {
-        return { name: 'dashboard' }
-      }
-    } catch (e) {}
+
+  // Force password change check
+  if (user && user.requires_password_change) {
+    if (to.name !== 'force-change-password' && to.name !== 'login') {
+      return { name: 'force-change-password' }
+    }
+  } else {
+    if (to.name === 'force-change-password') {
+      return { name: 'dashboard' }
+    }
   }
-  if (to.path.startsWith('/treasury') && userJson) {
-    try {
-      const user = JSON.parse(userJson)
-      if (!(user.has_treasury_access === 1 || user.has_treasury_access === true)) {
-        return { name: 'dashboard' }
-      }
-    } catch (e) {}
+
+  if (to.path.startsWith('/setup') && user) {
+    if (user.role_name !== 'System Administrator' && user.role_name !== 'Admin') {
+      return { name: 'dashboard' }
+    }
   }
-  if (to.path.startsWith('/finance') && userJson) {
-    try {
-      const user = JSON.parse(userJson)
-      if (!(user.has_finance_access === 1 || user.has_finance_access === true)) {
-        return { name: 'dashboard' }
-      }
-    } catch (e) {}
+  if (to.path.startsWith('/treasury') && user) {
+    if (!(user.has_treasury_access === 1 || user.has_treasury_access === true)) {
+      return { name: 'dashboard' }
+    }
+  }
+  if (to.path.startsWith('/finance') && user) {
+    if (!(user.has_finance_access === 1 || user.has_finance_access === true)) {
+      return { name: 'dashboard' }
+    }
   }
   return true
 })

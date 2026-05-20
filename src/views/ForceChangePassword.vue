@@ -12,9 +12,9 @@
         <div class="illustration-container">
           <img src="/login_artwork.png" alt="CRM Analytics" class="visual-artwork" />
           <div class="glass-caption">
-            <span class="badge">SaaS Enterprise Suite</span>
-            <h3>Unified Business operations</h3>
-            <p>Directly manage your sales pipelines, project lifecycles, and treasury ledgers within a single, highly integrated Workspace.</p>
+            <span class="badge" style="background: rgba(180, 83, 9, 0.15); color: #fb923c; border-color: rgba(180, 83, 9, 0.2);">Security Access</span>
+            <h3>Protect Your Account</h3>
+            <p>Ensure your operational data remains completely secure by setting a highly unique and strong password.</p>
           </div>
         </div>
         
@@ -24,7 +24,7 @@
       </div>
     </section>
 
-    <!-- Right Pane: Minimalist, Premium Login Form -->
+    <!-- Right Pane: Forced Password Reset Form -->
     <section class="form-pane">
       <div class="mobile-logo">
         <img src="/logo.png" alt="Swarajya Logo" class="mobile-logo-img" />
@@ -32,39 +32,15 @@
       </div>
 
       <div class="login-card-header">
-        <span class="eyebrow-accent">Secure Portal Access</span>
-        <h2>Welcome Back</h2>
-        <p class="subtitle">Enter your credentials to manage your business operations.</p>
+        <span class="eyebrow-accent" style="color: #d97706;">Action Required</span>
+        <h2>Change Your Password</h2>
+        <p class="subtitle">To secure your account, you must change your password before proceeding to the system.</p>
       </div>
 
       <form class="premium-form" @submit.prevent="submit">
-        <!-- Email Input -->
+        <!-- Current Password Input -->
         <div class="input-group">
-          <label for="email">Email Address</label>
-          <div class="input-wrapper">
-            <span class="input-icon">
-              <!-- SVG envelope icon -->
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-              </svg>
-            </span>
-            <input 
-              id="email" 
-              v-model="form.email" 
-              type="email" 
-              autocomplete="email" 
-              placeholder="name@swarajyaconsultancy.in"
-              required 
-              autofocus
-            />
-          </div>
-        </div>
-
-        <!-- Password Input -->
-        <div class="input-group">
-          <div class="label-row">
-            <label for="password">Password</label>
-          </div>
+          <label for="current_password">Current Password</label>
           <div class="input-wrapper">
             <span class="input-icon">
               <!-- SVG lock icon -->
@@ -73,22 +49,90 @@
               </svg>
             </span>
             <input 
-              id="password" 
-              v-model="form.password" 
-              :type="showPassword ? 'text' : 'password'" 
-              autocomplete="current-password" 
-              placeholder="••••••••••••"
+              id="current_password" 
+              v-model="form.current_password" 
+              :type="showCurrentPassword ? 'text' : 'password'" 
+              placeholder="Enter current password"
+              required 
+              autofocus
+            />
+            <button 
+              type="button" 
+              class="password-toggle" 
+              @click="showCurrentPassword = !showCurrentPassword"
+              tabindex="-1"
+            >
+              <!-- SVG Eye / Eye-Slash -->
+              <svg v-if="showCurrentPassword" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+              </svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- New Password Input -->
+        <div class="input-group">
+          <label for="new_password">New Password</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <!-- SVG key icon -->
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z" />
+              </svg>
+            </span>
+            <input 
+              id="new_password" 
+              v-model="form.new_password" 
+              :type="showNewPassword ? 'text' : 'password'" 
+              placeholder="Enter strong password"
               required
             />
             <button 
               type="button" 
               class="password-toggle" 
-              @click="showPassword = !showPassword"
+              @click="showNewPassword = !showNewPassword"
               tabindex="-1"
-              title="Toggle password visibility"
             >
-              <!-- SVG Eye / Eye-Slash -->
-              <svg v-if="showPassword" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+              <svg v-if="showNewPassword" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+              </svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              </svg>
+            </button>
+          </div>
+          <span class="password-hint">Min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char</span>
+        </div>
+
+        <!-- Confirm New Password Input -->
+        <div class="input-group">
+          <label for="confirm_password">Confirm New Password</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <!-- SVG check-circle icon -->
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+              </svg>
+            </span>
+            <input 
+              id="confirm_password" 
+              v-model="form.confirm_password" 
+              :type="showConfirmPassword ? 'text' : 'password'" 
+              placeholder="Confirm strong password"
+              required
+            />
+            <button 
+              type="button" 
+              class="password-toggle" 
+              @click="showConfirmPassword = !showConfirmPassword"
+              tabindex="-1"
+            >
+              <svg v-if="showConfirmPassword" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
               </svg>
               <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
@@ -109,10 +153,19 @@
           </div>
         </transition>
 
+        <transition name="slide-fade">
+          <div v-if="success" class="login-alert success">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="alert-icon">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+            </svg>
+            <span class="alert-text">{{ success }}</span>
+          </div>
+        </transition>
+
         <!-- Submit Button -->
-        <button class="login-submit-btn" type="submit" :disabled="loading">
+        <button class="login-submit-btn" type="submit" :disabled="loading" style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%); box-shadow: 0 4px 14px rgba(180, 83, 9, 0.35);">
           <span v-if="loading" class="spinner"></span>
-          <span>{{ loading ? 'Authenticating...' : 'Sign In to Workspace' }}</span>
+          <span>{{ loading ? 'Saving...' : 'Update Password & Continue' }}</span>
           <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="btn-arrow">
             <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
           </svg>
@@ -132,18 +185,67 @@ import { useRouter } from 'vue-router'
 import { apiPost } from '../api/client'
 
 const router = useRouter()
-const form = reactive({ email: '', password: '' })
+const form = reactive({ current_password: '', new_password: '', confirm_password: '' })
 const loading = ref(false)
 const error = ref('')
-const showPassword = ref(false)
+const success = ref('')
+
+const showCurrentPassword = ref(false)
+const showNewPassword = ref(false)
+const showConfirmPassword = ref(false)
+
+function validateLocal() {
+  if (form.new_password !== form.confirm_password) {
+    return "New passwords do not match."
+  }
+  if (form.new_password.length < 8) {
+    return "Password must be at least 8 characters long."
+  }
+  if (!/[A-Z]/.test(form.new_password)) {
+    return "Password must contain at least one uppercase letter."
+  }
+  if (!/[a-z]/.test(form.new_password)) {
+    return "Password must contain at least one lowercase letter."
+  }
+  if (!/\d/.test(form.new_password)) {
+    return "Password must contain at least one number."
+  }
+  if (!/[!@#$%^&*(),.?\":{}|<>]/.test(form.new_password)) {
+    return "Password must contain at least one special character."
+  }
+  return null
+}
 
 async function submit() {
-  loading.value = true
   error.value = ''
+  success.value = ''
+  
+  const localError = validateLocal()
+  if (localError) {
+    error.value = localError
+    return
+  }
+  
+  loading.value = true
   try {
-    const data = await apiPost('/api/auth/login', form)
-    window.localStorage.setItem('lms_user', JSON.stringify(data.user))
-    router.push({ name: 'dashboard' })
+    await apiPost('/api/auth/change-password', {
+      current_password: form.current_password,
+      new_password: form.new_password
+    })
+    
+    success.value = 'Password changed successfully! Redirecting...'
+    
+    // Update local storage user record
+    const userJson = window.localStorage.getItem('lms_user')
+    if (userJson) {
+      const user = JSON.parse(userJson)
+      user.requires_password_change = false
+      window.localStorage.setItem('lms_user', JSON.stringify(user))
+    }
+    
+    setTimeout(() => {
+      router.push({ name: 'dashboard' })
+    }, 1500)
   } catch (err) {
     error.value = err.message
   } finally {
@@ -263,8 +365,6 @@ async function submit() {
 
 .badge {
   display: inline-block;
-  background: rgba(249, 115, 22, 0.15);
-  color: #fb923c;
   padding: 6px 12px;
   border-radius: 999px;
   font-size: 11px;
@@ -332,7 +432,6 @@ async function submit() {
 
 .eyebrow-accent {
   display: inline-block;
-  color: #ea580c;
   font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
@@ -359,7 +458,7 @@ async function submit() {
 .premium-form {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
   max-width: 420px;
   width: 100%;
 }
@@ -367,7 +466,7 @@ async function submit() {
 .input-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .input-group label {
@@ -376,10 +475,12 @@ async function submit() {
   color: #334155;
 }
 
-.label-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.password-hint {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 4px;
+  line-height: 1.4;
+  font-weight: 500;
 }
 
 .input-wrapper {
@@ -421,8 +522,8 @@ async function submit() {
 .input-wrapper input:focus {
   outline: none;
   background-color: #ffffff;
-  border-color: #f97316;
-  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.1);
+  border-color: #d97706;
+  box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.1);
 }
 
 .password-toggle {
@@ -439,7 +540,7 @@ async function submit() {
 }
 
 .password-toggle:hover {
-  color: #ea580c;
+  color: #b45309;
 }
 
 .password-toggle svg {
@@ -466,6 +567,12 @@ async function submit() {
   color: #991b1b;
 }
 
+.login-alert.success {
+  background-color: #ecfdf5;
+  border: 1.5px solid #a7f3d0;
+  color: #065f46;
+}
+
 .alert-icon {
   width: 18px;
   height: 18px;
@@ -484,7 +591,6 @@ async function submit() {
   justify-content: center;
   gap: 8px;
   min-height: 48px;
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
   color: #ffffff;
   border: none;
   border-radius: 10px;
@@ -493,7 +599,6 @@ async function submit() {
   font-weight: 750;
   cursor: pointer;
   transition: all 0.25s ease;
-  box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35);
   margin-top: 8px;
   position: relative;
   overflow: hidden;
@@ -501,8 +606,7 @@ async function submit() {
 
 .login-submit-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(249, 115, 22, 0.45);
-  background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%);
+  background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
 }
 
 .login-submit-btn:active:not(:disabled) {
