@@ -77,8 +77,11 @@
         </main>
 
         <footer class="modal-footer">
-          <button type="button" class="button secondary" @click="showPreviewModal = false">Cancel / Edit</button>
-          <button type="button" class="button" @click="confirmAndPost">Confirm & Post Entry</button>
+          <button type="button" class="button secondary" :disabled="isPosting" @click="showPreviewModal = false">Cancel / Edit</button>
+          <button type="button" class="button" :disabled="isPosting" @click="confirmAndPost">
+            <span v-if="isPosting" class="btn-spinner"></span>
+            {{ isPosting ? 'Posting...' : 'Confirm & Post Entry' }}
+          </button>
         </footer>
       </div>
     </div>
@@ -99,6 +102,7 @@ const error = ref('')
 const form = reactive({ transaction_date: new Date().toISOString().slice(0, 10), type: 'Income', account_id: '', customer_id: '', project_id: '', vendor_id: '', currency: 'INR', amount: '', cgst_percent: 0, igst_percent: 0, tds_percent: 0, category: '', description: '' })
 
 const showPreviewModal = ref(false)
+const isPosting = ref(false)
 const currencySymbolsMap = { USD: '$', INR: '₹', EUR: '€', GBP: '£' }
 
 watch(() => form.type, (newType) => {
@@ -269,8 +273,19 @@ function openPreview() {
 }
 
 async function confirmAndPost() {
-  showPreviewModal.value = false
-  await save()
+  if (isPosting.value) return
+  isPosting.value = true
+  error.value = ''
+  try {
+    const data = await apiPost('/api/finance/transactions', form)
+    showPreviewModal.value = false
+    isPosting.value = false
+    router.push(`/finance/transactions/${data.id}?posted=true`)
+  } catch (err) {
+    isPosting.value = false
+    error.value = err.message
+    showPreviewModal.value = false
+  }
 }
 
 function money(amount) {
@@ -527,5 +542,20 @@ async function save() {
 
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>

@@ -5,7 +5,7 @@
   <header class="global-header">
     <div class="header-left">
       <div class="app-launcher">
-        <details class="launcher-dropdown">
+        <details ref="launcherRef" class="launcher-dropdown">
           <summary title="App Launcher">
             <svg class="icon-9dots" viewBox="0 0 24 24" width="24" height="24">
               <circle cx="4" cy="4" r="2.5" fill="currentColor" />
@@ -45,7 +45,7 @@
       </nav>
     </div>
     <div class="header-right">
-      <details v-if="user" class="user-dropdown">
+      <details v-if="user" ref="userDropdownRef" class="user-dropdown">
         <summary>
           <svg class="icon-user" viewBox="0 0 24 24" width="24" height="24">
             <circle cx="12" cy="8" r="4" fill="currentColor" />
@@ -84,15 +84,40 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { apiPost } from '../api/client'
 
 const route = useRoute()
 const router = useRouter()
+
+// Template refs for click-outside detection
+const launcherRef = ref(null)
+const userDropdownRef = ref(null)
+
+// Close both dropdowns when clicking outside them
+function handleOutsideClick(e) {
+  if (launcherRef.value && !launcherRef.value.contains(e.target)) {
+    launcherRef.value.removeAttribute('open')
+  }
+  if (userDropdownRef.value && !userDropdownRef.value.contains(e.target)) {
+    userDropdownRef.value.removeAttribute('open')
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleOutsideClick, true)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleOutsideClick, true)
+})
+
 const user = ref(window.localStorage.getItem('lms_user'))
 watch(() => route.path, () => {
   user.value = window.localStorage.getItem('lms_user')
+  // Auto-close the launcher whenever navigation occurs
+  if (launcherRef.value) launcherRef.value.removeAttribute('open')
 })
 const userName = computed(() => {
   if (!user.value) return ''

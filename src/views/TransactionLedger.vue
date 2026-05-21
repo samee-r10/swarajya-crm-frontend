@@ -237,7 +237,8 @@ function convertAmount(amount, fromCurrency, transactionDateStr) {
 const totals = computed(() => {
   let income = 0
   let expense = 0
-  transactions.value.forEach(t => {
+  // Exclude reversed entries from the summary totals
+  transactions.value.filter(t => t.status !== 'Reversed').forEach(t => {
     const amt = parseFloat(t.total_amount || t.amount || 0)
     const converted = convertAmount(amt, t.currency, t.transaction_date)
     if (t.type === 'Income') income += converted

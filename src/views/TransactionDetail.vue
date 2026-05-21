@@ -13,6 +13,15 @@
     </div>
   </section>
 
+  <!-- Success flash banner shown after posting -->
+  <transition name="fade-slide">
+    <div v-if="showSuccessMsg" class="post-success-banner">
+      <span class="success-icon">✓</span>
+      <span>Entry posted successfully.</span>
+      <button type="button" class="dismiss-btn" @click="showSuccessMsg = false" aria-label="Dismiss">×</button>
+    </div>
+  </transition>
+
   <section v-if="loading" class="table-wrap vue-state">Loading transaction...</section>
   <section v-else-if="error" class="table-wrap vue-state">{{ error }}</section>
   <section v-else class="record-layout">
@@ -35,6 +44,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { apiGet, apiPost } from '../api/client'
 import SystemInfo from '../components/SystemInfo.vue'
 
@@ -45,10 +55,13 @@ const props = defineProps({
   }
 })
 
+const route = useRoute()
 const transaction = ref(null)
 const currencySymbols = ref({})
 const loading = ref(true)
 const error = ref('')
+// Show success banner if navigated here from form posting
+const showSuccessMsg = ref(route.query.posted === 'true')
 
 onMounted(async () => {
   try {
@@ -122,3 +135,65 @@ function money(currency, amount) {
   })}`
 }
 </script>
+
+<style scoped>
+.post-success-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  padding: 14px 20px;
+  margin: 0 0 20px;
+  font-weight: 600;
+  font-size: 14px;
+  animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.success-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #16a34a;
+  color: white;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.dismiss-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #166534;
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+  padding: 0 4px;
+}
+
+.dismiss-btn:hover {
+  opacity: 1;
+}
+
+.fade-slide-enter-active, .fade-slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+.fade-slide-enter-from, .fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+</style>
