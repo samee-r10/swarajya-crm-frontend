@@ -5,15 +5,7 @@
       <div class="header-titles">
         <span class="module-pill">Finance Center</span>
         <h1>Treasury & Payouts</h1>
-        <p class="subtitle text-muted">Manage corporate reserves, fund splits, stakeholder allocations, and channel partner commissions.</p>
-      </div>
-      <div class="header-actions">
-        <button class="button primary" @click="openAddRevenueModal">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" class="mr-8">
-            <path d="M12 5v14M5 12h14"/>
-          </svg>
-          Record Revenue Split
-        </button>
+        <p class="subtitle text-muted">Settle ledger transactions into reserve, owner, and partner splits — entries sync from the transaction ledger.</p>
       </div>
     </div>
 
@@ -46,8 +38,8 @@
           </div>
           <div class="kpi-content">
             <span class="kpi-label">Company Reserve Fund</span>
-            <h3>₹{{ formatCurrency(dashboardData.reserve_accumulated) }}</h3>
-            <p class="kpi-sub">Total accumulated reserve</p>
+            <h3>₹{{ formatCurrency(dashboardData.reserve_available) }}</h3>
+            <p class="kpi-sub">Available balance (settled reserve only)</p>
           </div>
         </div>
 
@@ -60,8 +52,8 @@
           </div>
           <div class="kpi-content">
             <span class="kpi-label">Total Shared Revenue</span>
-            <h3>₹{{ formatCurrency(dashboardData.total_revenue) }}</h3>
-            <p class="kpi-sub">Subject to treasury splits</p>
+            <h3>₹{{ formatCurrency(dashboardData.shared_revenue) }}</h3>
+            <p class="kpi-sub">Stakeholder &amp; channel partner payouts from settled revenue</p>
           </div>
         </div>
 
@@ -75,9 +67,9 @@
             </svg>
           </div>
           <div class="kpi-content">
-            <span class="kpi-label">Stakeholder Payouts</span>
+            <span class="kpi-label">Owner Earnings Paid</span>
             <h3>₹{{ formatCurrency(dashboardData.stakeholder_paid) }}</h3>
-            <p class="kpi-sub text-warning">₹{{ formatCurrency(dashboardData.stakeholder_pending) }} Pending</p>
+            <p class="kpi-sub text-warning">₹{{ formatCurrency(dashboardData.stakeholder_pending) }} pending · see Payment Dashboard for contributions</p>
           </div>
         </div>
 
@@ -100,31 +92,40 @@
 
       <!-- Quick Summary Tables -->
       <div class="grid-2col">
-        <!-- Active Split Ratios -->
+        <!-- Company owner equity split -->
         <div class="dashboard-block">
           <div class="block-header">
-            <h4>Active Stakeholder Shares</h4>
+            <div>
+              <h4 class="m-0">Company Owners — Equity Split</h4>
+              <small class="text-muted">Active stakeholders and their ownership share of the company</small>
+            </div>
             <button class="link-btn" @click="activeTab = 'stakeholders'">Manage</button>
           </div>
           <div class="block-body">
             <div v-if="activeStakeholders.length === 0" class="empty-state-small">
-              <p>No active stakeholders configured.</p>
+              <p>No company owners configured yet.</p>
             </div>
             <div v-else class="ratio-list">
+              <div class="ownership-summary">
+                <span class="ownership-count">
+                  {{ activeStakeholders.length }} owner{{ activeStakeholders.length === 1 ? '' : 's' }}
+                </span>
+                <span class="ownership-split text-muted">{{ equitySplitSummary }}</span>
+              </div>
               <div v-for="stk in activeStakeholders" :key="stk.id" class="ratio-item">
                 <div class="ratio-info">
                   <strong>{{ stk.name }}</strong>
-                  <span class="percentage-badge">{{ stk.payout_percentage }}%</span>
+                  <span class="percentage-badge">{{ stk.payout_percentage }}% equity</span>
                 </div>
                 <div class="ratio-bar-bg">
                   <div class="ratio-bar-fill" :style="{ width: stk.payout_percentage + '%' }"></div>
                 </div>
               </div>
               <div class="total-bar">
-                <span>Total Active Pool Share:</span>
+                <span>Total company equity:</span>
                 <strong :class="activeStakeholderSum === 100 ? 'text-success' : 'text-danger'">
-                  {{ activeStakeholderSum }}% 
-                  <small v-if="activeStakeholderSum !== 100">(Must sum to exactly 100%)</small>
+                  {{ activeStakeholderSum }}%
+                  <small v-if="activeStakeholderSum !== 100"> (must equal 100%)</small>
                 </strong>
               </div>
             </div>
@@ -155,7 +156,8 @@
                   <td>
                     <span v-if="p.payout_type === 'Reserve Fund'">Company Reserve</span>
                     <span v-else-if="p.payout_type === 'Channel Partner'">{{ p.partner_name || 'Channel Partner' }}</span>
-                    <span v-else>{{ p.stakeholder_name || 'Stakeholder' }}</span>
+                    <span v-else-if="p.payout_type === 'Stakeholder Contribution'">{{ p.stakeholder_name || 'Owner' }} (paid in)</span>
+                    <span v-else>{{ p.stakeholder_name || 'Owner' }}</span>
                   </td>
                   <td><span class="type-pill text-xs">{{ p.payout_type }}</span></td>
                   <td><strong>₹{{ formatCurrency(p.amount) }}</strong></td>
@@ -191,10 +193,6 @@
               <span class="pay-kpi-chip red">Spent ₹{{ formatCurrency(dashboardData.reserve_spent) }}</span>
             </div>
           </div>
-          <button class="button primary sm mt-auto" @click="showExpenseModal = true">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Log Expense
-          </button>
         </div>
 
         <!-- Stakeholder Payouts Summary -->
@@ -242,25 +240,26 @@
       <div class="pay-section card p-0 mb-24">
         <div class="card-header p-20 border-bottom d-flex justify-between align-center">
           <div>
-            <h4 class="m-0">Stakeholder Settlement Hub</h4>
-            <small class="text-muted">Settle pending payouts per stakeholder</small>
+            <h4 class="m-0">Owner Settlement Hub</h4>
+            <small class="text-muted">Track what owners paid into the company vs earnings still owed</small>
           </div>
         </div>
         <div class="table-responsive">
           <table class="grid-table">
             <thead>
               <tr>
-                <th>Stakeholder Name</th>
-                <th>Share %</th>
+                <th>Owner Name</th>
+                <th>Equity %</th>
                 <th>Status</th>
-                <th>Total Paid</th>
-                <th>Pending Payouts</th>
+                <th>Paid to Company</th>
+                <th>Earned from Company</th>
+                <th>Pending Earnings</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="paymentStats.stakeholders.length === 0">
-                <td colspan="6" class="text-center py-24 text-muted">No stakeholders configured yet.</td>
+                <td colspan="7" class="text-center py-24 text-muted">No company owners configured yet.</td>
               </tr>
               <tr v-for="stk in paymentStats.stakeholders" :key="stk.id">
                 <td>
@@ -277,7 +276,8 @@
                     {{ stk.is_active ? 'Active' : 'Inactive' }}
                   </span>
                 </td>
-                <td class="text-semibold text-success">₹{{ formatCurrency(stk.paid_amount) }}</td>
+                <td class="text-semibold text-primary">₹{{ formatCurrency(stk.contributed_amount || 0) }}</td>
+                <td class="text-semibold text-success">₹{{ formatCurrency(stk.earned_from_company || stk.paid_amount || 0) }}</td>
                 <td>
                   <span v-if="parseFloat(stk.pending_amount) > 0" class="text-semibold text-warning">
                     ₹{{ formatCurrency(stk.pending_amount) }}
@@ -290,9 +290,9 @@
                     class="button primary text-xs"
                     @click="settleStakeholder(stk)"
                   >
-                    ✓ Settle ₹{{ formatCurrency(stk.pending_amount) }}
+                    ✓ Pay earnings ₹{{ formatCurrency(stk.pending_amount) }}
                   </button>
-                  <span v-else class="text-muted text-xs">All settled</span>
+                  <span v-else class="text-muted text-xs">No pending earnings</span>
                 </td>
               </tr>
             </tbody>
@@ -360,15 +360,9 @@
 
       <!-- Reserve Fund Ledger -->
       <div class="pay-section card p-0">
-        <div class="card-header p-20 border-bottom d-flex justify-between align-center">
-          <div>
-            <h4 class="m-0">Reserve Fund Ledger</h4>
-            <small class="text-muted">All incoming allocations and outgoing expenses</small>
-          </div>
-          <button class="button primary sm" @click="showExpenseModal = true">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Log Expense
-          </button>
+        <div class="card-header p-20 border-bottom">
+          <h4 class="m-0">Reserve Fund Ledger</h4>
+          <small class="text-muted">Reserve allocations from settled revenue and ledger expenses</small>
         </div>
         <div class="table-responsive">
           <table class="grid-table">
@@ -420,6 +414,31 @@
     <div v-if="activeTab === 'revenue'" class="revenue-tab card p-0">
       <div class="card-header p-24 border-bottom">
         <h3 class="m-0">Shared Revenue Log</h3>
+        <small class="text-muted">Ledger transactions awaiting or completed settlement</small>
+      </div>
+      <div class="revenue-log-summary p-24 border-bottom">
+        <div class="revenue-summary-grid">
+          <div class="revenue-summary-card settled">
+            <span class="revenue-summary-label">Transactions Settled</span>
+            <strong class="revenue-summary-value">{{ revenueSettlementStats.settledCount }}</strong>
+            <small class="text-muted">of {{ revenueSettlementStats.totalCount }} total</small>
+          </div>
+          <div class="revenue-summary-card pending">
+            <span class="revenue-summary-label">Pending Settlement</span>
+            <strong class="revenue-summary-value">{{ revenueSettlementStats.pendingCount }}</strong>
+            <small class="text-muted">awaiting split confirmation</small>
+          </div>
+          <div class="revenue-summary-card amount-settled">
+            <span class="revenue-summary-label">Settled Amount</span>
+            <strong class="revenue-summary-value text-success">₹{{ formatCurrency(revenueSettlementStats.settledAmount) }}</strong>
+            <small class="text-muted">transaction value settled</small>
+          </div>
+          <div class="revenue-summary-card amount-pending">
+            <span class="revenue-summary-label">Pending Settlement Amount</span>
+            <strong class="revenue-summary-value text-warning">₹{{ formatCurrency(revenueSettlementStats.pendingAmount) }}</strong>
+            <small class="text-muted">still to be allocated</small>
+          </div>
+        </div>
       </div>
       <div class="table-responsive">
         <table class="grid-table">
@@ -432,15 +451,16 @@
               <th>Amount</th>
               <th>Reserve Split</th>
               <th>Partner Split</th>
-              <th>Stakeholder Pool</th>
+              <th>Owner Share</th>
               <th>Tx ID</th>
               <th>Description</th>
+              <th>Settlement</th>
               <th>Action</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="revenueEntries.length === 0">
-              <td colspan="11" class="text-center py-24 text-muted">No revenue splits recorded yet.</td>
+              <td colspan="12" class="text-center py-24 text-muted">No revenue splits recorded yet.</td>
             </tr>
             <tr v-for="entry in revenueEntries" :key="entry.id">
               <td>
@@ -464,7 +484,10 @@
                 </div>
               </td>
               <td><strong>₹{{ formatCurrency(entry.partner_commission) }}</strong></td>
-              <td><strong>₹{{ formatCurrency(entry.stakeholder_total) }}</strong></td>
+              <td>
+                <strong>₹{{ formatCurrency(entry.stakeholder_total) }}</strong>
+                <small class="text-muted block">{{ isCompanyExpense(entry) ? 'Owner contribution' : 'Owner earnings pool' }}</small>
+              </td>
               <td>
                 <span v-if="entry.transaction_id" class="badge" style="font-family: monospace; background-color: #f3f4f6; color: #4b5563; padding: 2px 6px; border-radius: 4px;">
                   #{{ entry.transaction_id }}
@@ -473,7 +496,18 @@
               </td>
               <td class="text-muted text-xs text-truncate" style="max-width: 150px;">{{ entry.description || '-' }}</td>
               <td>
-                <button class="button secondary text-xs" @click="openEditSplitModal(entry)">Edit Split</button>
+                <span v-if="isRevenueSettled(entry)" class="status-pill active">Settled</span>
+                <span v-else class="status-pill inactive">Pending</span>
+              </td>
+              <td>
+                <button
+                  v-if="!isRevenueSettled(entry)"
+                  class="button secondary text-xs"
+                  @click="openEditSplitModal(entry)"
+                >
+                  Settlement
+                </button>
+                <span v-else class="text-muted text-xs">Locked</span>
               </td>
             </tr>
           </tbody>
@@ -484,15 +518,18 @@
     <!-- Stakeholders Tab -->
     <div v-if="activeTab === 'stakeholders'" class="stakeholders-tab card p-0">
       <div class="card-header p-24 border-bottom d-flex justify-between align-center">
-        <h3 class="m-0">Stakeholders</h3>
-        <button class="button secondary" @click="openStakeholderModal()">Add Stakeholder</button>
+        <div>
+          <h3 class="m-0">Company Owners</h3>
+          <small class="text-muted">Stakeholders represent company ownership; equity % must total 100%</small>
+        </div>
+        <button class="button secondary" @click="openStakeholderModal()">Add Owner</button>
       </div>
       <div class="table-responsive">
         <table class="grid-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Payout Share (%)</th>
+              <th>Owner Name</th>
+              <th>Equity Share (%)</th>
               <th>Bank/Payment Details</th>
               <th>Status</th>
               <th>Actions</th>
@@ -500,7 +537,7 @@
           </thead>
           <tbody>
             <tr v-if="stakeholders.length === 0">
-              <td colspan="5" class="text-center py-24 text-muted">No stakeholders registered.</td>
+              <td colspan="5" class="text-center py-24 text-muted">No company owners registered.</td>
             </tr>
             <tr v-for="stk in stakeholders" :key="stk.id">
               <td class="text-semibold">{{ stk.name }}</td>
@@ -521,11 +558,14 @@
         </table>
       </div>
       <div class="card-footer p-16 bg-soft text-sm text-center border-top">
-        Total Active Stakeholder splits: 
+        <span v-if="activeStakeholders.length">{{ activeStakeholders.length }} active owner{{ activeStakeholders.length === 1 ? '' : 's' }} · {{ equitySplitSummary }}</span>
+        <span v-else class="text-muted">No active owners</span>
+        <span class="mx-8">|</span>
+        Total equity:
         <strong :class="activeStakeholderSum === 100 ? 'text-success' : 'text-danger'">
           {{ activeStakeholderSum }}%
         </strong>
-        <span class="text-muted ml-8">(Must sum up to exactly 100% to successfully process revenue splits).</span>
+        <span class="text-muted ml-8">(must equal 100% for revenue settlement)</span>
       </div>
     </div>
 
@@ -575,6 +615,7 @@
     <div v-if="activeTab === 'ledger'" class="ledger-tab card p-0">
       <div class="card-header p-24 border-bottom">
         <h3 class="m-0">Corporate Payout Ledger</h3>
+        <p class="text-sm text-muted m-0 mt-8">Owner contributions (expenses) and owner earnings (income) from settled revenue</p>
       </div>
       <div class="table-responsive">
         <table class="grid-table">
@@ -592,7 +633,9 @@
           </thead>
           <tbody>
             <tr v-if="payoutLedger.length === 0">
-              <td colspan="8" class="text-center py-24 text-muted">No entries inside the payout ledger yet.</td>
+              <td colspan="8" class="text-center py-24 text-muted">
+                No payout ledger entries yet. Settle a revenue log entry to generate payouts.
+              </td>
             </tr>
             <tr v-for="p in payoutLedger" :key="p.id">
               <td>
@@ -605,8 +648,9 @@
                 <div class="recipient-details">
                   <span v-if="p.payout_type === 'Reserve Fund'" class="text-semibold text-primary">Company Reserve Fund</span>
                   <span v-else-if="p.payout_type === 'Channel Partner'" class="text-semibold">{{ p.partner_name || 'Channel Partner' }}</span>
-                  <span v-else class="text-semibold">{{ p.stakeholder_name || 'Stakeholder' }}</span>
-                  <small class="text-muted" v-if="p.payout_type === 'Stakeholder'">Stakeholder</small>
+                  <span v-else class="text-semibold">{{ p.stakeholder_name || 'Owner' }}</span>
+                  <small class="text-muted" v-if="p.payout_type === 'Stakeholder'">Earning from company</small>
+                  <small class="text-muted" v-if="p.payout_type === 'Stakeholder Contribution'">Paid to company</small>
                   <small class="text-muted" v-if="p.payout_type === 'Channel Partner'">Partner</small>
                 </div>
               </td>
@@ -620,19 +664,23 @@
                   <strong>{{ p.project_name || 'Direct Source' }}</strong>
                 </div>
               </td>
-              <td class="text-semibold">₹{{ formatCurrency(p.amount) }}</td>
+              <td class="text-semibold" :class="p.payout_type === 'Stakeholder Contribution' ? 'text-primary' : ''">
+                <span v-if="p.payout_type === 'Stakeholder Contribution'">+₹{{ formatCurrency(p.amount) }}</span>
+                <span v-else>₹{{ formatCurrency(p.amount) }}</span>
+              </td>
               <td>
                 <span class="status-pill" :class="p.status.toLowerCase()">{{ p.status }}</span>
               </td>
               <td>
                 <button 
-                  v-if="p.payout_type !== 'Reserve Fund'"
+                  v-if="p.payout_type === 'Stakeholder'"
                   class="button text-xs" 
                   :class="p.status === 'Pending' ? 'primary' : 'secondary'"
                   @click="togglePayoutStatus(p)"
                 >
                   Mark as {{ p.status === 'Pending' ? 'Paid' : 'Pending' }}
                 </button>
+                <span v-else-if="p.payout_type === 'Stakeholder Contribution'" class="text-muted text-xs">Contribution recorded</span>
                 <span v-else class="text-muted text-xs">Auto-settled</span>
               </td>
             </tr>
@@ -671,145 +719,24 @@
       </div>
     </div>
 
-    <!-- Add Revenue Modal -->
-    <div v-if="showRevenueModal" class="modal-overlay" @click="showRevenueModal = false">
-      <div class="modal-content large" @click.stop>
-        <div class="modal-header">
-          <h2>Record Revenue & Distribute Fund Splits</h2>
-          <button class="modal-close" @click="showRevenueModal = false">&times;</button>
-        </div>
-        <form class="modal-form p-24" @submit.prevent="saveRevenue">
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Amount (₹) <span class="required">*</span></label>
-              <input v-model.number="revenueForm.amount" type="number" step="0.01" min="0.01" required placeholder="0.00" class="input-lg" />
-            </div>
-
-            <div class="form-group">
-              <label>Entry Date <span class="required">*</span></label>
-              <input v-model="revenueForm.entry_date" type="date" required />
-            </div>
-
-            <div class="form-group">
-              <label>Revenue Type <span class="required">*</span></label>
-              <select v-model="revenueForm.revenue_type" required>
-                <option value="Sales Income">Sales Income</option>
-                <option value="Service Income">Service Income</option>
-                <option value="Other Income">Other Income</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label>Associated Project</label>
-              <select v-model="revenueForm.project_id">
-                <option :value="null">-- None (Direct Source) --</option>
-                <option v-for="proj in projects" :key="proj.id" :value="proj.id">
-                  {{ proj.project_name }} ({{ proj.customer_name }})
-                </option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label>Reserve Fund Percentage (%) <span class="required">*</span></label>
-              <input v-model.number="revenueForm.reserve_percentage" type="number" step="0.1" min="0" max="100" required />
-            </div>
-
-            <div class="form-group">
-              <label>Channel Partner Split</label>
-              <select v-model="revenueForm.channel_partner_id">
-                <option :value="null">-- No Commission Applied --</option>
-                <option v-for="cp in activePartners" :key="cp.id" :value="cp.id">
-                  {{ cp.name }} ({{ cp.commission_type === 'Percentage' ? cp.commission_value + '%' : '₹' + cp.commission_value + ' Flat' }})
-                </option>
-              </select>
-            </div>
-
-            <div class="form-group span-2">
-              <label>Description / Notes</label>
-              <textarea v-model="revenueForm.description" placeholder="Provide context about this treasury split entry..."></textarea>
-            </div>
-          </div>
-
-          <!-- Real-time Preview Engine -->
-          <div class="preview-panel mt-16 p-16 border rounded">
-            <h4 class="m-0 mb-12 d-flex align-center">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" class="mr-8 text-primary">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="16" x2="12" y2="12"/>
-                <line x1="12" y1="8" x2="12.01" y2="8"/>
-              </svg>
-              Real-Time Fund Split Preview
-            </h4>
-
-            <div v-if="revenueForm.amount <= 0" class="text-muted text-center py-12">
-              Enter a valid revenue amount to calculate automated splits in real-time.
-            </div>
-            
-            <div v-else-if="activeStakeholders.length === 0" class="text-danger text-center py-12">
-              Warning: Cannot calculate splits. No active stakeholders configured in the system.
-            </div>
-
-            <div v-else-if="activeStakeholderSum !== 100" class="text-danger text-center py-12">
-              Warning: Active stakeholder payout percentages must sum to exactly 100%. Currently at {{ activeStakeholderSum }}%.
-            </div>
-
-            <div v-else class="preview-splits">
-              <div class="preview-metrics mb-16">
-                <div class="preview-card bg-soft">
-                  <span class="preview-card-lbl">Revenue Amount</span>
-                  <strong>₹{{ formatCurrency(revenueForm.amount) }}</strong>
-                </div>
-                <div class="preview-card bg-soft">
-                  <span class="preview-card-lbl">Reserve Split ({{ revenueForm.reserve_percentage }}%)</span>
-                  <strong class="text-primary">₹{{ formatCurrency(previewReserveAmount) }}</strong>
-                </div>
-                <div v-if="previewPartnerCommission > 0" class="preview-card bg-soft">
-                  <span class="preview-card-lbl">Partner Commission</span>
-                  <strong>₹{{ formatCurrency(previewPartnerCommission) }}</strong>
-                </div>
-                <div class="preview-card bg-soft">
-                  <span class="preview-card-lbl">Stakeholders Pool (Remaining)</span>
-                  <strong class="text-success">₹{{ formatCurrency(previewStakeholderPool) }}</strong>
-                </div>
-              </div>
-
-              <div class="preview-stakeholders mt-12">
-                <h5 class="m-0 mb-8">Stakeholder Distributions:</h5>
-                <div class="preview-stk-grid">
-                  <div v-for="stk in activeStakeholders" :key="stk.id" class="preview-stk-row">
-                    <span>{{ stk.name }} ({{ stk.payout_percentage }}%)</span>
-                    <strong>₹{{ formatCurrency(previewStakeholderShare(stk.payout_percentage)) }}</strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="form-actions mt-24">
-            <button type="button" class="button secondary" @click="showRevenueModal = false">Cancel</button>
-            <button type="submit" class="button primary" :disabled="isSaveRevenueDisabled">Record Split Entry</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
     <!-- Stakeholder Modal -->
     <div v-if="showStakeholderModal" class="modal-overlay" @click="showStakeholderModal = false">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
-          <h2>{{ stakeholderForm.id ? 'Edit Stakeholder' : 'Add New Stakeholder' }}</h2>
+          <h2>{{ stakeholderForm.id ? 'Edit Company Owner' : 'Add Company Owner' }}</h2>
           <button class="modal-close" @click="showStakeholderModal = false">&times;</button>
         </div>
         <form class="modal-form p-24" @submit.prevent="saveStakeholder">
           <div class="form-grid single-column">
             <div class="form-group">
-              <label>Stakeholder Name <span class="required">*</span></label>
+              <label>Owner Name <span class="required">*</span></label>
               <input v-model="stakeholderForm.name" type="text" required placeholder="e.g. John Doe" />
             </div>
 
             <div class="form-group">
-              <label>Payout Split Percentage (%) <span class="required">*</span></label>
-              <input v-model.number="stakeholderForm.payout_percentage" type="number" step="0.01" min="0.01" max="100" required placeholder="e.g. 20.00" />
+              <label>Equity Ownership (%) <span class="required">*</span></label>
+              <input v-model.number="stakeholderForm.payout_percentage" type="number" step="0.01" min="0.01" max="100" required placeholder="e.g. 50.00" />
+              <small class="text-muted block mt-4">Share of company ownership (all active owners must total 100%)</small>
             </div>
 
             <div class="form-group">
@@ -819,7 +746,7 @@
 
             <div class="form-group checkbox-group" style="display: flex; align-items: center; gap: 8px;">
               <input v-model="stakeholderForm.is_active" type="checkbox" id="stk_is_active" />
-              <label for="stk_is_active" style="margin: 0;">Active Stakeholder</label>
+              <label for="stk_is_active" style="margin: 0;">Active owner (included in equity split)</label>
             </div>
           </div>
 
@@ -872,14 +799,17 @@
       </div>
     </div>
 
-    <!-- Edit Revenue Split Modal -->
+    <!-- Revenue Settlement Modal -->
     <div v-if="showEditSplitModal" class="modal-overlay" @click="showEditSplitModal = false">
       <div class="modal-content large" @click.stop>
         <div class="modal-header">
-          <h2>Edit Revenue Split Allocation</h2>
+          <h2>Revenue Settlement</h2>
           <button class="modal-close" @click="showEditSplitModal = false">&times;</button>
         </div>
         <form class="modal-form p-24" @submit.prevent="saveEditSplit">
+          <p class="text-sm text-muted mb-16">
+            Allocate 100% of this revenue across reserve, partners, and stakeholders. Once confirmed, this entry is settled and cannot be edited.
+          </p>
           <div class="form-grid">
             <div class="form-group span-2 bg-soft p-16 rounded mb-12 d-flex justify-between align-center">
               <div>
@@ -887,8 +817,8 @@
                 <strong class="text-xl text-primary">₹{{ formatCurrency(editSplitForm.amount) }}</strong>
               </div>
               <div class="text-right">
-                <span class="text-xs text-muted block">SPLIT STATUS</span>
-                <span class="status-pill active">Recorded</span>
+                <span class="text-xs text-muted block">SETTLEMENT</span>
+                <span class="status-pill inactive">Pending</span>
               </div>
             </div>
 
@@ -925,8 +855,17 @@
 
             <!-- Stakeholders Custom Splits -->
             <div class="form-group span-2 border-top pt-16">
-              <h4 class="m-0 mb-12">Stakeholder Split Percentages (%)</h4>
-              <p class="text-xs text-muted mb-16">Distribute split percentage of the total revenue among your stakeholders:</p>
+              <h4 class="m-0 mb-12">
+                {{ editSplitForm.amount < 0 ? 'Owner contribution to company (% of expense)' : 'Owner earnings split (% of revenue)' }}
+              </h4>
+              <p class="text-xs text-muted mb-16" v-if="editSplitForm.amount < 0">
+                Each owner's share of this company expense — money owners fund into the business
+                (not a payout). Defaults use equity split ({{ equitySplitSummary || 'configure owners first' }}).
+              </p>
+              <p class="text-xs text-muted mb-16" v-else>
+                Each owner's share of income the company pays out. Defaults use equity split
+                ({{ equitySplitSummary || 'configure owners first' }}).
+              </p>
               
               <div class="grid-2col border rounded p-16">
                 <div v-for="stk in editSplitForm.stakeholders" :key="stk.id" class="form-group">
@@ -948,47 +887,14 @@
 
           <div class="form-actions mt-24">
             <button type="button" class="button secondary" @click="showEditSplitModal = false">Cancel</button>
-            <button type="submit" class="button primary" :disabled="isSaveEditSplitDisabled">Save Split Allocation</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Log Company Expense Modal -->
-    <div v-if="showExpenseModal" class="modal-overlay" @click="showExpenseModal = false">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <h2>Log Company Reserve Expense</h2>
-          <button class="modal-close" @click="showExpenseModal = false">&times;</button>
-        </div>
-        <form class="modal-form p-24" @submit.prevent="submitExpense">
-          <div class="form-group mb-16">
-            <label>Expense Date <span class="required">*</span></label>
-            <input v-model="expenseForm.expense_date" type="date" required />
-          </div>
-
-          <div class="form-group mb-16">
-            <label>Amount (₹) <span class="required">*</span></label>
-            <input v-model.number="expenseForm.amount" type="number" step="0.01" min="0.01" required placeholder="0.00" />
-            <small class="text-muted block mt-4" v-if="expenseForm.amount > 0">
-              Current Available Reserve Fund: <strong>₹{{ formatCurrency(dashboardData.reserve_available) }}</strong>
-            </small>
-          </div>
-
-          <div class="form-group mb-24">
-            <label>Description / Notes <span class="required">*</span></label>
-            <textarea v-model="expenseForm.description" required placeholder="Enter detailed description of the expense or withdrawal..." rows="3"></textarea>
-          </div>
-
-          <div class="form-actions">
-            <button type="button" class="button secondary" @click="showExpenseModal = false">Cancel</button>
-            <button type="submit" class="button primary" :disabled="isSavingExpense || expenseForm.amount <= 0">
-              {{ isSavingExpense ? 'Saving...' : 'Log Expense' }}
+            <button type="submit" class="button primary" :disabled="isSaveEditSplitDisabled">
+              Confirm Settlement
             </button>
           </div>
         </form>
       </div>
     </div>
+
   </div>
 </template>
 
@@ -1002,7 +908,7 @@ const tabs = [
   { id: 'dashboard', label: 'Dashboard', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>' },
   { id: 'payment_dashboard', label: 'Payment Dashboard', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>' },
   { id: 'revenue', label: 'Revenue Log', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>' },
-  { id: 'stakeholders', label: 'Stakeholders', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
+  { id: 'stakeholders', label: 'Company Owners', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
   { id: 'partners', label: 'Channel Partners', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
   { id: 'ledger', label: 'Payout Ledger', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>' },
   { id: 'logs', label: 'Audit Logs', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' }
@@ -1010,7 +916,7 @@ const tabs = [
 
 // Data states
 const dashboardData = ref({
-  total_revenue: 0,
+  shared_revenue: 0,
   reserve_accumulated: 0,
   reserve_spent: 0,
   reserve_available: 0,
@@ -1025,7 +931,6 @@ const stakeholders = ref([])
 const partners = ref([])
 const payoutLedger = ref([])
 const auditLogs = ref([])
-const projects = ref([])
 
 // Payment Dashboard states
 const paymentStats = ref({
@@ -1033,13 +938,6 @@ const paymentStats = ref({
   partners: [],
   reserve_ledger: []
 })
-const showExpenseModal = ref(false)
-const expenseForm = reactive({
-  amount: 0,
-  expense_date: new Date().toISOString().substring(0, 10),
-  description: ''
-})
-const isSavingExpense = ref(false)
 
 // Form states
 const showEditSplitModal = ref(false)
@@ -1050,17 +948,6 @@ const editSplitForm = reactive({
   channel_partner_id: null,
   partner_commission_percentage: 0.00,
   stakeholders: []
-})
-
-const showRevenueModal = ref(false)
-const revenueForm = reactive({
-  amount: 0,
-  entry_date: new Date().toISOString().substring(0, 10),
-  revenue_type: 'Sales Income',
-  project_id: null,
-  reserve_percentage: 20.00,
-  channel_partner_id: null,
-  description: ''
 })
 
 const showStakeholderModal = ref(false)
@@ -1090,37 +977,36 @@ const activeStakeholderSum = computed(() => {
   return Math.round(activeStakeholders.value.reduce((sum, s) => sum + parseFloat(s.payout_percentage), 0) * 100) / 100
 })
 
-const activePartners = computed(() => {
-  return partners.value.filter(p => p.is_active)
+const equitySplitSummary = computed(() => {
+  if (activeStakeholders.value.length === 0) return ''
+  return activeStakeholders.value.map(s => `${s.payout_percentage}%`).join(' + ')
 })
 
-// Real-time Preview calculations
-const previewReserveAmount = computed(() => {
-  if (revenueForm.amount <= 0) return 0
-  return Math.round(revenueForm.amount * (revenueForm.reserve_percentage / 100) * 100) / 100
-})
+function isRevenueSettled(entry) {
+  return entry.is_settled === true || entry.is_settled === 1
+}
 
-const previewPartnerCommission = computed(() => {
-  if (revenueForm.amount <= 0 || !revenueForm.channel_partner_id) return 0
-  const partner = activePartners.value.find(p => p.id === revenueForm.channel_partner_id)
-  if (!partner) return 0
-  
-  if (partner.commission_type === 'Percentage') {
-    return Math.round(revenueForm.amount * (partner.commission_value / 100) * 100) / 100
-  } else {
-    return Math.round(partner.commission_value * 100) / 100
+function isCompanyExpense(entry) {
+  return parseFloat(entry.amount) < 0
+}
+
+const revenueSettlementStats = computed(() => {
+  const settled = revenueEntries.value.filter((e) => isRevenueSettled(e))
+  const pending = revenueEntries.value.filter((e) => !isRevenueSettled(e))
+  const sumAbs = (list) =>
+    Math.round(list.reduce((sum, e) => sum + Math.abs(parseFloat(e.amount) || 0), 0) * 100) / 100
+  return {
+    settledCount: settled.length,
+    pendingCount: pending.length,
+    totalCount: revenueEntries.value.length,
+    settledAmount: sumAbs(settled),
+    pendingAmount: sumAbs(pending),
   }
 })
 
-const previewStakeholderPool = computed(() => {
-  if (revenueForm.amount <= 0) return 0
-  const remaining = revenueForm.amount - previewReserveAmount.value - previewPartnerCommission.value
-  return Math.max(0, Math.round(remaining * 100) / 100)
+const activePartners = computed(() => {
+  return partners.value.filter(p => p.is_active)
 })
-
-const previewStakeholderShare = (percentage) => {
-  return Math.round(previewStakeholderPool.value * (percentage / 100) * 100) / 100
-}
 
 // Edit Split Modal Computeds
 const editSplitReserveAmount = computed(() => {
@@ -1152,13 +1038,6 @@ const isSaveEditSplitDisabled = computed(() => {
   return editSplitTotalPercentageSum.value !== 100 || editSplitStakeholderPool.value < 0
 })
 
-const isSaveRevenueDisabled = computed(() => {
-  return revenueForm.amount <= 0 || 
-         activeStakeholders.value.length === 0 || 
-         activeStakeholderSum.value !== 100 || 
-         previewStakeholderPool.value < 0
-})
-
 // Actions
 onMounted(() => {
   loadAllData()
@@ -1187,37 +1066,12 @@ async function loadAllData() {
   const logs = await safe(() => apiGet('/api/treasury/logs'), 'logs')
   if (logs?.logs) auditLogs.value = logs.logs
 
-  const opts = await safe(() => apiGet('/api/options'), 'options')
-  if (opts?.projects) projects.value = opts.projects
-
   const payStats = await safe(() => apiGet('/api/treasury/payment-stats'), 'payment-stats')
   if (payStats) paymentStats.value = payStats
 }
 
-async function submitExpense() {
-  if (expenseForm.amount <= 0 || !expenseForm.expense_date) {
-    alert("Please enter a valid amount and date.")
-    return
-  }
-  isSavingExpense.value = true
-  try {
-    await apiPost('/api/treasury/reserve/expense', expenseForm)
-    showExpenseModal.value = false
-    Object.assign(expenseForm, {
-      amount: 0,
-      expense_date: new Date().toISOString().substring(0, 10),
-      description: ''
-    })
-    await loadAllData()
-  } catch (err) {
-    alert(err.message || "Failed to log reserve expense")
-  } finally {
-    isSavingExpense.value = false
-  }
-}
-
 async function settleStakeholder(stakeholder) {
-  if (!confirm(`Are you sure you want to mark all pending payouts (₹${formatCurrency(stakeholder.pending_amount)}) for ${stakeholder.name} as Paid?`)) {
+  if (!confirm(`Mark pending earnings of ₹${formatCurrency(stakeholder.pending_amount)} as Paid to ${stakeholder.name}? (This does not include amounts they paid into the company.)`)) {
     return
   }
   try {
@@ -1240,30 +1094,11 @@ async function settlePartner(partner) {
   }
 }
 
-function openAddRevenueModal() {
-  Object.assign(revenueForm, {
-    amount: 0,
-    entry_date: new Date().toISOString().substring(0, 10),
-    revenue_type: 'Sales Income',
-    project_id: null,
-    reserve_percentage: 20.00,
-    channel_partner_id: null,
-    description: ''
-  })
-  showRevenueModal.value = true
-}
-
-async function saveRevenue() {
-  try {
-    await apiPost('/api/treasury/revenue', revenueForm)
-    showRevenueModal.value = false
-    loadAllData()
-  } catch (err) {
-    alert(err.message || "Failed to save revenue split entry")
-  }
-}
-
 function openEditSplitModal(entry) {
+  if (isRevenueSettled(entry)) {
+    alert('This revenue entry is already settled and cannot be edited.')
+    return
+  }
   editSplitForm.revenue_id = entry.id
   editSplitForm.amount = parseFloat(entry.amount)
   editSplitForm.reserve_percentage = parseFloat(entry.reserve_percentage || 20.00)
@@ -1275,15 +1110,24 @@ function openEditSplitModal(entry) {
     editSplitForm.partner_commission_percentage = 0.00
   }
 
-  // Fetch stakeholder payouts for this entry from ledger
   const existingPayouts = payoutLedger.value.filter(p => p.revenue_id === entry.id && p.payout_type === 'Stakeholder')
-  
+  const amtAbs = Math.abs(parseFloat(entry.amount)) || 0
+  const reservePct = parseFloat(entry.reserve_percentage || 20)
+  const partnerPct = editSplitForm.channel_partner_id ? (parseFloat(editSplitForm.partner_commission_percentage) || 0) : 0
+  const stakeholderPoolPct = Math.max(0, 100 - reservePct - partnerPct)
+
   editSplitForm.stakeholders = activeStakeholders.value.map(stk => {
     const existing = existingPayouts.find(p => p.stakeholder_id === stk.id)
+    let percentage
+    if (existing && amtAbs > 0) {
+      percentage = Math.round((parseFloat(existing.amount) / amtAbs) * 10000) / 100
+    } else {
+      percentage = Math.round(stakeholderPoolPct * (parseFloat(stk.payout_percentage) || 0) / 100 * 100) / 100
+    }
     return {
       id: stk.id,
       name: stk.name,
-      percentage: existing ? Math.round((parseFloat(existing.amount) / parseFloat(entry.amount)) * 10000) / 100 : stk.payout_percentage
+      percentage
     }
   })
 
@@ -1291,6 +1135,13 @@ function openEditSplitModal(entry) {
 }
 
 async function saveEditSplit() {
+  if (editSplitTotalPercentageSum.value !== 100) {
+    alert('Split percentages must sum to exactly 100% before settlement.')
+    return
+  }
+  if (!confirm('Confirm 100% settlement? This revenue entry will be locked and cannot be edited later.')) {
+    return
+  }
   try {
     const payload = {
       reserve_percentage: editSplitForm.reserve_percentage,
@@ -1303,9 +1154,9 @@ async function saveEditSplit() {
     }
     await apiPut(`/api/treasury/revenue/${editSplitForm.revenue_id}`, payload)
     showEditSplitModal.value = false
-    loadAllData()
+    await loadAllData()
   } catch (err) {
-    alert(err.message || "Failed to save split allocation update")
+    alert(err.message || "Failed to settle revenue entry")
   }
 }
 
@@ -1495,6 +1346,53 @@ function formatTimestamp(val) {
   align-items: center;
 }
 
+/* Revenue log settlement summary */
+.revenue-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.revenue-summary-card {
+  background: var(--surface-soft, #f8fafc);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.revenue-summary-card.settled {
+  border-left: 3px solid #059669;
+}
+
+.revenue-summary-card.pending {
+  border-left: 3px solid #d97706;
+}
+
+.revenue-summary-card.amount-settled {
+  border-left: 3px solid #0284c7;
+}
+
+.revenue-summary-card.amount-pending {
+  border-left: 3px solid #ea580c;
+}
+
+.revenue-summary-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.revenue-summary-value {
+  font-size: 1.5rem;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
 /* KPIs */
 .kpi-grid {
   display: grid;
@@ -1612,6 +1510,25 @@ function formatTimestamp(val) {
   padding: 24px;
 }
 
+.ownership-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface-soft);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.ownership-count {
+  font-weight: 600;
+}
+
+.ownership-split {
+  font-size: 13px;
+}
+
 .ratio-list {
   display: flex;
   flex-direction: column;
@@ -1727,6 +1644,11 @@ function formatTimestamp(val) {
 .type-pill.channel-partner {
   background: #fdf2f8;
   color: #db2777;
+}
+
+.type-pill.stakeholder-contribution {
+  background: #dbeafe;
+  color: #1d4ed8;
 }
 
 .type-pill.stakeholder {
