@@ -7,6 +7,31 @@
         <p class="muted">Monitor your revenue, expenses, and invoices.</p>
       </div>
       <div class="action-row">
+        <!-- Currency View Toggle Selection -->
+        <div class="currency-toggle-wrap" style="display: flex; align-items: center; background: white; border: 1px solid var(--line); padding: 4px 12px; border-radius: 30px; margin-right: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+          <span class="muted small" style="font-weight: 700; margin-right: 8px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Currency:</span>
+          <div class="toggle-buttons" style="display: flex; background: #f1f5f9; padding: 2px; border-radius: 20px;">
+            <button 
+              type="button" 
+              class="toggle-btn" 
+              :class="{ active: viewCurrency === 'USD' }" 
+              @click="viewCurrency = 'USD'"
+              style="border: none; background: none; padding: 6px 16px; font-size: 11px; font-weight: 800; cursor: pointer; border-radius: 18px; transition: all 0.2s;"
+            >
+              USD
+            </button>
+            <button 
+              type="button" 
+              class="toggle-btn" 
+              :class="{ active: viewCurrency === 'INR' }" 
+              @click="viewCurrency = 'INR'"
+              style="border: none; background: none; padding: 6px 16px; font-size: 11px; font-weight: 800; cursor: pointer; border-radius: 18px; transition: all 0.2s;"
+            >
+              INR
+            </button>
+          </div>
+        </div>
+
         <RouterLink class="button" to="/finance/invoices/new">Generate Invoice</RouterLink>
         <RouterLink class="button secondary" to="/finance/transactions/new">New Transaction</RouterLink>
       </div>
@@ -15,22 +40,42 @@
     <section v-if="metrics" class="metric-grid">
       <div class="metric-card">
         <span class="label">Total Revenue</span>
-        <strong class="value">{{ money(metrics.total_revenue) }}</strong>
+        <strong class="value">
+          {{ viewCurrency === 'USD' ? money(metrics.total_revenue, 'USD') : money(metrics.total_revenue_inr, 'INR') }}
+        </strong>
+        <span class="sub-value">
+          {{ viewCurrency === 'USD' ? money(metrics.total_revenue_inr, 'INR') : money(metrics.total_revenue, 'USD') }}
+        </span>
         <span class="trend pos">↑ 12% vs last month</span>
       </div>
       <div class="metric-card">
         <span class="label">Total Expenses</span>
-        <strong class="value">{{ money(metrics.total_expenses) }}</strong>
+        <strong class="value">
+          {{ viewCurrency === 'USD' ? money(metrics.total_expenses, 'USD') : money(metrics.total_expenses_inr, 'INR') }}
+        </strong>
+        <span class="sub-value">
+          {{ viewCurrency === 'USD' ? money(metrics.total_expenses_inr, 'INR') : money(metrics.total_expenses, 'USD') }}
+        </span>
         <span class="trend neg">↓ 5% vs last month</span>
       </div>
       <div class="metric-card">
         <span class="label">Bank Balance</span>
-        <strong class="value">{{ money(metrics.bank_balance) }}</strong>
-        <span class="muted small">Across all accounts</span>
+        <strong class="value">
+          {{ viewCurrency === 'USD' ? money(metrics.bank_balance, 'USD') : money(metrics.bank_balance_inr, 'INR') }}
+        </strong>
+        <span class="sub-value">
+          {{ viewCurrency === 'USD' ? money(metrics.bank_balance_inr, 'INR') : money(metrics.bank_balance, 'USD') }}
+        </span>
+        <span class="muted small font-semibold">Across all accounts</span>
       </div>
       <div class="metric-card highlight">
         <span class="label">Cash On Hand</span>
-        <strong class="value">{{ money(metrics.cash_on_hand) }}</strong>
+        <strong class="value">
+          {{ viewCurrency === 'USD' ? money(metrics.cash_on_hand, 'USD') : money(metrics.cash_on_hand_inr, 'INR') }}
+        </strong>
+        <span class="sub-value">
+          {{ viewCurrency === 'USD' ? money(metrics.cash_on_hand_inr, 'INR') : money(metrics.cash_on_hand, 'USD') }}
+        </span>
       </div>
     </section>
 
@@ -75,6 +120,7 @@ import { onMounted, ref } from 'vue'
 import { apiGet } from '../api/client'
 
 const metrics = ref(null)
+const viewCurrency = ref('USD')
 
 onMounted(async () => {
   try {
@@ -85,8 +131,9 @@ onMounted(async () => {
   }
 })
 
-function money(amount) {
-  return `$${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+function money(amount, currency) {
+  const symbol = currency === 'INR' ? '₹' : '$'
+  return `${symbol}${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 </script>
 
@@ -130,7 +177,18 @@ function money(amount) {
   font-size: 28px;
   font-weight: 900;
   color: var(--primary);
-  margin-bottom: 8px;
+  margin-bottom: 2px;
+}
+
+.sub-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.metric-card.highlight .sub-value {
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .trend { font-size: 12px; font-weight: 700; }
@@ -183,4 +241,16 @@ function money(amount) {
 
 .content strong { display: block; font-size: 18px; color: var(--primary); margin-bottom: 4px; }
 .content span { font-size: 14px; color: var(--muted); }
+
+.toggle-btn {
+  color: var(--muted);
+}
+.toggle-btn:not(.active):hover {
+  color: var(--primary);
+}
+.toggle-btn.active {
+  background: var(--primary) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.2);
+}
 </style>
