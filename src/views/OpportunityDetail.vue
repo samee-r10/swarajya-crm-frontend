@@ -4,29 +4,55 @@
     <RouterLink class="button" :to="`/opportunities/${id}/edit`">Edit</RouterLink>
   </section>
   <section v-if="opportunity" class="record-layout">
-    <div class="path-container" v-if="stages.length > 0">
+    <div class="path-container">
       <div class="path-stages">
+        <!-- Render 4 main stages -->
         <div 
-          v-for="(stg, index) in stages" 
+          v-for="stg in mainStages" 
           :key="stg"
           class="path-stage"
           :class="{
             'completed': isCompleted(stg),
-            'current': stg === opportunity.stage && !isClosed(stg),
-            'closed-won': stg === opportunity.stage && isClosedWon(stg),
-            'closed-lost': stg === opportunity.stage && isClosedLost(stg),
+            'current': stg === opportunity.stage,
             'selected': stg === selectedStage
           }"
           @click="selectedStage = stg"
         >
           {{ stg }}
         </div>
+
+        <!-- Render Close / Closed Stage -->
+        <div 
+          class="path-stage"
+          :class="{
+            'completed': isClosed(opportunity.stage),
+            'closed-won': isClosed(opportunity.stage) && isClosedWon(opportunity.stage),
+            'closed-lost': isClosed(opportunity.stage) && isClosedLost(opportunity.stage),
+            'selected': isClosed(selectedStage)
+          }"
+          @click="selectClosedStage"
+        >
+          {{ isClosed(opportunity.stage) ? opportunity.stage : 'Close' }}
+        </div>
       </div>
+      
       <div class="path-actions">
+        <!-- Selection dropdown for closed options -->
+        <select 
+          v-if="isClosed(selectedStage)" 
+          v-model="selectedStage" 
+          class="closed-select"
+        >
+          <option v-for="cStage in closedStages" :key="cStage" :value="cStage">
+            {{ cStage }}
+          </option>
+        </select>
+
         <button 
           class="button primary" 
           @click="updateStage"
           :disabled="selectedStage === opportunity.stage"
+          :class="{ 'orange-btn': isClosed(selectedStage) }"
         >
           {{ getButtonLabel() }}
         </button>
@@ -60,33 +86,46 @@ const oppFields = ref([])
 const stages = ref([])
 const selectedStage = ref(null)
 
+const mainStages = ['Draft', 'Discussion', 'Commercial negotiation', 'Contractual negotiation']
+const closedStages = ['DA Signed', 'Lost to competitor', 'Rejected by SC', 'Lost']
+
 function isClosedWon(stage) {
-  const s = (stage || '').toLowerCase()
-  return s.includes('won') || s.includes('signed')
+  return stage === 'DA Signed'
 }
 
 function isClosedLost(stage) {
-  const s = (stage || '').toLowerCase()
-  return s.includes('lost') || s.includes('rejected')
+  return ['Lost to competitor', 'Rejected by SC', 'Lost'].includes(stage)
 }
 
 function isClosed(stage) {
-  return isClosedWon(stage) || isClosedLost(stage)
+  return closedStages.includes(stage)
 }
 
 function isCompleted(stage) {
   if (!opportunity.value) return false
-  const currIdx = stages.value.indexOf(opportunity.value.stage)
-  const stgIdx = stages.value.indexOf(stage)
+  if (isClosed(opportunity.value.stage)) {
+    return mainStages.includes(stage)
+  }
+  const currIdx = mainStages.indexOf(opportunity.value.stage)
+  const stgIdx = mainStages.indexOf(stage)
   if (currIdx === -1 || stgIdx === -1) return false
-  if (isClosedLost(opportunity.value.stage)) return false
   return stgIdx < currIdx
+}
+
+function selectClosedStage() {
+  if (isClosed(opportunity.value.stage)) {
+    selectedStage.value = opportunity.value.stage
+  } else {
+    selectedStage.value = 'DA Signed'
+  }
 }
 
 function getButtonLabel() {
   if (!opportunity.value || !selectedStage.value) return 'Mark Stage'
+  if (isClosed(selectedStage.value)) {
+    return 'Change Closed Stage'
+  }
   if (selectedStage.value === opportunity.value.stage) {
-    if (isClosed(opportunity.value.stage)) return 'Change Closed Stage'
     return 'Current Stage'
   }
   return 'Mark as Current Stage'
@@ -220,5 +259,30 @@ onMounted(async () => {
 .path-actions {
   display: flex;
   align-items: center;
+}
+.closed-select {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  margin-right: 12px;
+  background-color: white;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 500;
+  outline: none;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: border-color 0.2s;
+  cursor: pointer;
+}
+.closed-select:focus {
+  border-color: #2563eb;
+}
+.orange-btn {
+  background-color: #f97316 !important;
+  border-color: #f97316 !important;
+  color: white !important;
+}
+.orange-btn:hover {
+  background-color: #ea580c !important;
 }
 </style>
