@@ -41,6 +41,7 @@
         <RouterLink to="/customers">Customers</RouterLink>
         <RouterLink to="/opportunities">Opportunities</RouterLink>
         <RouterLink to="/projects">Projects</RouterLink>
+        <RouterLink v-if="hasVaultAccess" to="/vault">Vault</RouterLink>
         <RouterLink v-if="userProfile === 'System Administrator'" to="/setup">Setup</RouterLink>
       </nav>
     </div>
@@ -152,7 +153,9 @@ const userProfile = computed(() => {
     return 'No profile'
   }
 })
+const isAdmin = computed(() => userProfile.value === 'System Administrator' || userProfile.value === 'Admin')
 const hasTreasuryAccess = computed(() => {
+  if (isAdmin.value) return true
   if (!user.value) return false
   try {
     const userData = JSON.parse(user.value)
@@ -162,10 +165,21 @@ const hasTreasuryAccess = computed(() => {
   }
 })
 const hasFinanceAccess = computed(() => {
+  if (isAdmin.value) return true
   if (!user.value) return false
   try {
     const userData = JSON.parse(user.value)
     return userData.has_finance_access === 1 || userData.has_finance_access === true
+  } catch {
+    return false
+  }
+})
+const hasVaultAccess = computed(() => {
+  if (isAdmin.value) return true
+  if (!user.value) return false
+  try {
+    const userData = JSON.parse(user.value)
+    return userData.has_vault_access === 1 || userData.has_vault_access === true
   } catch {
     return false
   }
@@ -179,6 +193,7 @@ const launcherItems = [
   { label: 'Projects', type: 'Module', to: '/projects' },
   { label: 'Finance', type: 'Module', to: '/finance' },
   { label: 'Treasury', type: 'Module', to: '/treasury' },
+  { label: 'Credential Vault', type: 'Module', to: '/vault' },
   { label: 'Vendors', type: 'Finance', to: '/finance/vendors' },
   { label: 'Transaction Ledger', type: 'Finance', to: '/finance/transactions' },
   { label: 'General Ledger Report', type: 'Finance', to: '/finance/reports/general-ledger' },
@@ -194,7 +209,7 @@ const showBack = computed(() => {
 const filteredLauncherItems = computed(() => {
   const term = launcherSearch.value.toLowerCase()
   let items = launcherItems
-  if (userProfile.value !== 'System Administrator') {
+  if (!isAdmin.value) {
     items = items.filter(item => !item.to.startsWith('/setup'))
   }
   if (!hasTreasuryAccess.value) {
@@ -202,6 +217,9 @@ const filteredLauncherItems = computed(() => {
   }
   if (!hasFinanceAccess.value) {
     items = items.filter(item => !item.to.startsWith('/finance'))
+  }
+  if (!hasVaultAccess.value) {
+    items = items.filter(item => !item.to.startsWith('/vault'))
   }
   return items.filter((item) => `${item.label} ${item.type}`.toLowerCase().includes(term))
 })

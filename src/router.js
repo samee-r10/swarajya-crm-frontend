@@ -25,6 +25,7 @@ import InvoiceDetail from './views/InvoiceDetail.vue'
 import ObjectDetail from './views/ObjectDetail.vue'
 import GLReport from './views/GLReport.vue'
 import Treasury from './views/Treasury.vue'
+import Vault from './views/Vault.vue'
 import ForceChangePassword from './views/ForceChangePassword.vue'
 
 
@@ -60,6 +61,7 @@ const routes = [
   { path: '/finance/invoices/:id/edit', name: 'invoice-edit', component: InvoiceForm, props: true },
   { path: '/finance/reports/general-ledger', name: 'gl-report', component: GLReport },
   { path: '/treasury', name: 'treasury', component: Treasury },
+  { path: '/vault', name: 'vault', component: Vault },
   { path: '/profile', name: 'profile', component: Profile },
   { path: '/force-change-password', name: 'force-change-password', component: ForceChangePassword }
 ]
@@ -108,12 +110,20 @@ router.beforeEach((to) => {
     }
   }
   if (to.path.startsWith('/treasury') && user) {
-    if (!(user.has_treasury_access === 1 || user.has_treasury_access === true)) {
+    const isAdmin = user.role_name === 'System Administrator' || user.role_name === 'Admin'
+    if (!isAdmin && !(user.has_treasury_access === 1 || user.has_treasury_access === true)) {
       return { name: 'dashboard' }
     }
   }
   if (to.path.startsWith('/finance') && user) {
-    if (!(user.has_finance_access === 1 || user.has_finance_access === true)) {
+    const isAdmin = user.role_name === 'System Administrator' || user.role_name === 'Admin'
+    if (!isAdmin && !(user.has_finance_access === 1 || user.has_finance_access === true)) {
+      return { name: 'dashboard' }
+    }
+  }
+  if (to.path.startsWith('/vault') && user) {
+    const isAdmin = user.role_name === 'System Administrator' || user.role_name === 'Admin'
+    if (!isAdmin && !(user.has_vault_access === 1 || user.has_vault_access === true)) {
       return { name: 'dashboard' }
     }
   }

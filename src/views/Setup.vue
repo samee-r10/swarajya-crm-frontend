@@ -215,6 +215,7 @@
                   <option value="">All Modules</option>
                   <option value="Setup">Setup</option>
                   <option value="Finance">Finance</option>
+                  <option value="Vault">Vault</option>
                 </select>
               </label>
               <label style="display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; color: var(--muted);">Action
@@ -386,6 +387,19 @@
               <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px;">
                 <input v-model="userForm.has_finance_access" type="checkbox"> Has Finance Access
               </label>
+              <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px;">
+                <input v-model="userForm.has_vault_access" type="checkbox"> Has Vault Access
+              </label>
+              <label v-if="userForm.has_vault_access">Vault Access Code
+                <input
+                  v-model="userForm.vault_access_code"
+                  type="password"
+                  minlength="4"
+                  :required="!userForm.id"
+                  autocomplete="new-password"
+                  :placeholder="vaultCodePlaceholder"
+                >
+              </label>
             </div>
             <div class="form-actions mt-16">
               <button type="button" class="button secondary" @click="showUserModal = false">Cancel</button>
@@ -495,7 +509,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet, apiPost, apiPut, apiDelete } from '../api/client'
 
@@ -531,7 +545,11 @@ const newRole = reactive({ id: null, name: '', description: '' })
 
 // User Modal
 const showUserModal = ref(false)
-const userForm = reactive({ id: null, full_name: '', email: '', password: '', role_id: '', is_active: true, has_treasury_access: false, has_finance_access: false })
+const userForm = reactive({ id: null, full_name: '', email: '', password: '', role_id: '', is_active: true, has_treasury_access: false, has_finance_access: false, has_vault_access: false, has_vault_access_code: false, vault_access_code: '' })
+const vaultCodePlaceholder = computed(() => {
+  if (!userForm.id) return 'Set access code'
+  return userForm.has_vault_access_code ? 'Leave blank to keep existing code' : 'Set access code'
+})
 
 // Reset Password Modal
 const showResetPasswordModal = ref(false)
@@ -712,7 +730,7 @@ async function deleteRole(role) {
 }
 
 function openNewUserModal() {
-  Object.assign(userForm, { id: null, full_name: '', email: '', password: '', role_id: '', is_active: true, has_treasury_access: false, has_finance_access: false })
+  Object.assign(userForm, { id: null, full_name: '', email: '', password: '', role_id: '', is_active: true, has_treasury_access: false, has_finance_access: false, has_vault_access: false, has_vault_access_code: false, vault_access_code: '' })
   showUserModal.value = true
 }
 
@@ -725,7 +743,10 @@ function openEditUserModal(user) {
     role_id: user.role_id || '',
     is_active: !!user.is_active,
     has_treasury_access: !!user.has_treasury_access,
-    has_finance_access: !!user.has_finance_access
+    has_finance_access: !!user.has_finance_access,
+    has_vault_access: !!user.has_vault_access,
+    has_vault_access_code: !!user.has_vault_access_code,
+    vault_access_code: ''
   })
   showUserModal.value = true
 }
