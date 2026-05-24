@@ -13,6 +13,7 @@
       <button :class="{ active: activeTab === 'roles' }" @click="activeTab = 'roles'">Profiles (Roles)</button>
       <button :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'">User Management</button>
       <button :class="{ active: activeTab === 'company' }" @click="activeTab = 'company'">Company Information</button>
+      <button :class="{ active: activeTab === 'banks' }" @click="activeTab = 'banks'">Bank Accounts</button>
       <button :class="{ active: activeTab === 'rates' }" @click="activeTab = 'rates'">Exchange Rates</button>
       <button :class="{ active: activeTab === 'logs' }" @click="activeTab = 'logs'">Activity Logs</button>
     </nav>
@@ -48,6 +49,86 @@
               <button type="submit" class="button">Save Company Information</button>
             </div>
           </form>
+        </div>
+      </section>
+
+      <!-- Bank Accounts Tab -->
+      <section v-if="activeTab === 'banks'" class="bank-accounts-setup">
+        <div class="record-card shadow-premium">
+          <div class="card-section-title bank-accounts-header">
+            <div>
+              <h2>Bank Accounts for Invoices</h2>
+              <p class="muted small">Add NEFT/RTGS details here. When creating an invoice, select a bank and payment details appear below the notes.</p>
+            </div>
+            <button type="button" class="button" @click="openBankModal()">Add Bank Account</button>
+          </div>
+
+          <div v-if="bankAccounts.length === 0" class="empty-state muted">
+            No bank accounts configured yet.
+          </div>
+
+          <table v-else class="data-table">
+            <thead>
+              <tr>
+                <th>Label</th>
+                <th>Beneficiary</th>
+                <th>Bank</th>
+                <th>Account</th>
+                <th>IFSC</th>
+                <th>Default</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="bank in bankAccounts" :key="bank.id">
+                <td><strong>{{ bank.label }}</strong></td>
+                <td>{{ bank.beneficiary_name }}</td>
+                <td>{{ bank.bank_name }}</td>
+                <td>{{ bank.account_number }}</td>
+                <td>{{ bank.ifsc_code }}</td>
+                <td><span v-if="bank.is_default" class="pill status-success">Default</span></td>
+                <td class="actions-cell">
+                  <button type="button" class="button secondary small" @click="openBankModal(bank)">Edit</button>
+                  <button type="button" class="button secondary small danger-text" @click="deleteBankAccount(bank)">Delete</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-if="showBankModal" class="modal-overlay" @click.self="showBankModal = false">
+          <div class="modal-content record-card">
+            <div class="card-section-title">
+              <h2>{{ bankForm.id ? 'Edit Bank Account' : 'New Bank Account' }}</h2>
+            </div>
+            <form class="setup-form" @submit.prevent="saveBankAccount">
+              <div class="form-grid">
+                <label class="span-2">Display label (shown on invoice form)
+                  <input v-model="bankForm.label" placeholder="e.g. HDFC Current Account" required>
+                </label>
+                <label class="span-2">Name of Beneficiary for NEFT/RTGS
+                  <input v-model="bankForm.beneficiary_name" required>
+                </label>
+                <label>Name of Bank
+                  <input v-model="bankForm.bank_name" required>
+                </label>
+                <label>Account Number
+                  <input v-model="bankForm.account_number" required>
+                </label>
+                <label>IFSC Code
+                  <input v-model="bankForm.ifsc_code" required>
+                </label>
+                <label class="checkbox-row span-2">
+                  <input type="checkbox" v-model="bankForm.is_default">
+                  Set as default bank for new invoices
+                </label>
+              </div>
+              <div class="form-actions">
+                <button type="button" class="button secondary" @click="showBankModal = false">Cancel</button>
+                <button type="submit" class="button">Save Bank Account</button>
+              </div>
+            </form>
+          </div>
         </div>
       </section>
 
@@ -527,6 +608,18 @@ const company = reactive({
 })
 const saved = ref(false)
 
+const bankAccounts = ref([])
+const showBankModal = ref(false)
+const bankForm = reactive({
+  id: null,
+  label: '',
+  beneficiary_name: '',
+  bank_name: '',
+  account_number: '',
+  ifsc_code: '',
+  is_default: false,
+})
+
 // Exchange Rates config
 const ratesConfig = reactive({
   INR: {
@@ -694,6 +787,66 @@ async function loadData() {
   } catch (err) {
     console.error("Failed to load exchange rates", err)
   }
+
+  await loadBankAccounts()
+}
+
+async function loadBankAccounts() {
+  try {
+    const res = await apiGet('/api/settings/bank-accounts')
+    bankAccounts.value = res.bank_accounts || []
+  } catch (err) {
+    console.error('Failed to load bank accounts', err)
+  }
+}
+
+function openBankModal(bank = null) {
+  if (bank) {
+    Object.assign(bankForm, {
+      id: bank.id,
+      label: bank.label,
+      beneficiary_name: bank.beneficiary_name,
+      bank_name: bank.bank_name,
+      account_number: bank.account_number,
+      ifsc_code: bank.ifsc_code,
+      is_default: !!bank.is_default,
+    })
+  } else {
+    Object.assign(bankForm, {
+      id: null,
+      label: '',
+      beneficiary_name: '',
+      bank_name: '',
+      account_number: '',
+      ifsc_code: '',
+      is_default: bankAccounts.value.length === 0,
+    })
+  }
+  showBankModal.value = true
+}
+
+async function saveBankAccount() {
+  const payload = {
+    label: bankForm.label,
+    beneficiary_name: bankForm.beneficiary_name,
+    bank_name: bankForm.bank_name,
+    account_number: bankForm.account_number,
+    ifsc_code: bankForm.ifsc_code,
+    is_default: bankForm.is_default,
+  }
+  if (bankForm.id) {
+    await apiPut(`/api/settings/bank-accounts/${bankForm.id}`, payload)
+  } else {
+    await apiPost('/api/settings/bank-accounts', payload)
+  }
+  showBankModal.value = false
+  await loadBankAccounts()
+}
+
+async function deleteBankAccount(bank) {
+  if (!confirm(`Delete bank account "${bank.label}"?`)) return
+  await apiDelete(`/api/settings/bank-accounts/${bank.id}`)
+  await loadBankAccounts()
 }
 
 async function saveCompany() {
@@ -988,5 +1141,47 @@ async function saveRates() {
 
 .font-bold {
   font-weight: 700;
+}
+
+.bank-accounts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.bank-accounts-setup .data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+.bank-accounts-setup .data-table th,
+.bank-accounts-setup .data-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.danger-text {
+  color: #b91c1c !important;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.checkbox-row input[type="checkbox"] {
+  width: auto;
 }
 </style>

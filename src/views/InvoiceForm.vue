@@ -90,7 +90,21 @@
 
       <div class="record-card">
         <div class="card-section-title"><h2>Additional Details</h2></div>
-        <label class="span-2">Notes & Terms<textarea v-model="form.notes" rows="4" placeholder="Payment terms, bank details, etc."></textarea></label>
+        <label>Bank account for payment details
+          <select v-model="form.bank_account_id">
+            <option value="">No payment details on invoice</option>
+            <option v-for="b in bankAccounts" :key="b.id" :value="b.id">{{ b.label }}</option>
+          </select>
+        </label>
+        <div v-if="paymentPreview" class="payment-preview span-2">
+          <p class="preview-title">Payment details preview (shown below notes on invoice)</p>
+          <p><strong>Name of Beneficiary for NEFT/RTGS:</strong> {{ paymentPreview.beneficiary_name }}</p>
+          <p><strong>Name of Bank:</strong> {{ paymentPreview.bank_name }}</p>
+          <p><strong>Account Number:</strong> {{ paymentPreview.account_number }}</p>
+          <p><strong>IFSC Code:</strong> {{ paymentPreview.ifsc_code }}</p>
+          <p><strong>Payment reference:</strong> {{ paymentPreview.payment_reference }}</p>
+        </div>
+        <label class="span-2">Notes & Terms<textarea v-model="form.notes" rows="4" placeholder="Payment terms, delivery notes, etc."></textarea></label>
       </div>
 
       <p v-if="error" class="flash warning">{{ error }}</p>
@@ -113,6 +127,7 @@ const router = useRouter()
 const customers = ref([])
 const projects = ref([])
 const accounts = ref([])
+const bankAccounts = ref([])
 const currencies = ref([])
 const statuses = ['Draft', 'Sent', 'Approved', 'Partially Paid', 'Paid', 'Cancelled']
 const error = ref('')
@@ -127,6 +142,7 @@ const form = reactive({
   currency: 'INR',
   status: 'Draft',
   notes: '',
+  bank_account_id: '',
   items: [
     { description: '', qty: 1, price: 0, tax_percent: 0, total: 0 }
   ],
@@ -145,6 +161,20 @@ const filteredProjects = computed(() => {
   return projects.value.filter(p => Number(p.customer_id) === Number(form.customer_id))
 })
 
+const paymentPreview = computed(() => {
+  if (!form.bank_account_id) return null
+  const bank = bankAccounts.value.find(b => Number(b.id) === Number(form.bank_account_id))
+  if (!bank) return null
+  const ref = form.invoice_number?.trim() || '(auto-generated on save)'
+  return {
+    beneficiary_name: bank.beneficiary_name,
+    bank_name: bank.bank_name,
+    account_number: bank.account_number,
+    ifsc_code: bank.ifsc_code,
+    payment_reference: ref,
+  }
+})
+
 watch(() => form.customer_id, (newCust) => {
   if (newCust && form.project_id) {
     const proj = projects.value.find(p => Number(p.id) === Number(form.project_id))
@@ -160,10 +190,13 @@ onMounted(async () => {
   projects.value = options.projects || []
   accounts.value = options.accounts || []
   currencies.value = options.currencies || []
+  bankAccounts.value = options.bank_accounts || []
 
   if (!props.id) {
     const salesRev = accounts.value.find(a => a.name === 'Sales Revenue')
     if (salesRev) form.account_id = salesRev.id
+    const defaultBank = bankAccounts.value.find(b => b.is_default)
+    if (defaultBank) form.bank_account_id = defaultBank.id
   }
 
   if (props.id) {
@@ -319,5 +352,25 @@ async function save() {
   display: flex;
   justify-content: flex-end;
   gap: 16px;
+}
+
+.payment-preview {
+  margin-top: 8px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.payment-preview p { margin: 4px 0; }
+
+.preview-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  margin-bottom: 8px !important;
 }
 </style>

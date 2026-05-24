@@ -341,6 +341,14 @@
                 <div class="notes-section">
                   <p class="section-label">Notes & Terms:</p>
                   <p class="notes-content">{{ invoice.notes || 'Please make payment by the due date. Thank you for your business!' }}</p>
+                  <div v-if="invoice.payment_details" class="payment-details-section">
+                    <p class="section-label">Payment Details (NEFT/RTGS)</p>
+                    <p class="payment-line"><strong>Name of Beneficiary for NEFT/RTGS:</strong> {{ invoice.payment_details.beneficiary_name }}</p>
+                    <p class="payment-line"><strong>Name of Bank:</strong> {{ invoice.payment_details.bank_name }}</p>
+                    <p class="payment-line"><strong>Account Number:</strong> {{ invoice.payment_details.account_number }}</p>
+                    <p class="payment-line"><strong>IFSC Code:</strong> {{ invoice.payment_details.ifsc_code }}</p>
+                    <p class="payment-line"><strong>Payment reference:</strong> {{ invoice.payment_details.payment_reference }}</p>
+                  </div>
                 </div>
                 <div class="totals-table">
                   <div class="total-row"><span>Subtotal</span><span>{{ Number(invoice.subtotal).toFixed(2) }}</span></div>
@@ -425,6 +433,14 @@
           <div class="notes-section">
             <p class="section-label">Notes & Terms:</p>
             <p class="notes-content">{{ invoice.notes || 'Please make payment by the due date. Thank you for your business!' }}</p>
+            <div v-if="invoice.payment_details" class="payment-details-section">
+              <p class="section-label">Payment Details (NEFT/RTGS)</p>
+              <p class="payment-line"><strong>Name of Beneficiary for NEFT/RTGS:</strong> {{ invoice.payment_details.beneficiary_name }}</p>
+              <p class="payment-line"><strong>Name of Bank:</strong> {{ invoice.payment_details.bank_name }}</p>
+              <p class="payment-line"><strong>Account Number:</strong> {{ invoice.payment_details.account_number }}</p>
+              <p class="payment-line"><strong>IFSC Code:</strong> {{ invoice.payment_details.ifsc_code }}</p>
+              <p class="payment-line"><strong>Payment reference:</strong> {{ invoice.payment_details.payment_reference }}</p>
+            </div>
           </div>
           <div class="totals-table">
             <div class="total-row"><span>Subtotal</span><span>{{ Number(invoice.subtotal).toFixed(2) }}</span></div>
@@ -1168,6 +1184,19 @@ function printInvoice() {
 
 .notes-section { flex: 1; padding-right: 40px; }
 .notes-content { font-size: 13px; color: var(--muted); white-space: pre-wrap; line-height: 1.6; }
+
+.payment-details-section {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--line);
+}
+
+.payment-line {
+  font-size: 13px;
+  color: var(--primary);
+  line-height: 1.7;
+  margin: 4px 0;
+}
 
 .totals-table { width: 250px; }
 .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
