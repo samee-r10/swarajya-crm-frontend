@@ -112,6 +112,65 @@
         </div>
       </RouterLink>
     </section>
+
+    <!-- Fixed Assets Section -->
+    <section class="fixed-assets-section" v-if="fixedAssets.length > 0">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">Balance Sheet</p>
+          <h2>Fixed Assets Register</h2>
+        </div>
+        <div class="asset-summary-pills">
+          <div class="pill">
+            <span>Total Cost</span>
+            <strong>{{ money(fixedAssetsSummary.total_cost, viewCurrency) }}</strong>
+          </div>
+          <div class="pill highlight">
+            <span>Current Book Value</span>
+            <strong>{{ money(fixedAssetsSummary.total_current_value, viewCurrency) }}</strong>
+          </div>
+        </div>
+      </div>
+      <div class="assets-table-wrap">
+        <table class="assets-table">
+          <thead>
+            <tr>
+              <th>Asset ID</th>
+              <th>Description</th>
+              <th>Vendor</th>
+              <th>Date</th>
+              <th class="right">Purchase Cost</th>
+              <th class="right">Current Value</th>
+              <th class="right">Depreciation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="asset in fixedAssets" :key="asset.id">
+              <td class="mono">{{ asset.id }}</td>
+              <td class="asset-desc">{{ asset.description || '—' }}</td>
+              <td>{{ asset.vendor_name || '—' }}</td>
+              <td class="mono">{{ asset.transaction_date }}</td>
+              <td class="right mono">{{ money(asset.amount, asset.currency) }}</td>
+              <td class="right mono" :class="{ 'value-lower': (asset.depreciation_value || asset.amount) < asset.amount }">
+                {{ money(asset.depreciation_value != null ? asset.depreciation_value : asset.amount, asset.currency) }}
+              </td>
+              <td class="right mono depreciation-col">
+                <span v-if="asset.depreciation_value != null && asset.depreciation_value < asset.amount">
+                  ↓ {{ money(asset.amount - asset.depreciation_value, asset.currency) }}
+                </span>
+                <span v-else class="muted-text">—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="empty-assets" v-else-if="assetsLoaded">
+      <div class="empty-icon">🏗️</div>
+      <p>No fixed assets recorded yet.</p>
+      <RouterLink class="button secondary" to="/finance/transactions/new">Add First Asset</RouterLink>
+    </div>
   </div>
 </template>
 
@@ -121,6 +180,9 @@ import { apiGet } from '../api/client'
 
 const metrics = ref(null)
 const viewCurrency = ref('USD')
+const fixedAssets = ref([])
+const fixedAssetsSummary = ref({ total_cost: 0, total_current_value: 0 })
+const assetsLoaded = ref(false)
 
 onMounted(async () => {
   try {
@@ -129,11 +191,20 @@ onMounted(async () => {
   } catch (e) {
     console.error('Failed to load finance metrics')
   }
+  try {
+    const fa = await apiGet('/api/finance/fixed-assets')
+    fixedAssets.value = fa.assets || []
+    fixedAssetsSummary.value = { total_cost: fa.total_cost || 0, total_current_value: fa.total_current_value || 0 }
+  } catch (e) {
+    console.error('Failed to load fixed assets')
+  } finally {
+    assetsLoaded.value = true
+  }
 })
 
 function money(amount, currency) {
-  const symbol = currency === 'INR' ? '₹' : '$'
-  return `${symbol}${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const sym = currency === 'INR' ? '₹' : (currency === 'EUR' ? '€' : (currency === 'GBP' ? '£' : '$'))
+  return `${sym}${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 </script>
 
@@ -252,5 +323,166 @@ function money(amount, currency) {
   background: var(--primary) !important;
   color: #ffffff !important;
   box-shadow: 0 2px 8px rgba(249, 115, 22, 0.2);
+}
+
+/* ── Fixed Assets Section ─────────────────────────────── */
+.fixed-assets-section {
+  margin-top: 48px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.section-header h2 {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--text);
+  margin: 4px 0 0;
+}
+
+.asset-summary-pills {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pill {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 30px;
+  padding: 10px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.pill span {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pill strong {
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.pill.highlight {
+  background: linear-gradient(135deg, var(--primary) 0%, #f97316 100%);
+  border-color: transparent;
+}
+
+.pill.highlight span,
+.pill.highlight strong {
+  color: white;
+}
+
+.assets-table-wrap {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  box-shadow: 0 4px 16px -4px rgba(0,0,0,0.06);
+}
+
+.assets-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.assets-table thead {
+  background: var(--surface-soft, #f8fafc);
+}
+
+.assets-table th {
+  padding: 14px 16px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--muted);
+  border-bottom: 2px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.assets-table td {
+  padding: 14px 16px;
+  font-size: 13.5px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  vertical-align: middle;
+}
+
+.assets-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.assets-table tbody tr {
+  transition: background 0.15s;
+}
+
+.assets-table tbody tr:hover {
+  background: #fafbff;
+}
+
+.assets-table .right { text-align: right; }
+
+.assets-table .mono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+}
+
+.asset-desc {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.value-lower {
+  color: #b45309 !important;
+  font-weight: 700;
+}
+
+.depreciation-col span:not(.muted-text) {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.muted-text {
+  color: var(--muted);
+}
+
+/* Empty state */
+.empty-assets {
+  margin-top: 48px;
+  background: white;
+  border: 1.5px dashed var(--line);
+  border-radius: 16px;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.empty-assets p {
+  color: var(--muted);
+  font-size: 15px;
+  margin-bottom: 20px;
 }
 </style>

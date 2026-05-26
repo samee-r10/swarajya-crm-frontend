@@ -3,7 +3,7 @@
   <form class="form-grid record-card" @submit.prevent="openPreview">
     <label>Date<input v-model="form.transaction_date" type="date" required></label>
     <label>Type<select v-model="form.type"><option>Income</option><option>Expense</option></select></label>
-    <label>Account<select v-model="form.account_id" required><option value="">Select Account</option><option v-for="account in accounts" :key="account.id" :value="account.id">{{ account.name }}</option></select></label>
+    <label>Account<select v-model="form.account_id" required><option value="">Select Account</option><option v-for="account in filteredAccountsForDropdown" :key="account.id" :value="account.id">{{ account.name }}</option></select></label>
     <label v-if="form.type === 'Income'">Customer<select v-model="form.customer_id"><option value="">Select Customer</option><option v-for="customer in customers" :key="customer.id" :value="customer.id">{{ customer.company_name }}</option></select></label>
     <label v-if="form.type === 'Income'">Associated Project<select v-model="form.project_id"><option value="">Select Project</option><option v-for="project in filteredProjects" :key="project.id" :value="project.id">{{ project.project_name }}</option></select></label>
     <label v-else>Vendor<select v-model="form.vendor_id"><option value="">Select Vendor</option><option v-for="vendor in vendors" :key="vendor.id" :value="vendor.id">{{ vendor.name }}</option></select></label>
@@ -12,7 +12,12 @@
     <label>CGST %<input v-model="form.cgst_percent" type="number" step="0.01"></label>
     <label>IGST %<input v-model="form.igst_percent" type="number" step="0.01"></label>
     <label>TDS %<input v-model="form.tds_percent" type="number" step="0.01"></label>
-    <label>Category<input v-model="form.category"></label>
+    <label>Category<select v-model="form.category"><option value="">Select Category</option><option>Item</option><option>Service</option><option>Fixed Assets</option></select></label>
+    <label v-if="form.category === 'Fixed Assets'">
+      Current / Depreciated Value
+      <input v-model="form.depreciation_value" type="number" step="0.01" placeholder="Enter current or depreciated value">
+      <span class="field-hint">The present/book value of this asset after depreciation</span>
+    </label>
     <label class="span-2">Description<textarea v-model="form.description" rows="5"></textarea></label>
     <p v-if="error" class="span-2 flash warning">{{ error }}</p>
     <div class="span-2 action-row">
@@ -41,6 +46,7 @@
             <div class="overview-item" v-if="form.type === 'Income'"><span>Customer Name</span><strong>{{ selectedPartyName }}</strong></div>
             <div class="overview-item" v-else><span>Vendor Name</span><strong>{{ selectedPartyName }}</strong></div>
             <div class="overview-item" v-if="form.category"><span>Category</span><strong>{{ form.category }}</strong></div>
+            <div class="overview-item" v-if="form.category === 'Fixed Assets' && form.depreciation_value"><span>Current Value</span><strong>{{ money(form.depreciation_value) }}</strong></div>
             <div class="overview-item"><span>Currency</span><strong>{{ form.currency }}</strong></div>
           </div>
 
@@ -99,7 +105,7 @@ const vendors = ref([])
 const currencies = ref([])
 const projects = ref([])
 const error = ref('')
-const form = reactive({ transaction_date: new Date().toISOString().slice(0, 10), type: 'Income', account_id: '', customer_id: '', project_id: '', vendor_id: '', currency: 'INR', amount: '', cgst_percent: 0, igst_percent: 0, tds_percent: 0, category: '', description: '' })
+const form = reactive({ transaction_date: new Date().toISOString().slice(0, 10), type: 'Income', account_id: '', customer_id: '', project_id: '', vendor_id: '', currency: 'INR', amount: '', cgst_percent: 0, igst_percent: 0, tds_percent: 0, category: '', depreciation_value: '', description: '' })
 
 const showPreviewModal = ref(false)
 const isPosting = ref(false)
@@ -171,6 +177,14 @@ const selectedAccountName = computed(() => {
   return acc ? acc.name : 'Unknown'
 })
 
+const filteredAccountsForDropdown = computed(() => {
+  if (form.type === 'Income') {
+    return accounts.value.filter(a => a.type === 'Revenue')
+  } else {
+    return accounts.value.filter(a => a.type === 'Expense')
+  }
+})
+
 const selectedPartyName = computed(() => {
   if (form.type === 'Income') {
     if (!form.customer_id) return 'Generic Customer'
@@ -188,15 +202,16 @@ const simulatedLedger = computed(() => {
   const ledger = []
   
   if (form.type === 'Income') {
-    // Total amount is debited to the selected Cash/Bank asset account
+    // Total amount is debited to Bank Account asset
     ledger.push({
-      account: `[Asset] ${selectedAccountName.value}`,
+      account: `[Asset] Bank Account`,
       debit: computedTotal.value,
       credit: 0
     })
-    // Base amount is credited to Sales Revenue (or category matching account)
+    // Base amount is credited to selected Revenue account
+    const revenueAccName = selectedAccountName.value !== 'Not Selected' ? selectedAccountName.value : 'Sales Revenue'
     ledger.push({
-      account: `[Revenue] ${form.category || 'Sales Revenue'}`,
+      account: `[Revenue] ${revenueAccName}${form.category ? ` (${form.category})` : ''}`,
       debit: 0,
       credit: amt
     })
@@ -224,15 +239,16 @@ const simulatedLedger = computed(() => {
       })
     }
   } else {
-    // Total amount is credited to the selected Cash/Bank asset account
+    // Total amount is credited to Bank Account asset
     ledger.push({
-      account: `[Asset] ${selectedAccountName.value}`,
+      account: `[Asset] Bank Account`,
       debit: 0,
       credit: computedTotal.value
     })
-    // Base amount is debited to Operating Expenses (or category matching account)
+    // Base amount is debited to selected Expense account
+    const expenseAccName = selectedAccountName.value !== 'Not Selected' ? selectedAccountName.value : 'Operating Expenses'
     ledger.push({
-      account: `[Expense] ${form.category || 'Operating Expenses'}`,
+      account: `[Expense] ${expenseAccName}${form.category ? ` (${form.category})` : ''}`,
       debit: amt,
       credit: 0
     })
@@ -323,6 +339,14 @@ async function save() {
 
 .btn-animate.secondary:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.field-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+  font-style: italic;
 }
 
 /* Glassmorphic Modal Overlay */

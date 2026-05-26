@@ -64,6 +64,9 @@
           </label>
           <p v-if="accessError" class="access-error">{{ accessError }}</p>
           <div class="form-actions">
+            <button type="button" class="button secondary" @click="closeAccessModal" :disabled="unlocking">
+              Cancel
+            </button>
             <button type="submit" class="button" :disabled="!vaultCodeConfigured || unlocking">
               {{ unlocking ? 'Unlocking...' : 'Unlock Vault' }}
             </button>
@@ -317,16 +320,19 @@ async function loadVaultStatus() {
 }
 
 async function lockVault() {
+  const wasUnlocked = vaultUnlocked.value
   vaultUnlocked.value = false
   showAccessModal.value = true
   entries.value = []
   categoryCounts.value = {}
   revealed.value = null
   accessCode.value = ''
-  try {
-    await apiPost('/api/vault/lock')
-  } catch (err) {
-    console.warn('Could not lock vault', err)
+  if (wasUnlocked) {
+    try {
+      await apiPost('/api/vault/lock')
+    } catch (err) {
+      console.warn('Could not lock vault', err)
+    }
   }
 }
 
