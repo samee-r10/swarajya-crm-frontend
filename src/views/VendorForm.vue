@@ -128,10 +128,10 @@ onMounted(async () => {
 async function save() {
   if (props.id) {
     await apiPut(`/api/finance/vendors/${props.id}`, form)
-    router.push(`/finance/vendors/${props.id}`)
+    router.replace(`/finance/vendors/${props.id}`)
   } else {
     const data = await apiPost('/api/finance/vendors', form)
-    router.push(`/finance/vendors/${data.vendor.id}`)
+    router.replace(`/finance/vendors/${data.vendor.id}`)
   }
 }
 </script>

@@ -32,7 +32,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="vendor in filteredVendors" :key="vendor.id" @click="goToDetail(vendor.id)">
+          <tr v-for="vendor in paginatedVendors" :key="vendor.id" @click="goToDetail(vendor.id)">
             <td><strong>{{ vendor.name }}</strong></td>
             <td>{{ vendor.contact_person || '-' }}</td>
             <td>{{ vendor.email || '-' }}</td>
@@ -47,6 +47,24 @@
           </tr>
         </tbody>
       </table>
+      
+      <div v-if="totalPages > 1" class="pagination-bar">
+        <button 
+          class="pagination-btn" 
+          :disabled="currentPage === 1" 
+          @click="currentPage--"
+        >
+          Previous
+        </button>
+        <span class="pagination-info">Page {{ currentPage }} of {{ totalPages }} ({{ filteredVendors.length }} records)</span>
+        <button 
+          class="pagination-btn" 
+          :disabled="currentPage === totalPages" 
+          @click="currentPage++"
+        >
+          Next
+        </button>
+      </div>
     </section>
 
     <!-- Modal -->
@@ -124,7 +142,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet, apiPost } from '../api/client'
 
@@ -166,6 +184,21 @@ const filteredVendors = computed(() => vendors.value.filter((vendor) => {
     (vendor.email || '').toLowerCase().includes(term) ||
     (vendor.category || '').toLowerCase().includes(term)
 }))
+
+const currentPage = ref(1)
+const itemsPerPage = 10
+
+const totalPages = computed(() => Math.ceil(filteredVendors.value.length / itemsPerPage))
+
+const paginatedVendors = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return filteredVendors.value.slice(start, end)
+})
+
+watch(search, () => {
+  currentPage.value = 1
+})
 
 onMounted(async () => {
   try {
@@ -297,5 +330,43 @@ function goToDetail(id) {
   padding: 48px !important;
   color: var(--muted);
   font-style: italic;
+}
+
+/* Pagination Bar styling */
+.pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: #ffffff;
+  border-top: 1px solid var(--line);
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--surface-soft);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 500;
 }
 </style>

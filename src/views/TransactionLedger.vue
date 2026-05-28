@@ -114,7 +114,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="transaction in filteredTransactions" :key="transaction.id" @click="goToDetail(transaction.id)">
+          <tr v-for="transaction in paginatedTransactions" :key="transaction.id" @click="goToDetail(transaction.id)">
             <td class="id-col">#{{ transaction.id }}</td>
             <td class="date-col">{{ formatDate(transaction.transaction_date) }}</td>
             <td>
@@ -153,12 +153,30 @@
           </tr>
         </tbody>
       </table>
+      
+      <div v-if="totalPages > 1" class="pagination-bar">
+        <button 
+          class="pagination-btn" 
+          :disabled="currentPage === 1" 
+          @click="currentPage--"
+        >
+          Previous
+        </button>
+        <span class="pagination-info">Page {{ currentPage }} of {{ totalPages }} ({{ filteredTransactions.length }} records)</span>
+        <button 
+          class="pagination-btn" 
+          :disabled="currentPage === totalPages" 
+          @click="currentPage++"
+        >
+          Next
+        </button>
+      </div>
     </section>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet } from '../api/client'
 
@@ -275,6 +293,21 @@ const filteredTransactions = computed(() => {
   })
   
   return result
+})
+
+const currentPage = ref(1)
+const itemsPerPage = 10
+
+const totalPages = computed(() => Math.ceil(filteredTransactions.value.length / itemsPerPage))
+
+const paginatedTransactions = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return filteredTransactions.value.slice(start, end)
+})
+
+watch(filters, () => {
+  currentPage.value = 1
 })
 
 function partyLabel(transaction) {
@@ -526,5 +559,43 @@ function exportData() {
   border: 1px solid var(--line);
   padding: 4px 12px;
   border-radius: 30px;
+}
+
+/* Pagination Bar styling */
+.pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: #ffffff;
+  border-top: 1px solid var(--line);
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--surface-soft);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 500;
 }
 </style>

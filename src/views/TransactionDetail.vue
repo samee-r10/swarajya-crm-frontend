@@ -8,6 +8,7 @@
       </p>
     </div>
     <div class="action-row" style="display: flex; gap: 12px; align-items: center;">
+      <RouterLink v-if="isPosted" class="button btn-animate" to="/finance/transactions/new">New Transaction</RouterLink>
       <button v-if="transaction && transaction.status !== 'Reversed'" class="button danger btn-animate" type="button" @click="reverseTransaction" style="background: #ef4444; color: white;">Reverse Entry</button>
       <RouterLink class="button secondary" to="/finance/transactions">Back to Ledger</RouterLink>
     </div>
@@ -62,6 +63,7 @@ const loading = ref(true)
 const error = ref('')
 // Show success banner if navigated here from form posting
 const showSuccessMsg = ref(route.query.posted === 'true')
+const isPosted = ref(route.query.posted === 'true')
 
 onMounted(async () => {
   try {

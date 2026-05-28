@@ -90,7 +90,10 @@
       >
     </label>
     <p v-if="error" class="span-2 flash warning">{{ error }}</p>
-    <div class="span-2 action-row"><button class="button" type="submit">Save</button></div>
+    <div class="span-2 action-row">
+      <button class="button secondary" type="button" @click="isModal ? emit('cancel') : router.back()">Cancel</button>
+      <button class="button" type="submit">Save</button>
+    </div>
   </form>
 </template>
 <script setup>
@@ -98,7 +101,8 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet, apiPost, apiPut } from '../api/client'
 
-const props = defineProps({ id: String })
+const props = defineProps({ id: String, isModal: Boolean })
+const emit = defineEmits(['save-success', 'cancel'])
 const router = useRouter()
 const customers = ref([])
 const opportunities = ref([])
@@ -187,10 +191,18 @@ async function save() {
   try {
     if (props.id) {
       await apiPut(`/api/projects/${props.id}`, form)
-      router.push(`/projects/${props.id}`)
+      if (props.isModal) {
+        emit('save-success')
+      } else {
+        router.replace(`/projects/${props.id}`)
+      }
     } else {
       const data = await apiPost('/api/projects', form)
-      router.push(`/projects/${data.project.id}`)
+      if (props.isModal) {
+        emit('save-success')
+      } else {
+        router.replace(`/projects/${data.project.id}`)
+      }
     }
   } catch (err) {
     error.value = err.message

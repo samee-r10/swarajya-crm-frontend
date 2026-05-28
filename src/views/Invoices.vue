@@ -108,7 +108,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="inv in filtered" :key="inv.id" @click="goToDetail(inv.id)">
+          <tr v-for="inv in paginatedInvoices" :key="inv.id" @click="goToDetail(inv.id)">
             <td><strong>{{ inv.invoice_number }}</strong></td>
             <td>
               <div class="name-cell">
@@ -129,12 +129,30 @@
           </tr>
         </tbody>
       </table>
+      
+      <div v-if="totalPages > 1" class="pagination-bar">
+        <button 
+          class="pagination-btn" 
+          :disabled="currentPage === 1" 
+          @click="currentPage--"
+        >
+          Previous
+        </button>
+        <span class="pagination-info">Page {{ currentPage }} of {{ totalPages }} ({{ filtered.length }} records)</span>
+        <button 
+          class="pagination-btn" 
+          :disabled="currentPage === totalPages" 
+          @click="currentPage++"
+        >
+          Next
+        </button>
+      </div>
     </section>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet } from '../api/client'
 
@@ -207,6 +225,21 @@ const filtered = computed(() => invoices.value.filter((inv) => {
     inv.customer_name.toLowerCase().includes(search.value.toLowerCase())
   return matchesStatus && matchesSearch
 }))
+
+const currentPage = ref(1)
+const itemsPerPage = 10
+
+const totalPages = computed(() => Math.ceil(filtered.value.length / itemsPerPage))
+
+const paginatedInvoices = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return filtered.value.slice(start, end)
+})
+
+watch([search, status], () => {
+  currentPage.value = 1
+})
 
 onMounted(async () => {
   const data = await apiGet('/api/finance/invoices')
@@ -344,6 +377,44 @@ function statusClass(s) {
 }
 
 .pill.status-warning { background: #fef3c7; color: #d97706; }
+
+/* Pagination Bar styling */
+.pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: #ffffff;
+  border-top: 1px solid var(--line);
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--surface-soft);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 500;
+}
 
 /* PREMIUM CARD SHADOWS & SHAPES */
 .card-premium {

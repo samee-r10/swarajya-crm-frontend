@@ -88,7 +88,10 @@
         :placeholder="'Enter ' + field.label.toLowerCase() + '...'"
       >
     </label>
-    <div class="span-2 action-row"><button class="button" type="submit">Save</button></div>
+    <div class="span-2 action-row">
+      <button class="button secondary" type="button" @click="isModal ? emit('cancel') : router.back()">Cancel</button>
+      <button class="button" type="submit">Save</button>
+    </div>
   </form>
 </template>
 <script setup>
@@ -96,7 +99,8 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { apiGet, apiPost, apiPut } from '../api/client'
 
-const props = defineProps({ id: String })
+const props = defineProps({ id: String, isModal: Boolean })
+const emit = defineEmits(['save-success', 'cancel'])
 const route = useRoute()
 const router = useRouter()
 const customers = ref([])
@@ -170,10 +174,18 @@ async function save() {
   try {
     if (props.id) {
       await apiPut(`/api/opportunities/${props.id}`, form)
-      router.push(`/opportunities/${props.id}`)
+      if (props.isModal) {
+        emit('save-success')
+      } else {
+        router.replace(`/opportunities/${props.id}`)
+      }
     } else {
       const data = await apiPost('/api/opportunities', form)
-      router.push(`/opportunities/${data.opportunity.id}`)
+      if (props.isModal) {
+        emit('save-success')
+      } else {
+        router.replace(`/opportunities/${data.opportunity.id}`)
+      }
     }
   } catch (err) {
     alert(err.message || 'Failed to save')

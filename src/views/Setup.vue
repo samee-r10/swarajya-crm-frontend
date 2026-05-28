@@ -22,30 +22,74 @@
       <!-- Company Information Tab -->
       <section v-if="activeTab === 'company'" class="company-setup">
         <div class="record-card shadow-premium">
-          <div class="card-section-title">
-            <h2>Your Company Details</h2>
-            <p class="muted small">These details appear in the header of your generated Sales Invoices.</p>
+          <div class="card-section-title" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 24px;">
+            <div>
+              <h2 style="margin: 0; font-size: 18px; font-weight: 800; color: var(--primary);">Your Company Details</h2>
+              <p class="muted small" style="margin: 4px 0 0 0;">These details appear in the header of your generated Sales Invoices.</p>
+            </div>
+            <button 
+              v-if="!isEditing && company.company_name" 
+              type="button" 
+              class="button secondary small" 
+              @click="startEdit"
+            >
+              Edit Details
+            </button>
           </div>
-          <form class="setup-form" @submit.prevent="saveCompany">
+
+          <!-- Read-Only View -->
+          <div v-if="!isEditing && company.company_name" class="form-grid record-details" style="gap: 20px;">
+            <div class="span-2">
+              <span class="detail-label" style="display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;">Company Name</span>
+              <strong style="font-size: 18px; color: var(--text);">{{ company.company_name }}</strong>
+            </div>
+            <div class="span-2">
+              <span class="detail-label" style="display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;">Business Address</span>
+              <p style="margin: 0; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">{{ company.company_address }}</p>
+            </div>
+            <div>
+              <span class="detail-label" style="display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;">Business Email</span>
+              <span style="font-size: 14px;">{{ company.company_email || '—' }}</span>
+            </div>
+            <div>
+              <span class="detail-label" style="display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;">Business Phone</span>
+              <span style="font-size: 14px;">{{ company.company_phone || '—' }}</span>
+            </div>
+            <div class="span-2">
+              <span class="detail-label" style="display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;">Tax ID / GST Number</span>
+              <span style="font-size: 14px; font-weight: 600;">{{ company.tax_id || '—' }}</span>
+            </div>
+          </div>
+
+          <!-- Form Edit View -->
+          <form v-else class="setup-form" @submit.prevent="saveCompany">
             <div class="form-grid">
-              <label class="span-2">Company Name
-                <input v-model="company.company_name" placeholder="e.g. Acme Corp Solutions" required>
+              <label class="span-2">Company Name <span style="color: #dc2626;">*</span>
+                <input v-model="companyFormState.company_name" placeholder="e.g. Acme Corp Solutions" required>
               </label>
-              <label class="span-2">Business Address
-                <textarea v-model="company.company_address" rows="3" placeholder="Street, City, State, ZIP" required></textarea>
+              <label class="span-2">Business Address <span style="color: #dc2626;">*</span>
+                <textarea v-model="companyFormState.company_address" rows="3" placeholder="Street, City, State, ZIP" required></textarea>
               </label>
               <label>Business Email
-                <input v-model="company.company_email" type="email" placeholder="billing@acme.com">
+                <input v-model="companyFormState.company_email" type="email" placeholder="billing@acme.com">
               </label>
               <label>Business Phone
-                <input v-model="company.company_phone" placeholder="+1 (555) 000-0000">
+                <input v-model="companyFormState.company_phone" placeholder="+1 (555) 000-0000">
               </label>
               <label>Tax ID / GST Number
-                <input v-model="company.tax_id" placeholder="e.g. VAT123456">
+                <input v-model="companyFormState.tax_id" placeholder="e.g. VAT123456">
               </label>
             </div>
-            <div class="form-actions">
-              <span v-if="saved" class="save-status">Settings saved!</span>
+            <div class="form-actions mt-24">
+              <span v-if="saved" class="save-status" style="color: #16a34a; font-weight: 700; margin-right: 16px;">Settings saved!</span>
+              <button 
+                v-if="company.company_name" 
+                type="button" 
+                class="button secondary" 
+                @click="cancelEdit"
+              >
+                Cancel
+              </button>
               <button type="submit" class="button">Save Company Information</button>
             </div>
           </form>
@@ -607,6 +651,14 @@ const company = reactive({
   tax_id: ''
 })
 const saved = ref(false)
+const isEditing = ref(false)
+const companyFormState = reactive({
+  company_name: '',
+  company_address: '',
+  company_phone: '',
+  company_email: '',
+  tax_id: ''
+})
 
 const bankAccounts = ref([])
 const showBankModal = ref(false)
@@ -773,8 +825,11 @@ async function loadData() {
 
   // Load Company Info
   const companyData = await apiGet('/api/settings/company')
-  if (companyData.settings) {
-    Object.assign(company, companyData.settings)
+  if (companyData && companyData.company_name) {
+    Object.assign(company, companyData)
+    isEditing.value = false
+  } else {
+    isEditing.value = true
   }
 
   // Load Exchange Rates
@@ -849,9 +904,20 @@ async function deleteBankAccount(bank) {
   await loadBankAccounts()
 }
 
+function startEdit() {
+  Object.assign(companyFormState, company)
+  isEditing.value = true
+}
+
+function cancelEdit() {
+  isEditing.value = false
+}
+
 async function saveCompany() {
-  await apiPost('/api/settings/company', company)
+  await apiPost('/api/settings/company', companyFormState)
+  Object.assign(company, companyFormState)
   saved.value = true
+  isEditing.value = false
   setTimeout(() => { saved.value = false }, 3000)
 }
 

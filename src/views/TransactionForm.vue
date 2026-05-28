@@ -296,7 +296,7 @@ async function confirmAndPost() {
     const data = await apiPost('/api/finance/transactions', form)
     showPreviewModal.value = false
     isPosting.value = false
-    router.push(`/finance/transactions/${data.id}?posted=true`)
+    router.replace(`/finance/transactions/${data.id}?posted=true`)
   } catch (err) {
     isPosting.value = false
     error.value = err.message
@@ -317,7 +317,7 @@ async function save() {
   error.value = ''
   try {
     const data = await apiPost('/api/finance/transactions', form)
-    router.push(`/finance/transactions/${data.id}`)
+    router.replace(`/finance/transactions/${data.id}`)
   } catch (err) {
     error.value = err.message
   }

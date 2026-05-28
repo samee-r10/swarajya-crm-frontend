@@ -2,18 +2,23 @@
   <main class="login-wrapper">
     <!-- Left Pane: Elegant Marketing & Visual Showcase -->
     <section class="showcase-pane">
-      <div class="showcase-glow"></div>
+      <div class="showcase-glow-1"></div>
+      <div class="showcase-glow-2"></div>
+      <div class="showcase-glow-3"></div>
       <div class="showcase-content">
         <div class="logo-area">
           <img src="/logo.png" alt="Swarajya Logo" class="showcase-logo" />
-          <span class="logo-text">Swarajya CRM</span>
+          <div class="logo-text-wrapper">
+            <span class="logo-text">Swarajya CRM</span>
+            <span class="logo-tagline">Your Vision. Our Code.</span>
+          </div>
         </div>
         
         <div class="illustration-container">
           <img src="/login_artwork.png" alt="CRM Analytics" class="visual-artwork" />
           <div class="glass-caption">
-            <span class="badge">SaaS Enterprise Suite</span>
-            <h3>Unified Business operations</h3>
+            <span class="badge">Your Vision. Our Code.</span>
+            <h3>Unified Business Operations</h3>
             <p>Directly manage your sales pipelines, project lifecycles, and treasury ledgers within a single, highly integrated Workspace.</p>
           </div>
         </div>
@@ -28,7 +33,10 @@
     <section class="form-pane">
       <div class="mobile-logo">
         <img src="/logo.png" alt="Swarajya Logo" class="mobile-logo-img" />
-        <span class="mobile-logo-text">Swarajya CRM</span>
+        <div class="logo-text-wrapper">
+          <span class="mobile-logo-text">Swarajya CRM</span>
+          <span class="mobile-logo-tagline">Your Vision. Our Code.</span>
+        </div>
       </div>
 
       <div class="login-card-header">
@@ -52,7 +60,7 @@
               id="email" 
               v-model="form.email" 
               type="email" 
-              autocomplete="email" 
+              autocomplete="off" 
               placeholder="name@swarajyaconsultancy.in"
               required 
               autofocus
@@ -76,7 +84,7 @@
               id="password" 
               v-model="form.password" 
               :type="showPassword ? 'text' : 'password'" 
-              autocomplete="current-password" 
+              autocomplete="off" 
               placeholder="••••••••••••"
               required
             />
@@ -158,9 +166,9 @@ async function submit() {
 /* Main Wrapper with custom fonts styling */
 .login-wrapper {
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
+  grid-template-columns: 1.15fr 0.85fr;
   min-height: 100vh;
-  background-color: #0f172a;
+  background-color: #f8fafc;
   font-family: 'Plus Jakarta Sans', sans-serif;
   overflow: hidden;
 }
@@ -168,24 +176,67 @@ async function submit() {
 /* Left Pane Styling (Showcase) */
 .showcase-pane {
   position: relative;
-  background: radial-gradient(circle at 10% 20%, #1e1b4b 0%, #0f172a 90%);
+  background: radial-gradient(circle at 10% 20%, #fcfdfd 0%, #f3f5f8 100%);
   padding: 48px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  border-right: 1px solid rgba(226, 232, 240, 0.8);
+  overflow: hidden;
 }
 
-.showcase-glow {
+.showcase-glow-1 {
   position: absolute;
-  top: 15%;
+  top: 10%;
   left: 10%;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(249, 115, 22, 0.15) 0%, rgba(249, 115, 22, 0) 70%);
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(circle, rgba(249, 115, 22, 0.12) 0%, rgba(249, 115, 22, 0) 70%);
+  filter: blur(50px);
+  pointer-events: none;
+  animation: float-blob-1 18s infinite alternate ease-in-out;
+}
+
+.showcase-glow-2 {
+  position: absolute;
+  bottom: 10%;
+  right: 10%;
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0) 70%);
+  filter: blur(60px);
+  pointer-events: none;
+  animation: float-blob-2 22s infinite alternate ease-in-out;
+}
+
+.showcase-glow-3 {
+  position: absolute;
+  top: 40%;
+  left: 30%;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.08) 0%, rgba(14, 165, 233, 0) 70%);
   filter: blur(40px);
   pointer-events: none;
-  z-index: 1;
+  animation: float-blob-3 15s infinite alternate ease-in-out;
+}
+
+@keyframes float-blob-1 {
+  0% { transform: translate(0px, 0px) scale(1); }
+  50% { transform: translate(30px, -40px) scale(1.08); }
+  100% { transform: translate(-15px, 15px) scale(0.96); }
+}
+
+@keyframes float-blob-2 {
+  0% { transform: translate(0px, 0px) scale(1.05); }
+  50% { transform: translate(-40px, 30px) scale(0.92); }
+  100% { transform: translate(25px, -20px) scale(1.08); }
+}
+
+@keyframes float-blob-3 {
+  0% { transform: translate(0px, 0px) scale(0.95); }
+  50% { transform: translate(25px, 25px) scale(1.05); }
+  100% { transform: translate(-30px, -15px) scale(0.95); }
 }
 
 .showcase-content {
@@ -205,23 +256,37 @@ async function submit() {
 }
 
 .showcase-logo {
-  height: 40px;
+  height: 42px;
   width: auto;
-  filter: brightness(0) invert(1);
   opacity: 0.95;
-  transition: opacity 0.2s ease;
+  transition: transform 0.3s ease;
 }
 
 .showcase-logo:hover {
-  opacity: 1;
+  transform: rotate(6deg) scale(1.05);
+}
+
+.logo-text-wrapper {
+  display: flex;
+  flex-direction: column;
 }
 
 .logo-text {
   font-family: 'Outfit', sans-serif;
-  font-size: 20px;
+  font-size: 21px;
   font-weight: 800;
   letter-spacing: -0.5px;
-  color: #ffffff;
+  color: #0f172a;
+  line-height: 1.1;
+}
+
+.logo-tagline {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: #ea580c;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
 }
 
 .illustration-container {
@@ -232,52 +297,60 @@ async function submit() {
   flex-grow: 1;
   max-width: 580px;
   margin: 0 auto;
-  gap: 36px;
+  gap: 32px;
 }
 
 .visual-artwork {
   width: 100%;
-  max-height: 380px;
+  max-height: 360px;
   object-fit: contain;
-  border-radius: 20px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 
-              0 0 40px rgba(249, 115, 22, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.08),
+              0 0 0 1px rgba(255, 255, 255, 0.6);
+  border: 4px solid #ffffff;
   transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .visual-artwork:hover {
-  transform: translateY(-8px) scale(1.02);
+  transform: translateY(-6px) scale(1.01);
 }
 
 .glass-caption {
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 24px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 20px;
+  padding: 26px;
   text-align: left;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 45px -15px rgba(15, 23, 42, 0.06), 
+              0 0 0 1px rgba(255, 255, 255, 0.5);
+  transition: all 0.3s ease;
+}
+
+.glass-caption:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.1),
+              0 0 0 1px rgba(255, 255, 255, 0.8);
 }
 
 .badge {
   display: inline-block;
-  background: rgba(249, 115, 22, 0.15);
-  color: #fb923c;
-  padding: 6px 12px;
+  background: rgba(249, 115, 22, 0.08);
+  color: #ea580c;
+  padding: 6px 14px;
   border-radius: 999px;
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 1.2px;
   margin-bottom: 12px;
-  border: 1px solid rgba(249, 115, 22, 0.2);
+  border: 1px solid rgba(249, 115, 22, 0.15);
 }
 
 .glass-caption h3 {
   font-family: 'Outfit', sans-serif;
-  color: #ffffff;
+  color: #0f172a;
   font-size: 20px;
   font-weight: 700;
   margin: 0 0 8px 0;
@@ -285,14 +358,14 @@ async function submit() {
 }
 
 .glass-caption p {
-  color: #94a3b8;
+  color: #475569;
   font-size: 13.5px;
   line-height: 1.5;
   margin: 0;
 }
 
 .showcase-footer p {
-  color: #475569;
+  color: #64748b;
   font-size: 12px;
   margin: 0;
 }
@@ -305,6 +378,7 @@ async function submit() {
   flex-direction: column;
   justify-content: center;
   position: relative;
+  box-shadow: -20px 0 40px rgba(15, 23, 42, 0.015);
 }
 
 .mobile-logo {
@@ -315,15 +389,24 @@ async function submit() {
 }
 
 .mobile-logo-img {
-  height: 36px;
+  height: 38px;
   width: auto;
+}
+
+.mobile-logo-tagline {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: #ea580c;
+  letter-spacing: 0.5px;
 }
 
 .mobile-logo-text {
   font-family: 'Outfit', sans-serif;
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 800;
   color: #0f172a;
+  line-height: 1.1;
 }
 
 .login-card-header {
@@ -333,7 +416,7 @@ async function submit() {
 .eyebrow-accent {
   display: inline-block;
   color: #ea580c;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 1.5px;
@@ -342,7 +425,7 @@ async function submit() {
 
 .login-card-header h2 {
   font-family: 'Outfit', sans-serif;
-  font-size: 32px;
+  font-size: 34px;
   font-weight: 800;
   color: #0f172a;
   margin: 0 0 10px 0;
@@ -350,7 +433,7 @@ async function submit() {
 }
 
 .subtitle {
-  color: #64748b;
+  color: #475569;
   font-size: 15px;
   line-height: 1.5;
   margin: 0;
@@ -360,7 +443,7 @@ async function submit() {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  max-width: 420px;
+  max-width: 400px;
   width: 100%;
 }
 
@@ -390,7 +473,7 @@ async function submit() {
 
 .input-icon {
   position: absolute;
-  left: 14px;
+  left: 16px;
   color: #94a3b8;
   display: flex;
   align-items: center;
@@ -404,13 +487,13 @@ async function submit() {
 
 .input-wrapper input {
   width: 100%;
-  padding: 12px 16px 12px 46px;
+  padding: 14px 16px 14px 48px;
   font-size: 15px;
   color: #0f172a;
   background-color: #f8fafc;
   border: 1.5px solid #e2e8f0;
-  border-radius: 10px;
-  transition: all 0.25s ease;
+  border-radius: 12px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
@@ -422,12 +505,12 @@ async function submit() {
   outline: none;
   background-color: #ffffff;
   border-color: #f97316;
-  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.1);
+  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.08);
 }
 
 .password-toggle {
   position: absolute;
-  right: 14px;
+  right: 16px;
   background: none;
   border: none;
   color: #94a3b8;
@@ -453,7 +536,7 @@ async function submit() {
   align-items: flex-start;
   gap: 10px;
   padding: 12px 16px;
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: 13.5px;
   font-weight: 600;
   line-height: 1.4;
@@ -483,17 +566,17 @@ async function submit() {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 48px;
+  min-height: 52px;
   background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
   color: #ffffff;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 15px;
   font-weight: 750;
   cursor: pointer;
-  transition: all 0.25s ease;
-  box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 18px rgba(249, 115, 22, 0.3);
   margin-top: 8px;
   position: relative;
   overflow: hidden;
@@ -501,7 +584,7 @@ async function submit() {
 
 .login-submit-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(249, 115, 22, 0.45);
+  box-shadow: 0 8px 24px rgba(249, 115, 22, 0.4);
   background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%);
 }
 

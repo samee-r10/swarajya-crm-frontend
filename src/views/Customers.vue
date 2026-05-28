@@ -39,7 +39,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="customer in filteredCustomers" :key="customer.id" @click="goToDetail(customer.id)">
+          <tr v-for="customer in paginatedCustomers" :key="customer.id" @click="goToDetail(customer.id)">
             <td>
               <div class="name-cell">
                 <strong>{{ customer.company_name }}</strong>
@@ -62,6 +62,24 @@
           </tr>
         </tbody>
       </table>
+      
+      <div v-if="totalPages > 1" class="pagination-bar">
+        <button 
+          class="pagination-btn" 
+          :disabled="currentPage === 1" 
+          @click="currentPage--"
+        >
+          Previous
+        </button>
+        <span class="pagination-info">Page {{ currentPage }} of {{ totalPages }} ({{ filteredCustomers.length }} records)</span>
+        <button 
+          class="pagination-btn" 
+          :disabled="currentPage === totalPages" 
+          @click="currentPage++"
+        >
+          Next
+        </button>
+      </div>
     </section>
 
     <!-- Modal -->
@@ -144,7 +162,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet, apiPost } from '../api/client'
 
@@ -188,6 +206,21 @@ const filteredCustomers = computed(() => customers.value.filter((customer) => {
   const text = `${customer.company_name} ${customer.contact_name} ${customer.email || ''}`.toLowerCase()
   return (!status.value || customer.status === status.value) && text.includes(search.value.toLowerCase())
 }))
+
+const currentPage = ref(1)
+const itemsPerPage = 10
+
+const totalPages = computed(() => Math.ceil(filteredCustomers.value.length / itemsPerPage))
+
+const paginatedCustomers = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return filteredCustomers.value.slice(start, end)
+})
+
+watch([search, status], () => {
+  currentPage.value = 1
+})
 
 onMounted(async () => {
   try {
@@ -359,5 +392,43 @@ function goToDetail(id) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Pagination Bar styling */
+.pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: #ffffff;
+  border-top: 1px solid var(--line);
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--surface-soft);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 500;
 }
 </style>

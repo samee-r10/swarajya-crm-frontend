@@ -73,7 +73,7 @@
       <p v-if="error" class="span-2 flash warning">{{ error }}</p>
 
       <div class="span-2 action-row">
-        <button class="button secondary" type="button" @click="router.back()">Cancel</button>
+        <button class="button secondary" type="button" @click="isModal ? emit('cancel') : router.back()">Cancel</button>
         <button class="button" type="submit">Save Customer</button>
       </div>
     </form>
@@ -85,7 +85,8 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet, apiPost, apiPut } from '../api/client'
 
-const props = defineProps({ id: String })
+const props = defineProps({ id: String, isModal: Boolean })
+const emit = defineEmits(['save-success', 'cancel'])
 const router = useRouter()
 const error = ref('')
 const form = reactive({ company_name: '', contact_name: '', email: '', phone: '', industry: '', status: 'Lead', notes: '', billing_address: '' })
@@ -150,10 +151,18 @@ async function save() {
   try {
     if (props.id) {
       await apiPut(`/api/customers/${props.id}`, form)
-      router.push(`/customers/${props.id}`)
+      if (props.isModal) {
+        emit('save-success')
+      } else {
+        router.replace(`/customers/${props.id}`)
+      }
     } else {
       const data = await apiPost('/api/customers', form)
-      router.push(`/customers/${data.customer.id}`)
+      if (props.isModal) {
+        emit('save-success')
+      } else {
+        router.replace(`/customers/${data.customer.id}`)
+      }
     }
   } catch (err) {
     error.value = err.message || 'An error occurred while saving.'

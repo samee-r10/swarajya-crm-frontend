@@ -462,7 +462,7 @@
             <tr v-if="revenueEntries.length === 0">
               <td colspan="12" class="text-center py-24 text-muted">No revenue splits recorded yet.</td>
             </tr>
-            <tr v-for="entry in revenueEntries" :key="entry.id">
+            <tr v-for="entry in paginatedRevenueEntries" :key="entry.id">
               <td>
                 <span class="badge" style="font-family: monospace; font-weight: bold; background-color: var(--primary-light, #e0f2fe); color: var(--primary, #0284c7); padding: 4px 8px; border-radius: 4px;">
                   {{ entry.revenue_id || '-' }}
@@ -512,6 +512,26 @@
             </tr>
           </tbody>
         </table>
+      </div>
+      
+      <div v-if="revenueTotalPages > 1" class="pagination-bar" style="border-top: 1px solid var(--line); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; background: #ffffff;">
+        <button 
+          class="pagination-btn" 
+          type="button"
+          :disabled="revenuePage === 1" 
+          @click="revenuePage--"
+        >
+          Previous
+        </button>
+        <span class="pagination-info">Page {{ revenuePage }} of {{ revenueTotalPages }} ({{ revenueEntries.length }} records)</span>
+        <button 
+          class="pagination-btn" 
+          type="button"
+          :disabled="revenuePage === revenueTotalPages" 
+          @click="revenuePage++"
+        >
+          Next
+        </button>
       </div>
     </div>
 
@@ -637,7 +657,7 @@
                 No payout ledger entries yet. Settle a revenue log entry to generate payouts.
               </td>
             </tr>
-            <tr v-for="p in payoutLedger" :key="p.id">
+            <tr v-for="p in paginatedPayoutLedger" :key="p.id">
               <td>
                 <span class="badge" style="font-family: monospace; font-weight: bold; background-color: var(--primary-light, #e0f2fe); color: var(--primary, #0284c7); padding: 4px 8px; border-radius: 4px;">
                   {{ p.revenue_id || '-' }}
@@ -687,6 +707,26 @@
           </tbody>
         </table>
       </div>
+      
+      <div v-if="payoutTotalPages > 1" class="pagination-bar" style="border-top: 1px solid var(--line); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; background: #ffffff;">
+        <button 
+          class="pagination-btn" 
+          type="button"
+          :disabled="payoutPage === 1" 
+          @click="payoutPage--"
+        >
+          Previous
+        </button>
+        <span class="pagination-info">Page {{ payoutPage }} of {{ payoutTotalPages }} ({{ payoutLedger.length }} records)</span>
+        <button 
+          class="pagination-btn" 
+          type="button"
+          :disabled="payoutPage === payoutTotalPages" 
+          @click="payoutPage++"
+        >
+          Next
+        </button>
+      </div>
     </div>
 
     <!-- Audit Logs Tab -->
@@ -708,7 +748,7 @@
             <tr v-if="auditLogs.length === 0">
               <td colspan="4" class="text-center py-24 text-muted">No audit logs available.</td>
             </tr>
-            <tr v-for="log in auditLogs" :key="log.id">
+            <tr v-for="log in paginatedAuditLogs" :key="log.id">
               <td>{{ formatTimestamp(log.created_at) }}</td>
               <td><strong>{{ log.user_name }}</strong></td>
               <td><span class="action-tag">{{ log.action }}</span></td>
@@ -716,6 +756,26 @@
             </tr>
           </tbody>
         </table>
+      </div>
+      
+      <div v-if="logsTotalPages > 1" class="pagination-bar" style="border-top: 1px solid var(--line); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; background: #ffffff;">
+        <button 
+          class="pagination-btn" 
+          type="button"
+          :disabled="logsPage === 1" 
+          @click="logsPage--"
+        >
+          Previous
+        </button>
+        <span class="pagination-info">Page {{ logsPage }} of {{ logsTotalPages }} ({{ auditLogs.length }} records)</span>
+        <button 
+          class="pagination-btn" 
+          type="button"
+          :disabled="logsPage === logsTotalPages" 
+          @click="logsPage++"
+        >
+          Next
+        </button>
       </div>
     </div>
 
@@ -899,7 +959,7 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted, watch } from 'vue'
 import { apiGet, apiPost, apiPut } from '../api/client'
 
 // Tabs
@@ -1036,6 +1096,41 @@ const editSplitTotalPercentageSum = computed(() => {
 
 const isSaveEditSplitDisabled = computed(() => {
   return editSplitTotalPercentageSum.value !== 100 || editSplitStakeholderPool.value < 0
+})
+
+// Pagination states
+const revenuePage = ref(1)
+const revenueItemsPerPage = 10
+const revenueTotalPages = computed(() => Math.ceil(revenueEntries.value.length / revenueItemsPerPage))
+const paginatedRevenueEntries = computed(() => {
+  const start = (revenuePage.value - 1) * revenueItemsPerPage
+  const end = start + revenueItemsPerPage
+  return revenueEntries.value.slice(start, end)
+})
+
+const payoutPage = ref(1)
+const payoutItemsPerPage = 10
+const payoutTotalPages = computed(() => Math.ceil(payoutLedger.value.length / payoutItemsPerPage))
+const paginatedPayoutLedger = computed(() => {
+  const start = (payoutPage.value - 1) * payoutItemsPerPage
+  const end = start + payoutItemsPerPage
+  return payoutLedger.value.slice(start, end)
+})
+
+const logsPage = ref(1)
+const logsItemsPerPage = 10
+const logsTotalPages = computed(() => Math.ceil(auditLogs.value.length / logsItemsPerPage))
+const paginatedAuditLogs = computed(() => {
+  const start = (logsPage.value - 1) * logsItemsPerPage
+  const end = start + logsItemsPerPage
+  return auditLogs.value.slice(start, end)
+})
+
+// Reset pages on active tab changes
+watch(activeTab, () => {
+  revenuePage.value = 1
+  payoutPage.value = 1
+  logsPage.value = 1
 })
 
 // Actions
@@ -1880,4 +1975,34 @@ function formatTimestamp(val) {
 .mt-auto { margin-top: auto; }
 .gap-8   { gap: 8px; }
 .mb-28   { margin-bottom: 28px; }
+
+/* Pagination controls consistent styling */
+.pagination-btn {
+  padding: 6px 14px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text-primary, #0f172a);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--surface-soft, #f8fafc);
+  color: var(--primary, #f97316);
+  border-color: var(--primary, #f97316);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 13px;
+  color: var(--text-muted, #64748b);
+  font-weight: 500;
+}
 </style>

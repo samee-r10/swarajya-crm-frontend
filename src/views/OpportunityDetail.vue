@@ -1,8 +1,27 @@
 <template>
   <section v-if="opportunity" class="page-header">
     <div><p class="eyebrow">Opportunity</p><h1>{{ opportunity.title }}</h1><p class="muted">{{ opportunity.company_name }} · {{ opportunity.stage }}</p></div>
-    <RouterLink class="button" :to="`/opportunities/${id}/edit`">Edit</RouterLink>
+    <button class="button btn-animate" type="button" @click="showEditModal = true">Edit</button>
   </section>
+
+  <!-- Edit Modal Overlay -->
+  <transition name="fade">
+    <div v-if="showEditModal" class="modal-overlay" @click.self="showEditModal = false">
+      <div class="modal-content">
+        <header class="modal-header">
+          <div>
+            <p class="eyebrow">Sales Module</p>
+            <h2>Edit Opportunity</h2>
+          </div>
+          <button type="button" class="close-btn" @click="showEditModal = false">×</button>
+        </header>
+        <main class="modal-body">
+          <OpportunityForm :id="id" :is-modal="true" @save-success="handleSaveSuccess" @cancel="showEditModal = false" />
+        </main>
+      </div>
+    </div>
+  </transition>
+
   <section v-if="opportunity" class="record-layout">
     <div class="path-container">
       <div class="path-stages">
@@ -78,6 +97,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { apiGet, apiPut } from '../api/client'
 import SystemInfo from '../components/SystemInfo.vue'
+import OpportunityForm from './OpportunityForm.vue'
 
 const props = defineProps({ id: { type: String, required: true } })
 const opportunity = ref(null)
@@ -85,6 +105,7 @@ const projects = ref([])
 const oppFields = ref([])
 const stages = ref([])
 const selectedStage = ref(null)
+const showEditModal = ref(false)
 
 const mainStages = ['Draft', 'Discussion', 'Commercial negotiation', 'Contractual negotiation']
 const closedStages = ['DA Signed', 'Lost to competitor', 'Rejected by SC', 'Lost']
@@ -176,13 +197,21 @@ const fields = computed(() => {
   ]
 })
 
-onMounted(async () => {
+const fetchData = async () => {
   try {
     const data = await apiGet(`/api/opportunities/${props.id}`)
     opportunity.value = data.opportunity
     projects.value = data.projects || []
     oppFields.value = data.fields || []
     selectedStage.value = opportunity.value.stage
+  } catch (err) {
+    console.error('Failed to load opportunity details', err)
+  }
+}
+
+onMounted(async () => {
+  try {
+    await fetchData()
 
     const options = await apiGet('/api/options')
     stages.value = options.opportunity_stages || []
@@ -190,6 +219,11 @@ onMounted(async () => {
     console.error('Failed to load opportunity details', err)
   }
 })
+
+function handleSaveSuccess() {
+  showEditModal.value = false
+  fetchData()
+}
 </script>
 
 <style scoped>
@@ -284,5 +318,94 @@ onMounted(async () => {
 }
 .orange-btn:hover {
   background-color: #ea580c !important;
+}
+
+/* Glassmorphic Modal Overlay styling */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 24px;
+}
+
+.modal-content {
+  background: var(--surface, #ffffff);
+  border-radius: 16px;
+  border: 1px solid var(--line, #e2e8f0);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line, #e2e8f0);
+  background: var(--surface-soft, #f8fafc);
+}
+
+.modal-header h2 {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 4px 0 0;
+  color: var(--text, #0f172a);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  color: var(--muted, #64748b);
+  transition: color 0.2s;
+  line-height: 1;
+}
+
+.close-btn:hover {
+  color: var(--primary, #ea580c);
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.btn-animate {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-animate:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.15);
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
 }
 </style>

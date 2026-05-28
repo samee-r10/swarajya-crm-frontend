@@ -39,7 +39,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="project in filtered" :key="project.id" @click="goToDetail(project.id)">
+          <tr v-for="project in paginatedProjects" :key="project.id" @click="goToDetail(project.id)">
             <td><strong>{{ project.project_name }}</strong></td>
             <td>
               <RouterLink :to="`/customers/${project.customer_id}`" class="link" @click.stop>{{ project.company_name }}</RouterLink>
@@ -54,6 +54,24 @@
           </tr>
         </tbody>
       </table>
+      
+      <div v-if="totalPages > 1" class="pagination-bar">
+        <button 
+          class="pagination-btn" 
+          :disabled="currentPage === 1" 
+          @click="currentPage--"
+        >
+          Previous
+        </button>
+        <span class="pagination-info">Page {{ currentPage }} of {{ totalPages }} ({{ filtered.length }} records)</span>
+        <button 
+          class="pagination-btn" 
+          :disabled="currentPage === totalPages" 
+          @click="currentPage++"
+        >
+          Next
+        </button>
+      </div>
     </section>
 
     <!-- Modal -->
@@ -160,7 +178,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet, apiPost } from '../api/client'
 
@@ -209,6 +227,21 @@ const filtered = computed(() => projects.value.filter((project) => {
     (project.owner || '').toLowerCase().includes(search.value.toLowerCase())
   return matchesStatus && matchesSearch
 }))
+
+const currentPage = ref(1)
+const itemsPerPage = 10
+
+const totalPages = computed(() => Math.ceil(filtered.value.length / itemsPerPage))
+
+const paginatedProjects = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return filtered.value.slice(start, end)
+})
+
+watch([search, status], () => {
+  currentPage.value = 1
+})
 
 const filteredOpportunities = computed(() => opportunities.value.filter((opp) => !newForm.customer_id || Number(opp.customer_id) === Number(newForm.customer_id)))
 
@@ -365,5 +398,43 @@ function goToDetail(id) {
   padding: 48px !important;
   color: var(--muted);
   font-style: italic;
+}
+
+/* Pagination Bar styling */
+.pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: #ffffff;
+  border-top: 1px solid var(--line);
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--surface-soft);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 500;
 }
 </style>

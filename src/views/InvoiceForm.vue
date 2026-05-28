@@ -249,10 +249,10 @@ async function save() {
     
     if (props.id) {
       await apiPut(`/api/finance/invoices/${props.id}`, form)
-      router.push(`/finance/invoices/${props.id}`)
+      router.replace(`/finance/invoices/${props.id}`)
     } else {
       const res = await apiPost('/api/finance/invoices', form)
-      router.push(`/finance/invoices/${res.id}`)
+      router.replace(`/finance/invoices/${res.id}`)
     }
   } catch (err) {
     error.value = err.message
