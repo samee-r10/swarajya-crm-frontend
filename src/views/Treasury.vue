@@ -992,15 +992,10 @@
             <!-- Stakeholders Custom Splits -->
             <div class="form-group span-2 border-top pt-16">
               <h4 class="m-0 mb-12">
-                {{ editSplitForm.amount < 0 ? 'Owner contribution to company (% of expense)' : 'Owner earnings split (% of revenue)' }}
+                {{ editSplitForm.amount < 0 ? 'Owner Contribution Split' : 'Owner Earnings Split' }}
               </h4>
-              <p class="text-xs text-muted mb-16" v-if="editSplitForm.amount < 0">
-                Each owner's share of this company expense — money owners fund into the business
-                (not a payout). Defaults use equity split ({{ equitySplitSummary || 'configure owners first' }}).
-              </p>
-              <p class="text-xs text-muted mb-16" v-else>
-                Each owner's share of income the company pays out. Defaults use equity split
-                ({{ equitySplitSummary || 'configure owners first' }}).
+              <p class="text-xs text-muted mb-16">
+                Review and confirm the owner allocation before settlement.
               </p>
               
               <div class="grid-2col border rounded p-16">

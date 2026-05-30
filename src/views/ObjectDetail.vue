@@ -42,7 +42,15 @@
         <span class="muted small">{{ fields.length }} fields configured</span>
       </div>
       
-      <table class="record-table">
+      <table class="record-table object-fields-table">
+        <colgroup>
+          <col class="col-label">
+          <col class="col-api">
+          <col class="col-type">
+          <col class="col-requirement">
+          <col class="col-source">
+          <col class="col-actions">
+        </colgroup>
         <thead>
           <tr>
             <th>Field Label</th>
@@ -340,7 +348,7 @@ async function deleteField(field) {
 
 <style scoped>
 .object-detail-page {
-  max-width: 1200px;
+  max-width: 1280px;
   margin: 0 auto;
 }
 
@@ -418,7 +426,7 @@ async function deleteField(field) {
 .table-container {
   background: #ffffff;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 8px;
   overflow: hidden;
   margin-top: 24px;
 }
@@ -427,7 +435,8 @@ async function deleteField(field) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
+  min-height: 64px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--line);
   background: #f8fafc;
 }
@@ -442,11 +451,36 @@ async function deleteField(field) {
 .record-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.object-fields-table .col-label {
+  width: 24%;
+}
+
+.object-fields-table .col-api {
+  width: 24%;
+}
+
+.object-fields-table .col-type {
+  width: 14%;
+}
+
+.object-fields-table .col-requirement {
+  width: 14%;
+}
+
+.object-fields-table .col-source {
+  width: 12%;
+}
+
+.object-fields-table .col-actions {
+  width: 12%;
 }
 
 .record-table th {
   background: #f8fafc;
-  padding: 16px 24px;
+  padding: 13px 20px;
   text-align: left;
   font-size: 11px;
   font-weight: 800;
@@ -456,9 +490,10 @@ async function deleteField(field) {
 }
 
 .record-table td {
-  padding: 16px 24px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--line);
   font-size: 14px;
+  vertical-align: middle;
 }
 
 .record-table tr:last-child td {
@@ -472,6 +507,12 @@ async function deleteField(field) {
   font-family: monospace;
   font-size: 12px;
   color: #0f172a;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
 }
 
 .type-badge {
@@ -485,9 +526,12 @@ async function deleteField(field) {
 }
 
 .table-actions {
-  display: flex;
-  gap: 16px;
-  justify-content: flex-end;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.table-actions .action-btn-link + .action-btn-link {
+  margin-left: 14px;
 }
 
 .action-btn-link {
@@ -498,6 +542,7 @@ async function deleteField(field) {
   cursor: pointer;
   padding: 0;
   font-size: 13px;
+  line-height: 1;
 }
 
 .action-btn-link:hover {

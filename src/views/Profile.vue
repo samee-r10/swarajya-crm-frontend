@@ -11,11 +11,34 @@
     <div class="profile-grid">
       <section class="profile-main">
         <div class="panel">
-          <div class="panel-header">
+          <div class="panel-header profile-panel-header">
             <h2>Personal Information</h2>
-            <RouterLink v-if="user?.id" :to="`/setup/users/${user.id}/edit`" class="button secondary">Edit Details</RouterLink>
+            <button v-if="!isEditing" type="button" class="button secondary" @click="startEdit">Edit Details</button>
           </div>
-          <div class="detail-list">
+
+          <form v-if="isEditing" class="profile-edit-form" @submit.prevent="saveProfile">
+            <label>Full Name
+              <input v-model="profileForm.full_name" required>
+            </label>
+            <label>Email Address
+              <input :value="user?.email || ''" disabled>
+              <span class="help-text">Email is used for login and can be changed by an administrator.</span>
+            </label>
+            <label>Phone Number
+              <input v-model="profileForm.phone" type="tel" placeholder="Add phone number">
+            </label>
+            <label>Role / Profile
+              <input :value="user?.role_name || 'No role assigned'" disabled>
+            </label>
+            <div v-if="profileError" class="flash warning">{{ profileError }}</div>
+            <div class="form-actions profile-actions">
+              <span v-if="profileSuccess" class="save-status">{{ profileSuccess }}</span>
+              <button type="button" class="button secondary" @click="cancelEdit">Cancel</button>
+              <button type="submit" class="button" :disabled="profileLoading">{{ profileLoading ? 'Saving...' : 'Save Changes' }}</button>
+            </div>
+          </form>
+
+          <div v-else class="detail-list">
             <div class="detail-item">
               <label>Full Name</label>
               <p>{{ user?.full_name || 'Not provided' }}</p>
@@ -25,14 +48,18 @@
               <p>{{ user?.email || 'Not provided' }}</p>
             </div>
             <div class="detail-item">
+              <label>Phone Number</label>
+              <p>{{ user?.phone || 'Not provided' }}</p>
+            </div>
+            <div class="detail-item">
               <label>Role / Profile</label>
               <p><span class="pill">{{ user?.role_name || 'No role assigned' }}</span></p>
             </div>
             <div class="detail-item">
               <label>Account Status</label>
               <p>
-                <span class="pill status" :style="user?.is_active ? '' : 'background: #fee2e2; color: #991b1b;'">
-                  {{ user?.is_active ? 'Active' : 'Inactive' }}
+                <span class="pill status" :class="isActiveAccount ? 'status-active' : 'status-inactive'">
+                  {{ isActiveAccount ? 'Active' : 'Inactive' }}
                 </span>
               </p>
             </div>
@@ -83,12 +110,17 @@
 <script setup>
 import { computed, onMounted, ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { apiPost } from '../api/client'
+import { apiGet, apiPost, apiPut } from '../api/client'
 
 const router = useRouter()
 const user = ref(null)
+const isEditing = ref(false)
+const profileLoading = ref(false)
+const profileSuccess = ref('')
+const profileError = ref('')
+const profileForm = reactive({ full_name: '', phone: '' })
 
-onMounted(() => {
+onMounted(async () => {
   const storedUser = window.localStorage.getItem('lms_user')
   if (storedUser) {
     try {
@@ -97,7 +129,60 @@ onMounted(() => {
       console.error('Failed to parse user data', e)
     }
   }
+  await loadProfile()
 })
+
+const isActiveAccount = computed(() => {
+  if (!user.value) return false
+  return user.value.is_active !== 0 && user.value.is_active !== false
+})
+
+function syncStoredUser(nextUser) {
+  user.value = nextUser
+  window.localStorage.setItem('lms_user', JSON.stringify(nextUser))
+}
+
+async function loadProfile() {
+  try {
+    const data = await apiGet('/api/profile')
+    if (data.user) syncStoredUser(data.user)
+  } catch (err) {
+    console.error('Failed to load profile', err)
+  }
+}
+
+function startEdit() {
+  profileError.value = ''
+  profileSuccess.value = ''
+  profileForm.full_name = user.value?.full_name || ''
+  profileForm.phone = user.value?.phone || ''
+  isEditing.value = true
+}
+
+function cancelEdit() {
+  isEditing.value = false
+  profileError.value = ''
+}
+
+async function saveProfile() {
+  profileError.value = ''
+  profileSuccess.value = ''
+  profileLoading.value = true
+  try {
+    const data = await apiPut('/api/profile', {
+      full_name: profileForm.full_name,
+      phone: profileForm.phone
+    })
+    if (data.user) syncStoredUser(data.user)
+    profileSuccess.value = 'Profile updated successfully.'
+    isEditing.value = false
+    setTimeout(() => { profileSuccess.value = '' }, 3000)
+  } catch (err) {
+    profileError.value = err.message || 'Failed to update profile.'
+  } finally {
+    profileLoading.value = false
+  }
+}
 
 const passForm = reactive({ current_password: '', new_password: '', confirm_password: '' })
 const passLoading = ref(false)
@@ -174,6 +259,10 @@ async function handleLogout() {
   align-items: start;
 }
 
+.profile-panel-header {
+  align-items: center;
+}
+
 .detail-list {
   display: grid;
   gap: 24px;
@@ -193,6 +282,35 @@ async function handleLogout() {
   font-size: 16px;
   font-weight: 600;
   margin: 0;
+}
+
+.profile-edit-form {
+  display: grid;
+  gap: 18px;
+  padding-top: 8px;
+}
+
+.profile-edit-form label {
+  color: var(--muted-strong);
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.profile-actions {
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.status-active {
+  background: var(--success-bg) !important;
+  color: var(--success-text) !important;
+}
+
+.status-inactive {
+  background: var(--danger-bg) !important;
+  color: var(--danger-text) !important;
 }
 
 .security-panel {

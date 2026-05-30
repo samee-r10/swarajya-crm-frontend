@@ -141,33 +141,38 @@
         </div>
 
         <div v-if="showBankModal" class="modal-overlay" @click.self="showBankModal = false">
-          <div class="modal-content record-card">
-            <div class="card-section-title">
-              <h2>{{ bankForm.id ? 'Edit Bank Account' : 'New Bank Account' }}</h2>
+          <div class="modal-content bank-modal">
+            <div class="bank-modal-header">
+              <div>
+                <p class="eyebrow">Invoice Payments</p>
+                <h2>{{ bankForm.id ? 'Edit Bank Account' : 'New Bank Account' }}</h2>
+              </div>
+              <button type="button" class="modal-close" @click="showBankModal = false">&times;</button>
             </div>
-            <form class="setup-form" @submit.prevent="saveBankAccount">
-              <div class="form-grid">
-                <label class="span-2">Display label (shown on invoice form)
+            <form class="setup-form bank-modal-form" @submit.prevent="saveBankAccount">
+              <div class="bank-form-grid">
+                <label class="span-2">Display Label
                   <input v-model="bankForm.label" placeholder="e.g. HDFC Current Account" required>
+                  <span class="help-text">Shown when selecting payment details on invoices.</span>
                 </label>
-                <label class="span-2">Name of Beneficiary for NEFT/RTGS
-                  <input v-model="bankForm.beneficiary_name" required>
+                <label class="span-2">Beneficiary Name
+                  <input v-model="bankForm.beneficiary_name" placeholder="Registered account holder name" required>
                 </label>
-                <label>Name of Bank
-                  <input v-model="bankForm.bank_name" required>
+                <label>Bank Name
+                  <input v-model="bankForm.bank_name" placeholder="e.g. HDFC Bank" required>
                 </label>
                 <label>Account Number
-                  <input v-model="bankForm.account_number" required>
+                  <input v-model="bankForm.account_number" placeholder="Enter account number" required>
                 </label>
                 <label>IFSC Code
-                  <input v-model="bankForm.ifsc_code" required>
+                  <input v-model="bankForm.ifsc_code" placeholder="e.g. HDFC0001234" required>
                 </label>
-                <label class="checkbox-row span-2">
+                <label class="checkbox-row bank-default-row span-2">
                   <input type="checkbox" v-model="bankForm.is_default">
-                  Set as default bank for new invoices
+                  <span>Set as default bank for new invoices</span>
                 </label>
               </div>
-              <div class="form-actions">
+              <div class="form-actions bank-modal-actions">
                 <button type="button" class="button secondary" @click="showBankModal = false">Cancel</button>
                 <button type="submit" class="button">Save Bank Account</button>
               </div>
@@ -1249,5 +1254,99 @@ async function saveRates() {
 
 .checkbox-row input[type="checkbox"] {
   width: auto;
+}
+
+.bank-modal {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  max-width: 720px;
+  overflow: hidden;
+  padding: 0;
+  width: min(720px, calc(100vw - 32px));
+}
+
+.bank-modal-header {
+  align-items: center;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+}
+
+.bank-modal-header h2 {
+  color: var(--heading);
+  font-size: 20px;
+  margin: 4px 0 0;
+}
+
+.bank-modal-form {
+  margin: 0;
+  padding: 24px;
+}
+
+.bank-form-grid {
+  display: grid;
+  gap: 18px 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.bank-form-grid label {
+  color: var(--muted-strong);
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.bank-form-grid input {
+  min-height: 42px;
+}
+
+.bank-default-row {
+  align-items: center;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text) !important;
+  display: flex !important;
+  gap: 10px !important;
+  min-height: 46px;
+  padding: 12px 14px;
+}
+
+.bank-default-row input {
+  flex: 0 0 auto;
+  height: 18px;
+  min-height: 18px;
+  width: 18px !important;
+}
+
+.bank-default-row span {
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.bank-modal-actions {
+  border-top: 1px solid var(--line);
+  justify-content: flex-end;
+  margin: 24px -24px -24px;
+  padding: 16px 24px;
+}
+
+@media (max-width: 640px) {
+  .bank-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bank-form-grid .span-2 {
+    grid-column: span 1;
+  }
+
+  .bank-modal-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
 }
 </style>

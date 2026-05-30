@@ -234,25 +234,29 @@ function handleSaveSuccess() {
   border-radius: 6px;
   padding: 8px;
   margin-bottom: 24px;
-  align-items: stretch;
-  gap: 16px;
+  align-items: center;
+  gap: 12px;
   grid-column: span 2;
+  min-height: 66px;
 }
 .path-stages {
   display: flex;
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   border-radius: 4px;
   border: 1px solid #e5e7eb;
+  height: 42px;
 }
 .path-stage {
   flex: 1;
   text-align: center;
-  padding: 8px 16px 8px 24px;
+  padding: 0 14px 0 24px;
   background: #f3f4f6;
   color: #374151;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.15;
   position: relative;
   cursor: pointer;
   transition: all 0.2s;
@@ -263,7 +267,7 @@ function handleSaveSuccess() {
   justify-content: center;
 }
 .path-stage:first-child {
-  padding-left: 16px;
+  padding-left: 14px;
   clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%);
   margin-left: 0;
 }
@@ -292,13 +296,23 @@ function handleSaveSuccess() {
 }
 .path-actions {
   display: flex;
+  flex: 0 0 360px;
   align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.path-actions .button {
+  flex: 0 0 150px;
+  min-height: 42px;
+  padding: 8px 12px;
 }
 .closed-select {
   padding: 8px 12px;
   border-radius: 6px;
   border: 1px solid #d1d5db;
-  margin-right: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-right: 0;
   background-color: white;
   color: #374151;
   font-size: 14px;
@@ -318,6 +332,18 @@ function handleSaveSuccess() {
 }
 .orange-btn:hover {
   background-color: #ea580c !important;
+}
+
+@media (max-width: 1100px) {
+  .path-container {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .path-actions {
+    flex-basis: auto;
+    width: 100%;
+  }
 }
 
 /* Glassmorphic Modal Overlay styling */
