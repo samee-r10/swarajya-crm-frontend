@@ -1,135 +1,107 @@
 <template>
-  <main class="login-wrapper">
-    <!-- Left Pane: Elegant Marketing & Visual Showcase -->
-    <section class="showcase-pane">
-      <div class="showcase-glow-1"></div>
-      <div class="showcase-glow-2"></div>
-      <div class="showcase-glow-3"></div>
-      <div class="showcase-content">
-        <div class="logo-area">
-          <img src="/logo.png" alt="Swarajya Logo" class="showcase-logo" />
-          <div class="logo-text-wrapper">
-            <span class="logo-text">Swarajya CRM</span>
-            <span class="logo-tagline">Your Vision. Our Code.</span>
-          </div>
+  <main class="login-page">
+    <section class="brand-panel">
+      <div class="brand-content">
+        <div class="brand-logo-wrap">
+          <img src="/logo.png" alt="Swarajya Logo" class="brand-logo" />
         </div>
-        
-        <div class="illustration-container">
-          <img src="/login_artwork.png" alt="CRM Analytics" class="visual-artwork" />
-          <div class="glass-caption">
-            <span class="badge">Your Vision. Our Code.</span>
-            <h3>Unified Business Operations</h3>
-            <p>Directly manage your sales pipelines, project lifecycles, and treasury ledgers within a single, highly integrated Workspace.</p>
-          </div>
+
+        <div class="brand-copy">
+          <h1>Your Vision. Our Code.</h1>
+          <p>A focused CRM workspace for opportunities, projects, finance, and treasury operations.</p>
         </div>
-        
-        <div class="showcase-footer">
-          <p>© 2026 Swarajya Consultancy. All rights reserved.</p>
+
+        <div class="feature-pills">
+          <span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/>
+            </svg>
+            Secure
+          </span>
+          <span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m13 2-9 13h8l-1 7 9-13h-8l1-7Z"/>
+            </svg>
+            Fast
+          </span>
+          <span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M2 12h20"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z"/>
+            </svg>
+            Unified
+          </span>
         </div>
+
+        <p class="copyright">&copy; 2026 Swarajya CRM. All rights reserved.</p>
       </div>
     </section>
 
-    <!-- Right Pane: Minimalist, Premium Login Form -->
-    <section class="form-pane">
-      <div class="mobile-logo">
-        <img src="/logo.png" alt="Swarajya Logo" class="mobile-logo-img" />
-        <div class="logo-text-wrapper">
-          <span class="mobile-logo-text">Swarajya CRM</span>
-          <span class="mobile-logo-tagline">Your Vision. Our Code.</span>
-        </div>
-      </div>
-
-      <div class="login-card-header">
-        <span class="eyebrow-accent">Secure Portal Access</span>
-        <h2>Welcome Back</h2>
-        <p class="subtitle">Enter your credentials to manage your business operations.</p>
-      </div>
-
-      <form class="premium-form" @submit.prevent="submit">
-        <!-- Email Input -->
-        <div class="input-group">
-          <label for="email">Email Address</label>
-          <div class="input-wrapper">
-            <span class="input-icon">
-              <!-- SVG envelope icon -->
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-              </svg>
-            </span>
-            <input 
-              id="email" 
-              v-model="form.email" 
-              type="email" 
-              autocomplete="off" 
-              placeholder="name@swarajyaconsultancy.in"
-              required 
-              autofocus
-            />
-          </div>
+    <section class="form-panel">
+      <form class="login-card" @submit.prevent="submit">
+        <div class="mobile-brand">
+          <img src="/logo.png" alt="Swarajya Logo" />
         </div>
 
-        <!-- Password Input -->
-        <div class="input-group">
-          <div class="label-row">
-            <label for="password">Password</label>
-          </div>
-          <div class="input-wrapper">
-            <span class="input-icon">
-              <!-- SVG lock icon -->
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-              </svg>
-            </span>
-            <input 
-              id="password" 
-              v-model="form.password" 
-              :type="showPassword ? 'text' : 'password'" 
-              autocomplete="off" 
-              placeholder="••••••••••••"
+        <div class="form-heading">
+          <h2>Sign In</h2>
+          <p>Welcome back! Please enter your details.</p>
+        </div>
+
+        <label class="field">
+          <span>Email Address</span>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2Z"/>
+              <path d="m22 6-10 7L2 6"/>
+            </svg>
+            <input
+              v-model="form.email"
+              type="email"
+              autocomplete="username"
+              placeholder="admin@swarajya.com"
               required
-            />
-            <button 
-              type="button" 
-              class="password-toggle" 
-              @click="showPassword = !showPassword"
-              tabindex="-1"
-              title="Toggle password visibility"
+              autofocus
             >
-              <!-- SVG Eye / Eye-Slash -->
-              <svg v-if="showPassword" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
-              </svg>
-              <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-              </svg>
+          </div>
+        </label>
+
+        <label class="field">
+          <span>Password</span>
+          <div class="input-shell">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <input
+              v-model="form.password"
+              :type="showPassword ? 'text' : 'password'"
+              autocomplete="current-password"
+              placeholder="Password"
+              required
+            >
+            <button type="button" class="password-toggle" @click="showPassword = !showPassword">
+              {{ showPassword ? 'Hide' : 'Show' }}
             </button>
           </div>
-        </div>
+        </label>
 
-        <!-- Feedback Messages -->
-        <transition name="slide-fade">
-          <div v-if="error" class="login-alert warning">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="alert-icon">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
-            </svg>
-            <span class="alert-text">{{ error }}</span>
-          </div>
+        <transition name="fade">
+          <div v-if="error" class="login-alert">{{ error }}</div>
         </transition>
 
-        <!-- Submit Button -->
-        <button class="login-submit-btn" type="submit" :disabled="loading">
+        <button class="submit-button" type="submit" :disabled="loading">
           <span v-if="loading" class="spinner"></span>
-          <span>{{ loading ? 'Authenticating...' : 'Sign In to Workspace' }}</span>
-          <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="btn-arrow">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+          <span>{{ loading ? 'Signing In...' : 'Sign In to CRM' }}</span>
+          <svg v-if="!loading" viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M5 12h14"/>
+            <path d="m13 6 6 6-6 6"/>
           </svg>
         </button>
+
+        <button class="forgot-link" type="button">Forgot password?</button>
       </form>
-      
-      <div class="mobile-footer">
-        <p>© 2026 Swarajya Consultancy. All rights reserved.</p>
-      </div>
     </section>
   </main>
 </template>
@@ -161,524 +133,305 @@ async function submit() {
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-/* Main Wrapper with custom fonts styling */
-.login-wrapper {
+.login-page {
+  background: #f8fafc;
   display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
+  font-family: 'Inter', sans-serif;
+  grid-template-columns: 1.18fr 0.82fr;
   min-height: 100vh;
-  background-color: #f8fafc;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  overflow: hidden;
 }
 
-/* Left Pane Styling (Showcase) */
-.showcase-pane {
-  position: relative;
-  background: radial-gradient(circle at 10% 20%, #fcfdfd 0%, #f3f5f8 100%);
-  padding: 48px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  border-right: 1px solid rgba(226, 232, 240, 0.8);
-  overflow: hidden;
-}
-
-.showcase-glow-1 {
-  position: absolute;
-  top: 10%;
-  left: 10%;
-  width: 380px;
-  height: 380px;
-  background: radial-gradient(circle, rgba(249, 115, 22, 0.12) 0%, rgba(249, 115, 22, 0) 70%);
-  filter: blur(50px);
-  pointer-events: none;
-  animation: float-blob-1 18s infinite alternate ease-in-out;
-}
-
-.showcase-glow-2 {
-  position: absolute;
-  bottom: 10%;
-  right: 10%;
-  width: 420px;
-  height: 420px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0) 70%);
-  filter: blur(60px);
-  pointer-events: none;
-  animation: float-blob-2 22s infinite alternate ease-in-out;
-}
-
-.showcase-glow-3 {
-  position: absolute;
-  top: 40%;
-  left: 30%;
-  width: 320px;
-  height: 320px;
-  background: radial-gradient(circle, rgba(14, 165, 233, 0.08) 0%, rgba(14, 165, 233, 0) 70%);
-  filter: blur(40px);
-  pointer-events: none;
-  animation: float-blob-3 15s infinite alternate ease-in-out;
-}
-
-@keyframes float-blob-1 {
-  0% { transform: translate(0px, 0px) scale(1); }
-  50% { transform: translate(30px, -40px) scale(1.08); }
-  100% { transform: translate(-15px, 15px) scale(0.96); }
-}
-
-@keyframes float-blob-2 {
-  0% { transform: translate(0px, 0px) scale(1.05); }
-  50% { transform: translate(-40px, 30px) scale(0.92); }
-  100% { transform: translate(25px, -20px) scale(1.08); }
-}
-
-@keyframes float-blob-3 {
-  0% { transform: translate(0px, 0px) scale(0.95); }
-  50% { transform: translate(25px, 25px) scale(1.05); }
-  100% { transform: translate(-30px, -15px) scale(0.95); }
-}
-
-.showcase-content {
-  position: relative;
-  z-index: 2;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 32px;
-}
-
-.logo-area {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.showcase-logo {
-  height: 42px;
-  width: auto;
-  opacity: 0.95;
-  transition: transform 0.3s ease;
-}
-
-.showcase-logo:hover {
-  transform: rotate(6deg) scale(1.05);
-}
-
-.logo-text-wrapper {
-  display: flex;
-  flex-direction: column;
-}
-
-.logo-text {
-  font-family: 'Outfit', sans-serif;
-  font-size: 21px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
+.brand-panel {
+  background:
+    linear-gradient(135deg, rgba(238, 242, 247, 0.97), rgba(226, 232, 240, 0.96)),
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.72), transparent 36%);
   color: #0f172a;
-  line-height: 1.1;
+  display: flex;
+  min-height: 100vh;
+  padding: 84px 72px;
 }
 
-.logo-tagline {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 11px;
-  font-weight: 600;
-  color: #ea580c;
-  letter-spacing: 0.5px;
-  margin-top: 2px;
-}
-
-.illustration-container {
+.brand-content {
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
-  flex-grow: 1;
-  max-width: 580px;
-  margin: 0 auto;
-  gap: 32px;
+  max-width: 760px;
+  position: relative;
+  width: 100%;
 }
 
-.visual-artwork {
-  width: 100%;
-  max-height: 360px;
+.brand-logo-wrap {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  border-radius: 18px;
+  display: inline-flex;
+  justify-content: center;
+  margin-bottom: 88px;
+  padding: 18px 22px;
+  width: fit-content;
+}
+
+.brand-logo {
+  display: block;
+  height: 72px;
   object-fit: contain;
-  border-radius: 24px;
-  box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.08),
-              0 0 0 1px rgba(255, 255, 255, 0.6);
-  border: 4px solid #ffffff;
-  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.visual-artwork:hover {
-  transform: translateY(-6px) scale(1.01);
-}
-
-.glass-caption {
-  background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 20px;
-  padding: 26px;
-  text-align: left;
-  box-shadow: 0 20px 45px -15px rgba(15, 23, 42, 0.06), 
-              0 0 0 1px rgba(255, 255, 255, 0.5);
-  transition: all 0.3s ease;
-}
-
-.glass-caption:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.1),
-              0 0 0 1px rgba(255, 255, 255, 0.8);
-}
-
-.badge {
-  display: inline-block;
-  background: rgba(249, 115, 22, 0.08);
-  color: #ea580c;
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-  margin-bottom: 12px;
-  border: 1px solid rgba(249, 115, 22, 0.15);
-}
-
-.glass-caption h3 {
-  font-family: 'Outfit', sans-serif;
-  color: #0f172a;
-  font-size: 20px;
-  font-weight: 700;
-  margin: 0 0 8px 0;
-  letter-spacing: -0.3px;
-}
-
-.glass-caption p {
-  color: #475569;
-  font-size: 13.5px;
-  line-height: 1.5;
-  margin: 0;
-}
-
-.showcase-footer p {
-  color: #64748b;
-  font-size: 12px;
-  margin: 0;
-}
-
-/* Right Pane Styling (Form) */
-.form-pane {
-  background-color: #ffffff;
-  padding: 64px 80px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  position: relative;
-  box-shadow: -20px 0 40px rgba(15, 23, 42, 0.015);
-}
-
-.mobile-logo {
-  display: none;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 32px;
-}
-
-.mobile-logo-img {
-  height: 38px;
   width: auto;
 }
 
-.mobile-logo-tagline {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 10px;
-  font-weight: 600;
-  color: #ea580c;
-  letter-spacing: 0.5px;
+.brand-copy h1 {
+  font-size: clamp(46px, 5.2vw, 78px);
+  font-weight: 900;
+  letter-spacing: -2px;
+  line-height: 1.08;
+  margin: 0;
+  max-width: 820px;
 }
 
-.mobile-logo-text {
-  font-family: 'Outfit', sans-serif;
-  font-size: 19px;
-  font-weight: 800;
-  color: #0f172a;
-  line-height: 1.1;
+.brand-copy p {
+  color: #64748b;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.65;
+  margin: 36px 0 0;
+  max-width: 620px;
 }
 
-.login-card-header {
-  margin-bottom: 36px;
+.feature-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 56px;
 }
 
-.eyebrow-accent {
-  display: inline-block;
-  color: #ea580c;
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  margin-bottom: 8px;
-}
-
-.login-card-header h2 {
-  font-family: 'Outfit', sans-serif;
-  font-size: 34px;
-  font-weight: 800;
-  color: #0f172a;
-  margin: 0 0 10px 0;
-  letter-spacing: -0.8px;
-}
-
-.subtitle {
-  color: #475569;
+.feature-pills span {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  border-radius: 999px;
+  color: #334155;
+  display: inline-flex;
   font-size: 15px;
-  line-height: 1.5;
+  font-weight: 700;
+  gap: 9px;
+  padding: 11px 18px;
+}
+
+.copyright {
+  bottom: -42px;
+  color: #64748b;
+  font-size: 14px;
+  left: 0;
+  margin: 0;
+  position: absolute;
+}
+
+.form-panel {
+  align-items: center;
+  background: #f8fafc;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 48px;
+}
+
+.login-card {
+  width: min(100%, 430px);
+}
+
+.mobile-brand {
+  display: none;
+  margin-bottom: 42px;
+}
+
+.mobile-brand img {
+  height: 56px;
+  object-fit: contain;
+  width: auto;
+}
+
+.form-heading {
+  margin-bottom: 42px;
+}
+
+.form-heading h2 {
+  color: #0f172a;
+  font-size: 42px;
+  font-weight: 850;
+  letter-spacing: -1px;
+  line-height: 1;
+  margin: 0 0 18px;
+}
+
+.form-heading p {
+  color: #64748b;
+  font-size: 16px;
+  font-weight: 500;
   margin: 0;
 }
 
-.premium-form {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  max-width: 400px;
-  width: 100%;
+.field {
+  display: block;
+  margin-bottom: 26px;
 }
 
-.input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.input-group label {
-  font-size: 13px;
-  font-weight: 700;
-  color: #334155;
-}
-
-.label-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.input-icon {
-  position: absolute;
-  left: 16px;
-  color: #94a3b8;
-  display: flex;
-  align-items: center;
-  pointer-events: none;
-}
-
-.input-icon svg {
-  width: 20px;
-  height: 20px;
-}
-
-.input-wrapper input {
-  width: 100%;
-  padding: 14px 16px 14px 48px;
+.field > span {
+  color: #111827;
+  display: block;
   font-size: 15px;
-  color: #0f172a;
-  background-color: #f8fafc;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 12px;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
+  margin-bottom: 12px;
 }
 
-.input-wrapper input::placeholder {
-  color: #94a3b8;
+.input-shell {
+  align-items: center;
+  background: #ffffff;
+  border: 1.5px solid #dbe3ef;
+  border-radius: 13px;
+  display: flex;
+  gap: 14px;
+  min-height: 58px;
+  padding: 0 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.input-wrapper input:focus {
-  outline: none;
-  background-color: #ffffff;
-  border-color: #f97316;
-  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.08);
+.input-shell:focus-within {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.08);
+}
+
+.input-shell svg {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.input-shell input {
+  background: transparent;
+  border: 0;
+  color: #111827;
+  flex: 1;
+  font-size: 17px;
+  font-weight: 500;
+  min-width: 0;
+  outline: 0;
+  padding: 0;
+}
+
+.input-shell input::placeholder {
+  color: #777e8a;
 }
 
 .password-toggle {
-  position: absolute;
-  right: 16px;
-  background: none;
-  border: none;
-  color: #94a3b8;
+  background: transparent;
+  border: 0;
+  color: #4f46e5;
   cursor: pointer;
-  display: flex;
-  align-items: center;
+  font-size: 13px;
+  font-weight: 800;
   padding: 4px;
-  transition: color 0.2s;
 }
 
-.password-toggle:hover {
-  color: #ea580c;
-}
-
-.password-toggle svg {
-  width: 20px;
-  height: 20px;
-}
-
-/* Alert Banner Styling */
 .login-alert {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 12px 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
   border-radius: 12px;
-  font-size: 13.5px;
-  font-weight: 600;
-  line-height: 1.4;
-  margin-top: 4px;
-}
-
-.login-alert.warning {
-  background-color: #fef2f2;
-  border: 1.5px solid #fecaca;
   color: #991b1b;
+  font-size: 14px;
+  font-weight: 700;
+  margin: -4px 0 22px;
+  padding: 13px 15px;
 }
 
-.alert-icon {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-.alert-text {
-  flex-grow: 1;
-}
-
-/* Submit Button */
-.login-submit-btn {
-  display: inline-flex;
+.submit-button {
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 52px;
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  background: #5548e8;
+  border: 0;
+  border-radius: 13px;
   color: #ffffff;
-  border: none;
-  border-radius: 12px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 15px;
-  font-weight: 750;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 18px rgba(249, 115, 22, 0.3);
-  margin-top: 8px;
-  position: relative;
-  overflow: hidden;
+  display: flex;
+  font-size: 17px;
+  font-weight: 850;
+  gap: 12px;
+  justify-content: center;
+  min-height: 64px;
+  width: 100%;
 }
 
-.login-submit-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(249, 115, 22, 0.4);
-  background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%);
+.submit-button:hover:not(:disabled) {
+  background: #4638d8;
 }
 
-.login-submit-btn:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.login-submit-btn:disabled {
-  opacity: 0.7;
+.submit-button:disabled {
   cursor: not-allowed;
+  opacity: 0.75;
 }
 
-.btn-arrow {
-  width: 18px;
-  height: 18px;
-  transition: transform 0.25s ease;
-}
-
-.login-submit-btn:hover .btn-arrow {
-  transform: translateX(4px);
+.forgot-link {
+  background: transparent;
+  border: 0;
+  color: #4f46e5;
+  cursor: pointer;
+  display: block;
+  font-size: 16px;
+  font-weight: 750;
+  margin: 30px auto 0;
 }
 
 .spinner {
-  display: inline-block;
-  width: 18px;
-  height: 18px;
-  border: 2.5px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #ffffff;
-  border-radius: 50%;
   animation: spin 0.8s linear infinite;
+  border: 2.5px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  border-top-color: #ffffff;
+  height: 18px;
+  width: 18px;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-.mobile-footer {
-  display: none;
-  margin-top: 40px;
-  text-align: center;
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.18s ease;
 }
 
-.mobile-footer p {
-  color: #94a3b8;
-  font-size: 11px;
-}
-
-/* Slide fade animation */
-.slide-fade-enter-active,
-.slide-fade-leave-active {
-  transition: all 0.3s ease-out;
-}
-
-.slide-fade-enter-from,
-.slide-fade-leave-to {
-  transform: translateY(-8px);
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
 }
 
-/* Responsiveness Settings */
-@media (max-width: 1024px) {
-  .login-wrapper {
+@media (max-width: 980px) {
+  .login-page {
     grid-template-columns: 1fr;
   }
-  
-  .showcase-pane {
+
+  .brand-panel {
     display: none;
   }
-  
-  .form-pane {
-    padding: 48px 32px;
-    align-items: center;
+
+  .form-panel {
+    padding: 28px;
   }
-  
-  .mobile-logo {
-    display: flex;
-  }
-  
-  .premium-form {
-    max-width: 440px;
-  }
-  
-  .mobile-footer {
+
+  .mobile-brand {
     display: block;
   }
 }
 
 @media (max-width: 480px) {
-  .form-pane {
-    padding: 32px 20px;
+  .form-panel {
+    padding: 22px;
   }
-  
-  .login-card-header h2 {
-    font-size: 26px;
+
+  .form-heading h2 {
+    font-size: 34px;
+  }
+
+  .input-shell {
+    min-height: 54px;
   }
 }
 </style>

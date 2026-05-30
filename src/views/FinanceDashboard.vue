@@ -33,7 +33,7 @@
         </div>
 
         <RouterLink class="button" to="/finance/invoices/new">Generate Invoice</RouterLink>
-        <RouterLink class="button secondary" to="/finance/transactions/new">New Transaction</RouterLink>
+        <RouterLink class="button secondary" to="/finance/transactions?new=1">New Transaction</RouterLink>
       </div>
     </section>
 
@@ -169,7 +169,7 @@
     <div class="empty-assets" v-else-if="assetsLoaded">
       <div class="empty-icon">🏗️</div>
       <p>No fixed assets recorded yet.</p>
-      <RouterLink class="button secondary" to="/finance/transactions/new">Add First Asset</RouterLink>
+      <RouterLink class="button secondary" to="/finance/transactions?new=1">Add First Asset</RouterLink>
     </div>
   </div>
 </template>

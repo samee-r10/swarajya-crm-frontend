@@ -28,32 +28,37 @@ export async function apiDelete(path) {
 
 async function apiRequest(path, options = {}) {
   const url = `${API_BASE}${path}`
-  const response = await fetch(url, {
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    },
-    ...options
-  })
+  window.dispatchEvent(new CustomEvent('app-loading-start'))
+  try {
+    const response = await fetch(url, {
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        ...(options.headers || {})
+      },
+      ...options
+    })
 
-  if (!response.ok) {
-    let message = `Request failed: ${response.status}`
-    try {
-      const data = await response.json()
-      message = data.error || message
-    } catch (error) {
-      message = `Request failed: ${response.status}`
-    }
-    if (response.status === 401) {
-      window.localStorage.removeItem('lms_user')
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login'
+    if (!response.ok) {
+      let message = `Request failed: ${response.status}`
+      try {
+        const data = await response.json()
+        message = data.error || message
+      } catch (error) {
+        message = `Request failed: ${response.status}`
       }
+      if (response.status === 401) {
+        window.localStorage.removeItem('lms_user')
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login'
+        }
+      }
+      throw new Error(message)
     }
-    throw new Error(message)
-  }
 
-  return response.json()
+    return response.json()
+  } finally {
+    window.dispatchEvent(new CustomEvent('app-loading-stop'))
+  }
 }

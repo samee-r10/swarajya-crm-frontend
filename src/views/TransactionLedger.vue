@@ -36,10 +36,10 @@
           <svg viewBox="0 0 24 24" width="18" height="18" style="margin-right: 8px;"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/></svg>
           Export
         </button>
-        <RouterLink class="button" to="/finance/transactions/new">
+        <button class="button" type="button" @click="showTransactionModal = true">
           <svg viewBox="0 0 24 24" width="18" height="18" style="margin-right: 8px;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/></svg>
           New Transaction
-        </RouterLink>
+        </button>
       </div>
     </header>
 
@@ -172,18 +172,38 @@
         </button>
       </div>
     </section>
+
+    <transition name="fade">
+      <div v-if="showTransactionModal" class="transaction-modal-overlay">
+        <div class="transaction-modal-shell">
+          <div class="transaction-modal-header">
+            <div>
+              <p class="eyebrow">Finance Module</p>
+              <h2>New Transaction</h2>
+            </div>
+            <button class="modal-close-btn" type="button" @click="closeTransactionModal">×</button>
+          </div>
+          <div class="transaction-modal-body">
+            <TransactionForm is-modal @save-success="handleTransactionCreated" @cancel="closeTransactionModal" />
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { apiGet } from '../api/client'
+import TransactionForm from './TransactionForm.vue'
 
 const router = useRouter()
+const route = useRoute()
 const transactions = ref([])
 const loading = ref(true)
 const error = ref('')
+const showTransactionModal = ref(false)
 
 const viewCurrency = ref('USD')
 const exchangeRates = ref({
@@ -202,6 +222,23 @@ const filters = reactive({
 const currencySymbols = reactive({ USD: '$', INR: '₹', EUR: '€', GBP: '£' })
 
 onMounted(async () => {
+  await loadTransactions()
+  await loadExchangeRates()
+  await loadCurrencies()
+  if (route.query.new === '1') {
+    showTransactionModal.value = true
+  }
+})
+
+watch(() => route.query.new, (value) => {
+  if (value === '1') {
+    showTransactionModal.value = true
+  }
+})
+
+async function loadTransactions() {
+  loading.value = true
+  error.value = ''
   try {
     const data = await apiGet('/api/finance/transactions')
     transactions.value = data.transactions || []
@@ -210,7 +247,9 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-  
+}
+
+async function loadExchangeRates() {
   try {
     const ratesData = await apiGet('/api/settings/exchange-rates')
     if (ratesData && ratesData.INR) {
@@ -219,7 +258,9 @@ onMounted(async () => {
   } catch (err) {
     console.error("Failed to load exchange rates", err)
   }
-  
+}
+
+async function loadCurrencies() {
   try {
     const curData = await apiGet('/api/settings/currencies')
     if (curData && Array.isArray(curData)) {
@@ -230,7 +271,20 @@ onMounted(async () => {
   } catch (e) {
     console.error("Failed to load dynamic currencies:", e)
   }
-})
+}
+
+async function handleTransactionCreated(id) {
+  showTransactionModal.value = false
+  await loadTransactions()
+  router.push(`/finance/transactions/${id}?posted=true`)
+}
+
+function closeTransactionModal() {
+  showTransactionModal.value = false
+  if (route.query.new === '1') {
+    router.replace('/finance/transactions')
+  }
+}
 
 function convertAmount(amount, fromCurrency, transactionDateStr) {
   const target = viewCurrency.value
@@ -597,5 +651,83 @@ function exportData() {
   font-size: 14px;
   color: var(--muted);
   font-weight: 500;
+}
+
+.transaction-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: #f8fafc;
+  z-index: 9998;
+}
+
+.transaction-modal-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  background: #f8fafc;
+}
+
+.transaction-modal-header {
+  align-items: center;
+  background: #ffffff;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-shrink: 0;
+  justify-content: space-between;
+  padding: 20px clamp(20px, 4vw, 56px);
+}
+
+.transaction-modal-header h2 {
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 800;
+  margin: 4px 0 0;
+}
+
+.modal-close-btn {
+  align-items: center;
+  background: var(--surface-soft, #f8fafc);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 24px;
+  height: 40px;
+  justify-content: center;
+  line-height: 1;
+  width: 40px;
+}
+
+.modal-close-btn:hover {
+  background: #fff7ed;
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.transaction-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px clamp(20px, 4vw, 56px);
+}
+
+.transaction-modal-body :deep(.page-header) {
+  display: none;
+}
+
+.transaction-modal-body :deep(.record-card) {
+  margin: 0 auto;
+  max-width: 1120px;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.18s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>

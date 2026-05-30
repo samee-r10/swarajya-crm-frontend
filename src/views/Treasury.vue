@@ -1,11 +1,15 @@
 <template>
   <div class="treasury-container p-24">
     <!-- Header -->
-    <div class="header-section mb-24">
+    <div class="header-section treasury-hero mb-24">
       <div class="header-titles">
         <span class="module-pill">Finance Center</span>
         <h1>Treasury & Payouts</h1>
         <p class="subtitle text-muted">Settle ledger transactions into reserve, owner, and partner splits — entries sync from the transaction ledger.</p>
+      </div>
+      <div class="hero-summary">
+        <span>Reserve balance</span>
+        <strong>₹{{ formatCurrency(dashboardData.reserve_available) }}</strong>
       </div>
     </div>
 
@@ -261,7 +265,7 @@
               <tr v-if="paymentStats.stakeholders.length === 0">
                 <td colspan="7" class="text-center py-24 text-muted">No company owners configured yet.</td>
               </tr>
-              <tr v-for="stk in paymentStats.stakeholders" :key="stk.id">
+              <tr v-for="stk in paginatedPaymentStakeholders" :key="stk.id">
                 <td>
                   <div class="d-flex align-center gap-8">
                     <div class="avatar-small">{{ stk.name.charAt(0).toUpperCase() }}</div>
@@ -298,6 +302,25 @@
             </tbody>
           </table>
         </div>
+        <div v-if="paymentStakeholderTotalPages > 1" class="pagination-bar">
+          <button
+            class="pagination-btn"
+            type="button"
+            :disabled="paymentStakeholderPage === 1"
+            @click="paymentStakeholderPage--"
+          >
+            Previous
+          </button>
+          <span class="pagination-info">Page {{ paymentStakeholderPage }} of {{ paymentStakeholderTotalPages }} ({{ paymentStats.stakeholders.length }} records)</span>
+          <button
+            class="pagination-btn"
+            type="button"
+            :disabled="paymentStakeholderPage === paymentStakeholderTotalPages"
+            @click="paymentStakeholderPage++"
+          >
+            Next
+          </button>
+        </div>
       </div>
 
       <!-- Channel Partner Settlement Hub -->
@@ -324,7 +347,7 @@
               <tr v-if="paymentStats.partners.length === 0">
                 <td colspan="6" class="text-center py-24 text-muted">No channel partners configured yet.</td>
               </tr>
-              <tr v-for="cp in paymentStats.partners" :key="cp.id">
+              <tr v-for="cp in paginatedPaymentPartners" :key="cp.id">
                 <td><strong>{{ cp.name }}</strong></td>
                 <td>
                   <span v-if="cp.commission_type === 'Percentage'">{{ cp.commission_value }}% of Revenue</span>
@@ -356,6 +379,25 @@
             </tbody>
           </table>
         </div>
+        <div v-if="paymentPartnerTotalPages > 1" class="pagination-bar">
+          <button
+            class="pagination-btn"
+            type="button"
+            :disabled="paymentPartnerPage === 1"
+            @click="paymentPartnerPage--"
+          >
+            Previous
+          </button>
+          <span class="pagination-info">Page {{ paymentPartnerPage }} of {{ paymentPartnerTotalPages }} ({{ paymentStats.partners.length }} records)</span>
+          <button
+            class="pagination-btn"
+            type="button"
+            :disabled="paymentPartnerPage === paymentPartnerTotalPages"
+            @click="paymentPartnerPage++"
+          >
+            Next
+          </button>
+        </div>
       </div>
 
       <!-- Reserve Fund Ledger -->
@@ -379,7 +421,7 @@
               <tr v-if="paymentStats.reserve_ledger.length === 0">
                 <td colspan="5" class="text-center py-24 text-muted">No reserve fund transactions yet.</td>
               </tr>
-              <tr v-for="entry in paymentStats.reserve_ledger" :key="entry.id">
+              <tr v-for="entry in paginatedPaymentReserveLedger" :key="entry.id">
                 <td>{{ formatDate(entry.payout_date) }}</td>
                 <td>
                   <span
@@ -406,6 +448,25 @@
               </tr>
             </tbody>
           </table>
+        </div>
+        <div v-if="paymentReserveTotalPages > 1" class="pagination-bar">
+          <button
+            class="pagination-btn"
+            type="button"
+            :disabled="paymentReservePage === 1"
+            @click="paymentReservePage--"
+          >
+            Previous
+          </button>
+          <span class="pagination-info">Page {{ paymentReservePage }} of {{ paymentReserveTotalPages }} ({{ paymentStats.reserve_ledger.length }} records)</span>
+          <button
+            class="pagination-btn"
+            type="button"
+            :disabled="paymentReservePage === paymentReserveTotalPages"
+            @click="paymentReservePage++"
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>
@@ -440,6 +501,21 @@
           </div>
         </div>
       </div>
+      <div class="revenue-filter-bar p-20 border-bottom">
+        <div class="revenue-search-wrap">
+          <svg class="revenue-search-icon" viewBox="0 0 24 24" width="18" height="18">
+            <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/>
+          </svg>
+          <input
+            v-model="revenueSearch"
+            type="search"
+            placeholder="Search revenue ID, transaction ID, project, type, description, status..."
+          >
+        </div>
+        <span class="text-muted text-sm">
+          Showing {{ filteredRevenueEntries.length }} of {{ revenueEntries.length }} records
+        </span>
+      </div>
       <div class="table-responsive">
         <table class="grid-table">
           <thead>
@@ -459,8 +535,8 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="revenueEntries.length === 0">
-              <td colspan="12" class="text-center py-24 text-muted">No revenue splits recorded yet.</td>
+            <tr v-if="filteredRevenueEntries.length === 0">
+              <td colspan="12" class="text-center py-24 text-muted">{{ revenueEntries.length === 0 ? 'No revenue splits recorded yet.' : 'No revenue entries match your search.' }}</td>
             </tr>
             <tr v-for="entry in paginatedRevenueEntries" :key="entry.id">
               <td>
@@ -523,7 +599,7 @@
         >
           Previous
         </button>
-        <span class="pagination-info">Page {{ revenuePage }} of {{ revenueTotalPages }} ({{ revenueEntries.length }} records)</span>
+        <span class="pagination-info">Page {{ revenuePage }} of {{ revenueTotalPages }} ({{ filteredRevenueEntries.length }} records)</span>
         <button 
           class="pagination-btn" 
           type="button"
@@ -987,6 +1063,7 @@ const dashboardData = ref({
   recent_payouts: []
 })
 const revenueEntries = ref([])
+const revenueSearch = ref('')
 const stakeholders = ref([])
 const partners = ref([])
 const payoutLedger = ref([])
@@ -1101,11 +1178,32 @@ const isSaveEditSplitDisabled = computed(() => {
 // Pagination states
 const revenuePage = ref(1)
 const revenueItemsPerPage = 10
-const revenueTotalPages = computed(() => Math.ceil(revenueEntries.value.length / revenueItemsPerPage))
+const filteredRevenueEntries = computed(() => {
+  const term = revenueSearch.value.trim().toLowerCase().replace(/^#/, '')
+  if (!term) return revenueEntries.value
+  return revenueEntries.value.filter((entry) => {
+    const settlement = isRevenueSettled(entry) ? 'settled' : 'pending'
+    const searchable = [
+      entry.revenue_id,
+      entry.transaction_id,
+      entry.project_name,
+      entry.revenue_type,
+      entry.description,
+      entry.entry_date,
+      settlement,
+      entry.amount,
+      entry.reserve_amount,
+      entry.partner_commission,
+      entry.stakeholder_total,
+    ].map(value => String(value ?? '').toLowerCase()).join(' ')
+    return searchable.includes(term)
+  })
+})
+const revenueTotalPages = computed(() => Math.ceil(filteredRevenueEntries.value.length / revenueItemsPerPage))
 const paginatedRevenueEntries = computed(() => {
   const start = (revenuePage.value - 1) * revenueItemsPerPage
   const end = start + revenueItemsPerPage
-  return revenueEntries.value.slice(start, end)
+  return filteredRevenueEntries.value.slice(start, end)
 })
 
 const payoutPage = ref(1)
@@ -1126,11 +1224,40 @@ const paginatedAuditLogs = computed(() => {
   return auditLogs.value.slice(start, end)
 })
 
+const paymentItemsPerPage = 10
+const paymentStakeholderPage = ref(1)
+const paymentStakeholderTotalPages = computed(() => Math.ceil(paymentStats.value.stakeholders.length / paymentItemsPerPage))
+const paginatedPaymentStakeholders = computed(() => {
+  const start = (paymentStakeholderPage.value - 1) * paymentItemsPerPage
+  return paymentStats.value.stakeholders.slice(start, start + paymentItemsPerPage)
+})
+
+const paymentPartnerPage = ref(1)
+const paymentPartnerTotalPages = computed(() => Math.ceil(paymentStats.value.partners.length / paymentItemsPerPage))
+const paginatedPaymentPartners = computed(() => {
+  const start = (paymentPartnerPage.value - 1) * paymentItemsPerPage
+  return paymentStats.value.partners.slice(start, start + paymentItemsPerPage)
+})
+
+const paymentReservePage = ref(1)
+const paymentReserveTotalPages = computed(() => Math.ceil(paymentStats.value.reserve_ledger.length / paymentItemsPerPage))
+const paginatedPaymentReserveLedger = computed(() => {
+  const start = (paymentReservePage.value - 1) * paymentItemsPerPage
+  return paymentStats.value.reserve_ledger.slice(start, start + paymentItemsPerPage)
+})
+
 // Reset pages on active tab changes
 watch(activeTab, () => {
   revenuePage.value = 1
   payoutPage.value = 1
   logsPage.value = 1
+  paymentStakeholderPage.value = 1
+  paymentPartnerPage.value = 1
+  paymentReservePage.value = 1
+})
+
+watch(revenueSearch, () => {
+  revenuePage.value = 1
 })
 
 // Actions
@@ -1369,71 +1496,129 @@ function formatTimestamp(val) {
 
 <style scoped>
 .treasury-container {
-  max-width: 1300px;
+  max-width: 1440px;
   margin: 0 auto;
   font-family: inherit;
+  padding: 32px !important;
+  color: #111827;
+  background:
+    linear-gradient(180deg, #f8fafc 0%, #ffffff 240px);
+  min-height: calc(100vh - 72px);
 }
 
 .header-section {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 24px;
+}
+
+.treasury-hero {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.96)),
+    radial-gradient(circle at 10% 0%, rgba(14, 165, 233, 0.12), transparent 32%);
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.07);
+  padding: 28px 30px;
 }
 
 .module-pill {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
-  background: var(--primary-soft);
-  color: var(--primary);
-  padding: 3px 10px;
-  border-radius: 4px;
-  margin-bottom: 8px;
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 6px 12px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+  letter-spacing: 0.08em;
 }
 
 .header-titles h1 {
   margin: 0;
-  font-size: 32px;
-  font-weight: 700;
-  color: var(--text);
+  font-size: 42px;
+  font-weight: 850;
+  letter-spacing: 0;
+  color: #0f172a;
 }
 
 .subtitle {
-  margin: 4px 0 0 0;
+  margin: 10px 0 0 0;
+  max-width: 780px;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.hero-summary {
+  background: #0f172a;
+  border-radius: 12px;
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.16);
+  color: #ffffff;
+  display: grid;
+  gap: 6px;
+  min-width: 230px;
+  padding: 20px 22px;
+}
+
+.hero-summary span {
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hero-summary strong {
+  font-size: 26px;
+  font-weight: 850;
 }
 
 /* Tabs */
 .treasury-tabs-wrapper {
-  border-bottom: 1px solid var(--line);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  padding: 8px;
+  position: sticky;
+  top: 76px;
+  z-index: 20;
 }
 
 .treasury-tabs {
   display: flex;
-  gap: 12px;
+  gap: 6px;
+  overflow-x: auto;
 }
 
 .tab-btn {
-  background: none;
+  background: transparent;
   border: none;
-  padding: 12px 18px;
-  font-weight: 600;
-  color: var(--text-muted);
+  border-radius: 9px;
+  padding: 11px 15px;
+  font-weight: 750;
+  color: #64748b;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
-  border-bottom: 2px solid transparent;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .tab-btn:hover {
-  color: var(--primary);
+  background: #f8fafc;
+  color: #0f172a;
 }
 
 .tab-btn.active {
-  color: var(--primary);
-  border-bottom-color: var(--primary);
+  background: #0f172a;
+  color: #ffffff;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.14);
 }
 
 .tab-icon {
@@ -1441,7 +1626,42 @@ function formatTimestamp(val) {
   align-items: center;
 }
 
+.dashboard-tab,
+.payment-dashboard-tab {
+  display: grid;
+  gap: 26px;
+}
+
+.revenue-tab,
+.stakeholders-tab,
+.partners-tab,
+.ledger-tab,
+.logs-tab,
+.pay-section {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.card-header {
+  background:
+    linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+}
+
+.card-header h3,
+.card-header h4 {
+  color: #0f172a;
+  font-weight: 800;
+}
+
 /* Revenue log settlement summary */
+.revenue-log-summary {
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
 .revenue-summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -1449,13 +1669,14 @@ function formatTimestamp(val) {
 }
 
 .revenue-summary-card {
-  background: var(--surface-soft, #f8fafc);
-  border: 1px solid var(--line);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
-  padding: 16px 18px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.045);
+  padding: 18px 20px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .revenue-summary-card.settled {
@@ -1476,49 +1697,87 @@ function formatTimestamp(val) {
 
 .revenue-summary-label {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  color: #64748b;
 }
 
 .revenue-summary-value {
-  font-size: 1.5rem;
+  font-size: 26px;
   line-height: 1.2;
-  font-weight: 700;
+  font-weight: 850;
+}
+
+.revenue-filter-bar {
+  align-items: center;
+  background: #ffffff;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.revenue-search-wrap {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  max-width: 560px;
+  padding: 0 12px;
+}
+
+.revenue-search-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.revenue-search-wrap input {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  height: 40px;
+  outline: none;
+  padding: 0;
+  width: 100%;
 }
 
 /* KPIs */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
 }
 
 .kpi-card {
-  background: var(--surface);
-  border: 1px solid var(--line);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 24px;
+  padding: 28px;
   display: flex;
-  align-items: center;
-  gap: 20px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  align-items: flex-start;
+  gap: 18px;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .kpi-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1);
 }
 
 .kpi-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
+  width: 54px;
+  height: 54px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .reserve-card .kpi-icon {
@@ -1547,18 +1806,18 @@ function formatTimestamp(val) {
 }
 
 .kpi-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  color: #64748b;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.08em;
 }
 
 .kpi-content h3 {
-  margin: 4px 0;
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--text);
+  margin: 8px 0 8px;
+  font-size: 30px;
+  font-weight: 850;
+  color: #0f172a;
 }
 
 .kpi-sub {
@@ -1571,28 +1830,24 @@ function formatTimestamp(val) {
 .grid-2col {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 24px;
-}
-
-@media (max-width: 768px) {
-  .grid-2col {
-    grid-template-columns: 1fr;
-  }
+  gap: 28px;
 }
 
 .dashboard-block {
-  background: var(--surface);
-  border: 1px solid var(--line);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.055);
+  overflow: hidden;
 }
 
 .block-header {
-  padding: 16px 24px;
-  border-bottom: 1px solid var(--line);
+  padding: 22px 26px;
+  border-bottom: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: #fbfdff;
 }
 
 .block-header h4 {
@@ -1602,7 +1857,7 @@ function formatTimestamp(val) {
 }
 
 .block-body {
-  padding: 24px;
+  padding: 28px;
 }
 
 .ownership-summary {
@@ -1698,36 +1953,60 @@ function formatTimestamp(val) {
 
 .grid-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .grid-table th {
   text-align: left;
-  background: var(--surface-soft);
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--text-muted);
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--line);
+  background: #f7f9fc;
+  font-weight: 800;
+  font-size: 12px;
+  color: #64748b;
+  padding: 17px 22px;
+  border-bottom: 1px solid #e2e8f0;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .grid-table td {
-  padding: 16px 20px;
+  padding: 20px 22px;
   font-size: 14px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid #eef2f7;
   vertical-align: middle;
 }
 
 .grid-table tr:hover td {
-  background: rgba(0,0,0,0.01);
+  background: #fbfdff;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.table-responsive::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Badges / Tag pills */
 .type-pill {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 5px 10px;
   border-radius: 4px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   background: var(--surface-soft);
 }
 
@@ -1753,11 +2032,12 @@ function formatTimestamp(val) {
 
 .status-pill {
   display: inline-block;
-  padding: 4px 10px;
+  padding: 5px 11px;
   border-radius: 50px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .status-pill.paid,
@@ -1773,11 +2053,12 @@ function formatTimestamp(val) {
 }
 
 .revenue-type-tag {
-  background: var(--surface-soft);
-  padding: 4px 8px;
+  background: #eef2ff;
+  color: #3730a3;
+  padding: 5px 10px;
   border-radius: 4px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* Preview Split details */
@@ -1858,19 +2139,19 @@ function formatTimestamp(val) {
 
 .pay-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
 }
 
 .pay-kpi-card {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 28px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 28px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 18px;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.06);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   position: relative;
   overflow: hidden;
@@ -1881,7 +2162,7 @@ function formatTimestamp(val) {
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 4px;
-  border-radius: 16px 16px 0 0;
+  border-radius: 12px 12px 0 0;
 }
 
 .pay-fund-card::before    { background: linear-gradient(90deg, #10b981, #059669); }
@@ -1889,14 +2170,14 @@ function formatTimestamp(val) {
 .pay-partner-card::before { background: linear-gradient(90deg, #f59e0b, #d97706); }
 
 .pay-kpi-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 22px 42px rgba(15, 23, 42, 0.1);
 }
 
 .pay-kpi-icon {
   width: 56px;
   height: 56px;
-  border-radius: 14px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1909,24 +2190,25 @@ function formatTimestamp(val) {
 
 .pay-kpi-content {
   flex: 1;
+  min-width: 0;
 }
 
 .pay-kpi-label {
   display: block;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  margin-bottom: 4px;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  margin-bottom: 8px;
 }
 
 .pay-kpi-value {
-  font-size: 28px;
-  font-weight: 800;
-  margin: 0 0 10px 0;
+  font-size: 30px;
+  font-weight: 850;
+  margin: 0 0 14px 0;
   line-height: 1.1;
-  color: var(--text-primary);
+  color: #0f172a;
 }
 
 .pay-kpi-sub-row {
@@ -1939,9 +2221,9 @@ function formatTimestamp(val) {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 10px;
   border-radius: 20px;
 }
 
@@ -1950,14 +2232,22 @@ function formatTimestamp(val) {
 .pay-kpi-chip.orange { background: #fef3c7; color: #92400e; }
 
 .pay-section {
-  background: var(--surface);
+  background: #ffffff;
+}
+
+.pay-section + .pay-section {
+  margin-top: 4px;
+}
+
+.pay-section .card-header {
+  min-height: 78px;
 }
 
 .avatar-small {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  border-radius: 8px;
+  background: #0f172a;
   color: white;
   font-size: 13px;
   font-weight: 700;
@@ -1977,13 +2267,23 @@ function formatTimestamp(val) {
 .mb-28   { margin-bottom: 28px; }
 
 /* Pagination controls consistent styling */
+.pagination-bar {
+  align-items: center;
+  background: #fbfdff;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  padding: 18px 24px;
+}
+
 .pagination-btn {
-  padding: 6px 14px;
+  padding: 8px 15px;
   background: #ffffff;
-  border: 1px solid var(--line);
+  border: 1px solid #dbe3ef;
   border-radius: 6px;
   color: var(--text-primary, #0f172a);
-  font-weight: 600;
+  font-weight: 750;
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
@@ -2003,6 +2303,56 @@ function formatTimestamp(val) {
 .pagination-info {
   font-size: 13px;
   color: var(--text-muted, #64748b);
-  font-weight: 500;
+  font-weight: 600;
+  text-align: center;
+}
+
+@media (max-width: 1100px) {
+  .grid-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .treasury-container {
+    padding: 18px !important;
+  }
+
+  .header-section {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .header-titles h1 {
+    font-size: 32px;
+  }
+
+  .hero-summary {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .treasury-tabs-wrapper {
+    top: 64px;
+  }
+
+  .pay-kpi-grid,
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pay-kpi-card {
+    grid-template-columns: 1fr;
+  }
+
+  .revenue-filter-bar,
+  .pagination-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .revenue-search-wrap {
+    max-width: none;
+  }
 }
 </style>

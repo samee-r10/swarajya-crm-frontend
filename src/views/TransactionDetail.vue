@@ -8,7 +8,7 @@
       </p>
     </div>
     <div class="action-row" style="display: flex; gap: 12px; align-items: center;">
-      <RouterLink v-if="isPosted" class="button btn-animate" to="/finance/transactions/new">New Transaction</RouterLink>
+      <RouterLink v-if="isPosted" class="button btn-animate" to="/finance/transactions?new=1">New Transaction</RouterLink>
       <button v-if="transaction && transaction.status !== 'Reversed'" class="button danger btn-animate" type="button" @click="reverseTransaction" style="background: #ef4444; color: white;">Reverse Entry</button>
       <RouterLink class="button secondary" to="/finance/transactions">Back to Ledger</RouterLink>
     </div>
@@ -58,6 +58,7 @@ const props = defineProps({
 
 const route = useRoute()
 const transaction = ref(null)
+const transactionFields = ref([])
 const currencySymbols = ref({})
 const loading = ref(true)
 const error = ref('')
@@ -69,6 +70,7 @@ onMounted(async () => {
   try {
     const data = await apiGet(`/api/finance/transactions/${props.id}`)
     transaction.value = data.transaction
+    transactionFields.value = data.fields || []
     currencySymbols.value = data.currency_symbols || {}
   } catch (err) {
     error.value = 'Unable to load this transaction.'
@@ -99,7 +101,7 @@ const detailFields = computed(() => {
   }
 
   const t = transaction.value
-  return [
+  const baseFields = [
     { label: 'Record ID', value: `#${t.id}` },
     { label: 'Status', value: t.status || 'Completed' },
     { label: 'Transaction Date', value: t.transaction_date },
@@ -120,7 +122,23 @@ const detailFields = computed(() => {
     { label: 'Created At', value: t.created_at || '' },
     { label: 'Description', value: t.description || '', long: true }
   ]
+
+  const customFields = transactionFields.value
+    .filter(field => !field.is_native)
+    .map(field => ({
+      label: field.label,
+      value: formatCustomFieldValue(field, t[field.api_name]),
+      long: field.field_type === 'Long Text'
+    }))
+
+  return [...baseFields, ...customFields]
 })
+
+function formatCustomFieldValue(field, value) {
+  if (field.field_type === 'Checkbox') return value ? 'Yes' : 'No'
+  if (value === undefined || value === null || value === '') return ''
+  return value
+}
 
 function partyLabel(t) {
   if (t.type === 'Income') {

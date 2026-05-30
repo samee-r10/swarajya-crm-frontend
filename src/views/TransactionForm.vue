@@ -1,7 +1,18 @@
 <template>
   <section class="page-header"><div><p class="eyebrow">Finance</p><h1>New Transaction</h1></div></section>
   <form class="form-grid record-card" @submit.prevent="openPreview">
-    <label>Date<input v-model="form.transaction_date" type="date" required></label>
+    <label>
+      Posting Date
+      <select v-model="postingDateOption">
+        <option value="today">Today</option>
+        <option value="yesterday">Yesterday</option>
+        <option value="custom">Custom date</option>
+      </select>
+    </label>
+    <label v-if="postingDateOption === 'custom'">
+      Custom Posting Date
+      <input v-model="form.transaction_date" type="date" required>
+    </label>
     <label>Type<select v-model="form.type"><option>Income</option><option>Expense</option></select></label>
     <label>Account<select v-model="form.account_id" required><option value="">Select Account</option><option v-for="account in filteredAccountsForDropdown" :key="account.id" :value="account.id">{{ account.name }}</option></select></label>
     <label v-if="form.type === 'Income'">Customer<select v-model="form.customer_id"><option value="">Select Customer</option><option v-for="customer in customers" :key="customer.id" :value="customer.id">{{ customer.company_name }}</option></select></label>
@@ -19,16 +30,72 @@
       <span class="field-hint">The present/book value of this asset after depreciation</span>
     </label>
     <label class="span-2">Description<textarea v-model="form.description" rows="5"></textarea></label>
+    <label
+      v-for="field in customTransactionFields"
+      :key="field.api_name"
+      :class="isSpan2(field) ? 'span-2' : ''"
+    >
+      {{ field.label }} <span v-if="field.is_required" style="color: #dc2626; margin-left: 2px;">*</span>
+
+      <textarea
+        v-if="field.field_type === 'Long Text'"
+        v-model="form[field.api_name]"
+        :required="field.is_required"
+        rows="3"
+        :placeholder="'Enter ' + field.label.toLowerCase() + '...'"
+      ></textarea>
+
+      <select
+        v-else-if="field.field_type === 'Dropdown'"
+        v-model="form[field.api_name]"
+        :required="field.is_required"
+      >
+        <option value="">Select {{ field.label }}</option>
+        <option v-for="opt in parseOptions(field.picklist_options)" :key="opt" :value="opt">{{ opt }}</option>
+      </select>
+
+      <input
+        v-else-if="field.field_type === 'Checkbox'"
+        type="checkbox"
+        v-model="form[field.api_name]"
+      >
+
+      <input
+        v-else-if="field.field_type === 'Number'"
+        type="number"
+        v-model="form[field.api_name]"
+        :required="field.is_required"
+        :placeholder="'Enter ' + field.label.toLowerCase() + '...'"
+      >
+
+      <input
+        v-else-if="field.field_type === 'Date'"
+        type="date"
+        v-model="form[field.api_name]"
+        :required="field.is_required"
+      >
+
+      <input
+        v-else
+        type="text"
+        v-model="form[field.api_name]"
+        :required="field.is_required"
+        :placeholder="'Enter ' + field.label.toLowerCase() + '...'"
+      >
+    </label>
     <p v-if="error" class="span-2 flash warning">{{ error }}</p>
     <div class="span-2 action-row">
+      <button v-if="props.isModal" class="button secondary btn-animate" type="button" @click="emit('cancel')">
+        Cancel
+      </button>
       <button class="button btn-animate" type="submit">Preview Posting</button>
     </div>
   </form>
 
-  <!-- Glassmorphic Preview Modal -->
+  <!-- Full-page Posting Preview Modal -->
   <transition name="fade">
     <div v-if="showPreviewModal" class="preview-modal-overlay" @click.self="showPreviewModal = false">
-      <div class="preview-modal-content card-premium">
+      <div class="preview-modal-content">
         <header class="modal-header">
           <div>
             <p class="eyebrow">Finance · Posting Preview</p>
@@ -40,7 +107,7 @@
         <main class="modal-body">
           <!-- Overview -->
           <div class="overview-grid">
-            <div class="overview-item"><span>Date</span><strong>{{ form.transaction_date }}</strong></div>
+            <div class="overview-item"><span>Posting Date</span><strong>{{ form.transaction_date }}</strong></div>
             <div class="overview-item"><span>Type</span><strong>{{ form.type }}</strong></div>
             <div class="overview-item"><span>Account</span><strong>{{ selectedAccountName }}</strong></div>
             <div class="overview-item" v-if="form.type === 'Income'"><span>Customer Name</span><strong>{{ selectedPartyName }}</strong></div>
@@ -48,6 +115,13 @@
             <div class="overview-item" v-if="form.category"><span>Category</span><strong>{{ form.category }}</strong></div>
             <div class="overview-item" v-if="form.category === 'Fixed Assets' && form.depreciation_value"><span>Current Value</span><strong>{{ money(form.depreciation_value) }}</strong></div>
             <div class="overview-item"><span>Currency</span><strong>{{ form.currency }}</strong></div>
+            <div
+              v-for="field in customTransactionPreviewFields"
+              :key="field.api_name"
+              class="overview-item"
+            >
+              <span>{{ field.label }}</span><strong>{{ formatCustomFieldValue(field) }}</strong>
+            </div>
           </div>
 
           <!-- Amount Breakdown -->
@@ -98,18 +172,81 @@
 import { onMounted, reactive, ref, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet, apiPost } from '../api/client'
+
+const props = defineProps({
+  isModal: {
+    type: Boolean,
+    default: false
+  }
+})
+const emit = defineEmits(['save-success', 'cancel'])
 const router = useRouter()
 const accounts = ref([])
 const customers = ref([])
 const vendors = ref([])
 const currencies = ref([])
 const projects = ref([])
+const transactionFields = ref([])
 const error = ref('')
 const form = reactive({ transaction_date: new Date().toISOString().slice(0, 10), type: 'Income', account_id: '', customer_id: '', project_id: '', vendor_id: '', currency: 'INR', amount: '', cgst_percent: 0, igst_percent: 0, tds_percent: 0, category: '', depreciation_value: '', description: '' })
+const postingDateOption = ref('today')
 
 const showPreviewModal = ref(false)
 const isPosting = ref(false)
 const currencySymbolsMap = { USD: '$', INR: '₹', EUR: '€', GBP: '£' }
+
+function offsetDate(days) {
+  const date = new Date()
+  date.setDate(date.getDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
+watch(postingDateOption, (option) => {
+  if (option === 'today') {
+    form.transaction_date = offsetDate(0)
+  } else if (option === 'yesterday') {
+    form.transaction_date = offsetDate(-1)
+  }
+})
+
+const customTransactionFields = computed(() => {
+  return transactionFields.value.filter(field => !field.is_native)
+})
+
+const customTransactionPreviewFields = computed(() => {
+  return customTransactionFields.value.filter(field => {
+    const value = form[field.api_name]
+    return field.field_type === 'Checkbox' || value !== undefined && value !== null && value !== ''
+  })
+})
+
+function initialiseCustomFields(fields) {
+  fields.forEach(field => {
+    if (!(field.api_name in form)) {
+      form[field.api_name] = field.field_type === 'Checkbox' ? false : ''
+    }
+  })
+}
+
+function isSpan2(field) {
+  return field.field_type === 'Long Text'
+}
+
+function parseOptions(options) {
+  if (!options) return []
+  try {
+    const parsed = JSON.parse(options)
+    return Array.isArray(parsed) ? parsed : [options]
+  } catch (e) {
+    return options.split(',').map(s => s.trim()).filter(Boolean)
+  }
+}
+
+function formatCustomFieldValue(field) {
+  const value = form[field.api_name]
+  if (field.field_type === 'Checkbox') return value ? 'Yes' : 'No'
+  return value || '—'
+}
 
 watch(() => form.type, (newType) => {
   if (newType === 'Income') {
@@ -141,6 +278,10 @@ onMounted(async () => {
   vendors.value = options.vendors || []
   currencies.value = options.currencies || []
   projects.value = options.projects || []
+
+  const transactionData = await apiGet('/api/finance/transactions')
+  transactionFields.value = transactionData.fields || []
+  initialiseCustomFields(customTransactionFields.value)
 
   if (form.type === 'Income') {
     const salesRev = accounts.value.find(a => a.name === 'Sales Revenue')
@@ -296,7 +437,11 @@ async function confirmAndPost() {
     const data = await apiPost('/api/finance/transactions', form)
     showPreviewModal.value = false
     isPosting.value = false
-    router.replace(`/finance/transactions/${data.id}?posted=true`)
+    if (props.isModal) {
+      emit('save-success', data.id)
+    } else {
+      router.replace(`/finance/transactions/${data.id}?posted=true`)
+    }
   } catch (err) {
     isPosting.value = false
     error.value = err.message
@@ -317,7 +462,11 @@ async function save() {
   error.value = ''
   try {
     const data = await apiPost('/api/finance/transactions', form)
-    router.replace(`/finance/transactions/${data.id}`)
+    if (props.isModal) {
+      emit('save-success', data.id)
+    } else {
+      router.replace(`/finance/transactions/${data.id}`)
+    }
   } catch (err) {
     error.value = err.message
   }
@@ -349,39 +498,29 @@ async function save() {
   font-style: italic;
 }
 
-/* Glassmorphic Modal Overlay */
 .preview-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(15, 23, 42, 0.35);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: var(--surface, #ffffff);
   z-index: 9999;
-  padding: 24px;
 }
 
 .preview-modal-content {
   background: var(--surface);
-  border-radius: 16px;
-  border: 1px solid var(--line);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  max-width: 680px;
+  min-height: 100vh;
   width: 100%;
-  max-height: 90vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideIn 0.22s ease-out;
 }
 
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
+@keyframes slideIn {
+  from { transform: translateY(10px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
 
@@ -389,8 +528,10 @@ async function save() {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
+  padding: 22px clamp(20px, 4vw, 56px);
   border-bottom: 1px solid var(--line);
+  background: #ffffff;
+  flex-shrink: 0;
 }
 
 .modal-header h2 {
@@ -401,36 +542,48 @@ async function save() {
 }
 
 .close-btn {
-  background: none;
-  border: none;
-  font-size: 28px;
-  cursor: pointer;
+  align-items: center;
+  background: var(--surface-soft, #f8fafc);
+  border: 1px solid var(--line);
+  border-radius: 8px;
   color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 24px;
+  height: 40px;
+  justify-content: center;
+  line-height: 1;
   transition: color 0.2s;
+  width: 40px;
 }
 
 .close-btn:hover {
+  background: #fff7ed;
+  border-color: var(--primary);
   color: var(--primary);
 }
 
 .modal-body {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  padding: 28px clamp(20px, 4vw, 56px) 96px;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(420px, 1.2fr);
+  align-content: start;
+  gap: 24px;
+  background: var(--surface-soft, #f8fafc);
 }
 
 /* Overview grid */
 .overview-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  background: var(--surface-soft);
-  padding: 16px;
-  border-radius: 10px;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  background: var(--surface);
+  padding: 20px;
+  border-radius: 8px;
   border: 1px solid var(--line);
+  align-self: start;
 }
 
 .overview-item {
@@ -450,14 +603,16 @@ async function save() {
 
 .overview-item strong {
   color: var(--text);
+  overflow-wrap: anywhere;
 }
 
 /* Breakdown Card */
 .breakdown-card {
   border: 1px solid var(--line);
   background: var(--surface);
-  border-radius: 12px;
-  padding: 18px;
+  border-radius: 8px;
+  padding: 22px;
+  align-self: start;
 }
 
 .breakdown-card h3, .ledger-preview-card h3 {
@@ -495,9 +650,10 @@ async function save() {
 /* Ledger Preview Table */
 .ledger-preview-card {
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 18px;
-  background: var(--surface-soft);
+  border-radius: 8px;
+  padding: 22px;
+  background: var(--surface);
+  grid-column: 1 / -1;
 }
 
 .preview-ledger-table {
@@ -555,8 +711,33 @@ async function save() {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  padding: 18px 24px;
+  padding: 18px clamp(20px, 4vw, 56px);
   border-top: 1px solid var(--line);
+  background: #ffffff;
+  box-shadow: 0 -10px 30px rgba(15, 23, 42, 0.08);
+  flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  .modal-body {
+    grid-template-columns: 1fr;
+    padding-bottom: 116px;
+  }
+
+  .ledger-preview-card {
+    grid-column: auto;
+  }
+
+  .modal-header,
+  .modal-footer {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .modal-footer {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
 }
 
 /* Fade animation */

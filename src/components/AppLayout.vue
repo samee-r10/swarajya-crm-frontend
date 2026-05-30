@@ -2,6 +2,11 @@
   <RouterView v-if="route.name === 'login'" />
 
   <template v-else>
+  <div v-if="isAppLoading" class="app-loader" aria-live="polite" aria-label="Loading">
+    <div class="app-loader-track">
+      <div class="app-loader-bar"></div>
+    </div>
+  </div>
   <header class="global-header">
     <div class="header-left">
       <div class="app-launcher">
@@ -37,13 +42,37 @@
       <RouterLink class="brand" to="/">
         <img src="/logo.png" alt="Company Logo" class="brand-logo" />
       </RouterLink>
-      <nav class="vue-nav">
-        <RouterLink to="/customers">Customers</RouterLink>
-        <RouterLink to="/opportunities">Opportunities</RouterLink>
-        <RouterLink to="/projects">Projects</RouterLink>
-        <RouterLink v-if="hasVaultAccess" to="/vault">Vault</RouterLink>
-        <RouterLink v-if="userProfile === 'System Administrator'" to="/setup">Setup</RouterLink>
-      </nav>
+    </div>
+    <div ref="globalSearchRef" class="global-search">
+      <div class="global-search-box">
+        <svg viewBox="0 0 24 24" width="18" height="18">
+          <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/>
+        </svg>
+        <input
+          v-model="globalSearch"
+          type="search"
+          placeholder="Search customers, invoices, transactions, ledger..."
+          @focus="globalSearchOpen = true"
+          @keydown.enter.prevent="openFirstSearchResult"
+          @keydown.esc.prevent="closeGlobalSearch"
+        >
+      </div>
+      <div v-if="globalSearchOpen && globalSearch.length >= 2" class="global-search-results">
+        <div v-if="searchLoading" class="global-search-state">Searching...</div>
+        <button
+          v-for="result in globalSearchResults"
+          v-else
+          :key="`${result.type}-${result.url}`"
+          class="global-search-result"
+          type="button"
+          @click="openSearchResult(result)"
+        >
+          <span class="result-type">{{ result.type }}</span>
+          <strong>{{ result.label }}</strong>
+          <small>{{ result.subtitle || result.meta }}</small>
+        </button>
+        <div v-if="!searchLoading && globalSearchResults.length === 0" class="global-search-state">No matching records</div>
+      </div>
     </div>
     <div class="header-right">
       <details v-if="user" ref="userDropdownRef" class="user-dropdown">
@@ -87,7 +116,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { apiPost } from '../api/client'
+import { apiGet, apiPost } from '../api/client'
 
 const route = useRoute()
 const router = useRouter()
@@ -95,6 +124,11 @@ const router = useRouter()
 // Template refs for click-outside detection
 const launcherRef = ref(null)
 const userDropdownRef = ref(null)
+const globalSearchRef = ref(null)
+const isAppLoading = ref(false)
+const activeLoaders = ref(0)
+let loaderDelayTimer = null
+let routeLoaderTimer = null
 
 // Close both dropdowns when clicking outside them
 function handleOutsideClick(e) {
@@ -104,14 +138,24 @@ function handleOutsideClick(e) {
   if (userDropdownRef.value && !userDropdownRef.value.contains(e.target)) {
     userDropdownRef.value.removeAttribute('open')
   }
+  if (globalSearchRef.value && !globalSearchRef.value.contains(e.target)) {
+    closeGlobalSearch()
+  }
 }
 
 onMounted(() => {
   document.addEventListener('click', handleOutsideClick, true)
+  window.addEventListener('app-loading-start', startAppLoader)
+  window.addEventListener('app-loading-stop', stopAppLoader)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleOutsideClick, true)
+  window.removeEventListener('app-loading-start', startAppLoader)
+  window.removeEventListener('app-loading-stop', stopAppLoader)
+  if (searchTimer) clearTimeout(searchTimer)
+  if (loaderDelayTimer) clearTimeout(loaderDelayTimer)
+  if (routeLoaderTimer) clearTimeout(routeLoaderTimer)
 })
 
 const user = ref(window.localStorage.getItem('lms_user'))
@@ -119,6 +163,8 @@ watch(() => route.path, () => {
   user.value = window.localStorage.getItem('lms_user')
   // Auto-close the launcher whenever navigation occurs
   if (launcherRef.value) launcherRef.value.removeAttribute('open')
+  closeGlobalSearch()
+  showRouteLoader()
 })
 const userName = computed(() => {
   if (!user.value) return ''
@@ -186,6 +232,11 @@ const hasVaultAccess = computed(() => {
 })
 
 const launcherSearch = ref('')
+const globalSearch = ref('')
+const globalSearchOpen = ref(false)
+const globalSearchResults = ref([])
+const searchLoading = ref(false)
+let searchTimer = null
 const launcherItems = [
   { label: 'Dashboard', type: 'App', to: '/' },
   { label: 'Customers', type: 'Standard Object', to: '/customers' },
@@ -193,7 +244,7 @@ const launcherItems = [
   { label: 'Projects', type: 'Module', to: '/projects' },
   { label: 'Finance', type: 'Module', to: '/finance' },
   { label: 'Treasury', type: 'Module', to: '/treasury' },
-  { label: 'Credential Vault', type: 'Module', to: '/vault' },
+  { label: 'Vault', type: 'Secure Module', to: '/vault' },
   { label: 'Vendors', type: 'Finance', to: '/finance/vendors' },
   { label: 'Transaction Ledger', type: 'Finance', to: '/finance/transactions' },
   { label: 'General Ledger Report', type: 'Finance', to: '/finance/reports/general-ledger' },
@@ -218,11 +269,79 @@ const filteredLauncherItems = computed(() => {
   if (!hasFinanceAccess.value) {
     items = items.filter(item => !item.to.startsWith('/finance'))
   }
-  if (!hasVaultAccess.value) {
-    items = items.filter(item => !item.to.startsWith('/vault'))
-  }
   return items.filter((item) => `${item.label} ${item.type}`.toLowerCase().includes(term))
 })
+
+watch(globalSearch, (value) => {
+  if (searchTimer) clearTimeout(searchTimer)
+  const term = value.trim()
+  if (term.length < 2) {
+    globalSearchResults.value = []
+    searchLoading.value = false
+    return
+  }
+  globalSearchOpen.value = true
+  searchLoading.value = true
+  searchTimer = setTimeout(async () => {
+    try {
+      const data = await apiGet(`/api/search?q=${encodeURIComponent(term)}`)
+      globalSearchResults.value = data.results || []
+    } catch (err) {
+      globalSearchResults.value = []
+    } finally {
+      searchLoading.value = false
+    }
+  }, 220)
+})
+
+function closeGlobalSearch() {
+  globalSearchOpen.value = false
+}
+
+function openSearchResult(result) {
+  globalSearch.value = ''
+  globalSearchResults.value = []
+  closeGlobalSearch()
+  router.push(result.url)
+}
+
+function openFirstSearchResult() {
+  if (globalSearchResults.value.length > 0) {
+    openSearchResult(globalSearchResults.value[0])
+  }
+}
+
+function startAppLoader() {
+  activeLoaders.value += 1
+  if (loaderDelayTimer) clearTimeout(loaderDelayTimer)
+  loaderDelayTimer = setTimeout(() => {
+    if (activeLoaders.value > 0) {
+      isAppLoading.value = true
+    }
+  }, 120)
+}
+
+function stopAppLoader() {
+  activeLoaders.value = Math.max(0, activeLoaders.value - 1)
+  if (activeLoaders.value === 0) {
+    if (loaderDelayTimer) clearTimeout(loaderDelayTimer)
+    setTimeout(() => {
+      if (activeLoaders.value === 0) {
+        isAppLoading.value = false
+      }
+    }, 180)
+  }
+}
+
+function showRouteLoader() {
+  isAppLoading.value = true
+  if (routeLoaderTimer) clearTimeout(routeLoaderTimer)
+  routeLoaderTimer = setTimeout(() => {
+    if (activeLoaders.value === 0) {
+      isAppLoading.value = false
+    }
+  }, 260)
+}
 
 function goBack() {
   router.back()
@@ -244,6 +363,42 @@ async function logout() {
   overflow: hidden;
   background: #ffffff;
   margin-top: 6px;
+}
+
+.app-loader {
+  left: 0;
+  pointer-events: none;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 10000;
+}
+
+.app-loader-track {
+  background: rgba(249, 115, 22, 0.12);
+  height: 3px;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.app-loader-bar {
+  animation: appLoaderSlide 1.05s ease-in-out infinite;
+  background: linear-gradient(90deg, transparent, var(--primary), #0ea5e9, transparent);
+  height: 100%;
+  left: -35%;
+  position: absolute;
+  top: 0;
+  width: 35%;
+}
+
+@keyframes appLoaderSlide {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(390%);
+  }
 }
 
 .user-menu-profile {
@@ -322,5 +477,114 @@ async function logout() {
 .logout-link:hover {
   background: #fef2f2;
   color: #dc2626;
+}
+
+.global-search {
+  left: 50%;
+  max-width: min(560px, calc(100vw - 420px));
+  position: absolute;
+  top: 11px;
+  transform: translateX(-50%);
+  width: 42vw;
+  z-index: 101;
+}
+
+.global-search-box {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+  height: 42px;
+  padding: 0 12px;
+}
+
+.global-search-box svg {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.global-search-box input {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  font-size: 14px;
+  height: 100%;
+  outline: none;
+  padding: 0;
+  width: 100%;
+}
+
+.global-search-results {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+  left: 0;
+  margin-top: 0;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 8px;
+  position: absolute;
+  right: 0;
+  top: 50px;
+}
+
+.global-search-result {
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  text-align: left;
+  width: 100%;
+}
+
+.global-search-result:hover {
+  background: var(--surface-soft);
+}
+
+.global-search-result strong {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.global-search-result small {
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-type {
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.global-search-state {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 14px 12px;
+  text-align: center;
+}
+
+@media (max-width: 980px) {
+  .global-search {
+    left: auto;
+    margin: 0 12px;
+    max-width: none;
+    order: 2;
+    position: static;
+    transform: none;
+    width: 100%;
+  }
 }
 </style>

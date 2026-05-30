@@ -121,12 +121,6 @@ router.beforeEach((to) => {
       return { name: 'dashboard' }
     }
   }
-  if (to.path.startsWith('/vault') && user) {
-    const isAdmin = user.role_name === 'System Administrator' || user.role_name === 'Admin'
-    if (!isAdmin && !(user.has_vault_access === 1 || user.has_vault_access === true)) {
-      return { name: 'dashboard' }
-    }
-  }
   return true
 })
 
