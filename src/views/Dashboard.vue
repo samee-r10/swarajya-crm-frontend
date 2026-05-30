@@ -24,7 +24,7 @@
     <template v-else>
       <section class="metrics-grid">
         <div class="metric-card customers">
-          <div class="card-icon">👥</div>
+          <div class="card-icon"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3ZM8 11c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z" fill="currentColor"/></svg></div>
           <div class="card-info">
             <span>Total Customers</span>
             <strong>{{ data.metrics.customers }}</strong>
@@ -32,7 +32,7 @@
           <div class="card-trend positive">↑ 12% vs last month</div>
         </div>
         <div class="metric-card opportunities">
-          <div class="card-icon">🎯</div>
+          <div class="card-icon"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10h-2a8 8 0 1 1-8-8V2Zm1 1v9l6.4 6.4 1.4-1.4-5-5H22A9 9 0 0 0 13 3Z" fill="currentColor"/></svg></div>
           <div class="card-info">
             <span>Open Opportunities</span>
             <strong>{{ data.metrics.open_opportunities }}</strong>
@@ -40,7 +40,7 @@
           <div class="card-trend">Ongoing discussions</div>
         </div>
         <div class="metric-card projects">
-          <div class="card-icon">🏗️</div>
+          <div class="card-icon"><svg viewBox="0 0 24 24"><path d="M10 4h4v3h-4V4ZM4 9h16v11H4V9Zm2 2v7h12v-7H6Zm10-7h2a2 2 0 0 1 2 2v1h-2V6h-2V4ZM6 4h2v2H6v1H4V6a2 2 0 0 1 2-2Z" fill="currentColor"/></svg></div>
           <div class="card-info">
             <span>Active Projects</span>
             <strong>{{ data.metrics.active_projects }}</strong>
@@ -48,12 +48,33 @@
           <div class="card-trend">4 nearing delivery</div>
         </div>
         <div class="metric-card revenue">
-          <div class="card-icon">💰</div>
+          <div class="card-icon"><svg viewBox="0 0 24 24"><path d="M3 6h18v12H3V6Zm2 2v8h14V8H5Zm7 7a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-6-5a2 2 0 0 0 2-2H6v2Zm10-2a2 2 0 0 0 2 2V8h-2Zm2 6a2 2 0 0 0-2 2h2v-2ZM6 16h2a2 2 0 0 0-2-2v2Z" fill="currentColor"/></svg></div>
           <div class="card-info">
             <span>Total Pipeline</span>
             <strong>{{ pipelineTotal }}</strong>
           </div>
           <div class="card-trend positive">Strong growth</div>
+        </div>
+      </section>
+
+      <section class="pipeline-panel panel">
+        <div class="panel-header">
+          <div>
+            <h2>Sales Pipeline</h2>
+            <p class="muted">Deal flow by current stage from your latest opportunities.</p>
+          </div>
+          <span class="pill stage">{{ primaryPipeline }}</span>
+        </div>
+        <div class="pipeline-bars">
+          <div v-for="stage in stageSummary" :key="stage.name" class="pipeline-row">
+            <div class="pipeline-row-label">
+              <strong>{{ stage.name }}</strong>
+              <span>{{ stage.count }} deals</span>
+            </div>
+            <div class="pipeline-track">
+              <span :style="{ width: `${stage.percent}%` }"></span>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -118,6 +139,29 @@
             </div>
           </div>
         </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Follow-up Reminders</h2>
+              <p class="muted">Suggested focus items based on active records.</p>
+            </div>
+          </div>
+          <div class="reminder-list">
+            <div class="reminder-item">
+              <span class="reminder-dot urgent"></span>
+              <div><strong>{{ data.metrics.open_opportunities }} opportunities need movement</strong><span class="muted">Review stage, next step, and owner notes.</span></div>
+            </div>
+            <div class="reminder-item">
+              <span class="reminder-dot"></span>
+              <div><strong>{{ data.upcoming_projects.length }} upcoming project milestones</strong><span class="muted">Confirm timelines before client follow-ups.</span></div>
+            </div>
+            <div class="reminder-item">
+              <span class="reminder-dot success"></span>
+              <div><strong>Keep customer records complete</strong><span class="muted">Validate contact details and billing addresses.</span></div>
+            </div>
+          </div>
+        </div>
       </div>
     </template>
   </div>
@@ -148,6 +192,28 @@ const pipelineTotal = computed(() => {
   if (!data.metrics.pipeline_values.length) return '0'
   return data.metrics.pipeline_values.map((item) => `${item.currency} ${Number(item.total || 0).toLocaleString()}`).join(', ')
 })
+const primaryPipeline = computed(() => {
+  const first = data.metrics.pipeline_values[0]
+  if (!first) return 'No value yet'
+  return `${first.currency} ${Number(first.total || 0).toLocaleString()}`
+})
+const stageSummary = computed(() => {
+  const counts = data.recent_opportunities.reduce((acc, opp) => {
+    const stage = opp.stage || 'Unqualified'
+    acc[stage] = (acc[stage] || 0) + 1
+    return acc
+  }, {})
+  const entries = Object.entries(counts)
+  if (!entries.length) {
+    return [
+      { name: 'Discussion', count: 0, percent: 12 },
+      { name: 'Commercial negotiation', count: 0, percent: 12 },
+      { name: 'Contractual negotiation', count: 0, percent: 12 }
+    ]
+  }
+  const max = Math.max(...entries.map(([, count]) => count), 1)
+  return entries.map(([name, count]) => ({ name, count, percent: Math.max(12, Math.round((count / max) * 100)) }))
+})
 
 onMounted(async () => {
   try {
@@ -177,45 +243,50 @@ function formatDate(dateStr) {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  margin-bottom: 40px;
+  margin-bottom: 24px;
 }
 
 .welcome-section h1 {
-  font-size: 42px;
+  font-size: 34px;
   margin: 8px 0;
 }
 
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
-  margin-bottom: 40px;
+  gap: 18px;
+  margin-bottom: 22px;
 }
 
 .metric-card {
   background: #ffffff;
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 24px;
+  border-radius: var(--radius);
+  padding: 20px;
   display: grid;
-  gap: 16px;
+  gap: 14px;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-sm);
 }
 
 .metric-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
 }
 
 .card-icon {
-  font-size: 28px;
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius);
   display: grid;
   place-items: center;
-  background: #f8fafc;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.card-icon svg {
+  height: 22px;
+  width: 22px;
 }
 
 .card-info span {
@@ -228,7 +299,8 @@ function formatDate(dateStr) {
 }
 
 .card-info strong {
-  font-size: 32px;
+  color: var(--heading);
+  font-size: 27px;
   font-weight: 800;
 }
 
@@ -244,17 +316,17 @@ function formatDate(dateStr) {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 32px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
 }
 
 .panel {
-  padding: 32px;
-  border-radius: 16px;
+  padding: 22px;
+  border-radius: var(--radius);
 }
 
 .panel-header {
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 
 .panel-header h2 {
@@ -267,13 +339,10 @@ function formatDate(dateStr) {
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  border-bottom: 1px solid var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
   text-decoration: none;
   transition: background 0.2s;
-}
-
-.dashboard-item:last-child {
-  border-bottom: none;
 }
 
 .dashboard-item:hover {
@@ -300,7 +369,87 @@ function formatDate(dateStr) {
 }
 
 .button-link:hover {
-  text-decoration: underline;
+  text-decoration: none;
+}
+
+.pipeline-panel {
+  margin-bottom: 18px;
+}
+
+.pipeline-bars {
+  display: grid;
+  gap: 14px;
+}
+
+.pipeline-row {
+  align-items: center;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+}
+
+.pipeline-row-label {
+  display: grid;
+  gap: 2px;
+}
+
+.pipeline-row-label strong {
+  color: var(--heading);
+}
+
+.pipeline-row-label span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pipeline-track {
+  background: #eef3f8;
+  border-radius: 999px;
+  height: 10px;
+  overflow: hidden;
+}
+
+.pipeline-track span {
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+}
+
+.reminder-list {
+  display: grid;
+  gap: 14px;
+}
+
+.reminder-item {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+}
+
+.reminder-item strong,
+.reminder-item span {
+  display: block;
+}
+
+.reminder-dot {
+  background: var(--primary);
+  border-radius: 999px;
+  box-shadow: 0 0 0 5px var(--primary-soft);
+  flex: 0 0 9px;
+  height: 9px;
+  margin-top: 7px;
+  width: 9px;
+}
+
+.reminder-dot.urgent {
+  background: #d97706;
+  box-shadow: 0 0 0 5px var(--warning-bg);
+}
+
+.reminder-dot.success {
+  background: #16a34a;
+  box-shadow: 0 0 0 5px var(--success-bg);
 }
 
 .loading-state {
@@ -332,6 +481,18 @@ function formatDate(dateStr) {
   }
   .dashboard-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .dashboard-header,
+  .pipeline-row {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
   }
 }
 </style>

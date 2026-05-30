@@ -26,6 +26,37 @@
     </div>
   </transition>
 
+  <section v-if="customer" class="customer-360-grid">
+    <div class="customer-summary-card panel">
+      <div class="summary-avatar">{{ initials }}</div>
+      <div>
+        <p class="eyebrow">Customer 360</p>
+        <h2>{{ customer.company_name }}</h2>
+        <p class="muted">{{ customer.billing_address || 'No billing address on file' }}</p>
+      </div>
+      <div class="summary-stats">
+        <div><strong>{{ opportunities.length }}</strong><span>Opportunities</span></div>
+        <div><strong>{{ projects.length }}</strong><span>Projects</span></div>
+        <div><strong>{{ customer.status || 'Lead' }}</strong><span>Status</span></div>
+      </div>
+    </div>
+
+    <div class="panel timeline-card">
+      <div class="panel-header">
+        <div>
+          <h2>Activity Timeline</h2>
+          <p class="muted">Recent relationship context and next actions.</p>
+        </div>
+      </div>
+      <div class="timeline">
+        <div v-for="item in timelineItems" :key="item.title" class="timeline-item">
+          <span class="timeline-dot"></span>
+          <div><strong>{{ item.title }}</strong><span class="muted">{{ item.meta }}</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section v-if="customer" class="record-layout">
     <div class="form-grid record-card">
       <div class="span-2 card-section-title"><h2>Customer Details</h2></div>
@@ -48,6 +79,18 @@
         <div class="related-heading"><span>Projects</span><RouterLink to="/projects/new">New</RouterLink></div>
         <div class="list compact">
           <RouterLink v-for="project in projects" :key="project.id" class="list-item" :to="`/projects/${project.id}`"><strong>{{ project.project_name }}</strong><span>{{ project.status }}</span></RouterLink>
+        </div>
+      </div>
+      <div class="panel related-section">
+        <div class="related-heading"><span>Documents</span><RouterLink to="/finance/invoices">Open</RouterLink></div>
+        <div class="list compact">
+          <div class="list-item"><strong>Agreements and invoices</strong><span>Linked finance documents appear here as they are created.</span></div>
+        </div>
+      </div>
+      <div class="panel related-section">
+        <div class="related-heading"><span>WhatsApp Log</span><RouterLink to="/customers">View CRM</RouterLink></div>
+        <div class="list compact">
+          <div class="list-item"><strong>Communication history</strong><span>Track follow-ups, confirmations, and client notes.</span></div>
         </div>
       </div>
     </aside>
@@ -114,6 +157,31 @@ const fields = computed(() => {
     { label: 'Notes', value: customer.value.notes || '', long: true }
   ]
 })
+const initials = computed(() => {
+  if (!customer.value?.company_name) return 'CR'
+  return customer.value.company_name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()
+})
+const timelineItems = computed(() => {
+  const items = []
+  if (customer.value?.updated_at) {
+    items.push({ title: 'Customer profile updated', meta: formatDate(customer.value.updated_at) })
+  }
+  if (opportunities.value[0]) {
+    items.push({ title: `Opportunity: ${opportunities.value[0].title}`, meta: opportunities.value[0].stage || 'Stage pending' })
+  }
+  if (projects.value[0]) {
+    items.push({ title: `Project: ${projects.value[0].project_name}`, meta: projects.value[0].status || 'Status pending' })
+  }
+  if (!items.length) {
+    items.push({ title: 'No activity yet', meta: 'Create an opportunity or project to start the timeline.' })
+  }
+  return items
+})
+
+function formatDate(dateStr) {
+  if (!dateStr) return 'No date'
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
 </script>
 
 <style scoped>
@@ -195,7 +263,7 @@ const fields = computed(() => {
 
 .btn-animate:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.15);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
 }
 
 .fade-enter-active, .fade-leave-active {
@@ -204,5 +272,107 @@ const fields = computed(() => {
 
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
+}
+
+.customer-360-grid {
+  align-items: stretch;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  margin-bottom: 20px;
+}
+
+.customer-summary-card {
+  align-items: center;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.summary-avatar {
+  align-items: center;
+  background: var(--primary-soft);
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  border-radius: 8px;
+  color: var(--primary);
+  display: flex;
+  font-size: 22px;
+  font-weight: 900;
+  height: 64px;
+  justify-content: center;
+  width: 64px;
+}
+
+.customer-summary-card h2 {
+  font-size: 24px;
+  margin: 0 0 4px;
+}
+
+.summary-stats {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(92px, 1fr));
+}
+
+.summary-stats div {
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.summary-stats strong,
+.summary-stats span {
+  display: block;
+}
+
+.summary-stats span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.timeline {
+  display: grid;
+  gap: 14px;
+}
+
+.timeline-item {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+}
+
+.timeline-item strong,
+.timeline-item span {
+  display: block;
+}
+
+.timeline-dot {
+  background: var(--primary);
+  border-radius: 999px;
+  box-shadow: 0 0 0 5px var(--primary-soft);
+  flex: 0 0 9px;
+  height: 9px;
+  margin-top: 7px;
+  width: 9px;
+}
+
+@media (max-width: 1100px) {
+  .customer-360-grid,
+  .customer-summary-card {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .summary-stats {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -104,12 +104,46 @@
     </div>
   </header>
 
-  <main class="main">
-    <div class="top-bar">
-      <button v-if="showBack" class="back-button" type="button" @click="goBack">Back</button>
-    </div>
-    <RouterView />
-  </main>
+  <div class="app-shell" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
+    <aside class="enterprise-sidebar" aria-label="Primary navigation">
+      <div class="sidebar-head">
+        <div>
+          <span class="sidebar-kicker">CRM Workspace</span>
+          <strong>Swarajya</strong>
+        </div>
+        <button class="icon-button sidebar-toggle" type="button" :aria-label="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'" @click="sidebarCollapsed = !sidebarCollapsed">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M15.5 19 8.5 12l7-7 1.4 1.4-5.6 5.6 5.6 5.6-1.4 1.4Z" fill="currentColor"/></svg>
+        </button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <RouterLink
+          v-for="item in visibleNavItems"
+          :key="item.to"
+          :to="item.to"
+          :class="{ active: isNavActive(item) }"
+          :title="item.label"
+        >
+          <span class="nav-icon" aria-hidden="true" v-html="item.icon"></span>
+          <span class="nav-label">{{ item.label }}</span>
+        </RouterLink>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3Zm0 2.2 6 2.25V11c0 3.8-2.45 7.55-6 8.9-3.55-1.35-6-5.1-6-8.9V6.45l6-2.25Z" fill="currentColor"/></svg>
+        </span>
+        <span class="nav-label">Secure enterprise access</span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="top-bar">
+        <button v-if="showBack" class="back-button" type="button" @click="goBack">Back</button>
+      </div>
+      <RouterView />
+    </main>
+  </div>
   </template>
 </template>
 
@@ -236,6 +270,7 @@ const globalSearch = ref('')
 const globalSearchOpen = ref(false)
 const globalSearchResults = ref([])
 const searchLoading = ref(false)
+const sidebarCollapsed = ref(false)
 let searchTimer = null
 const launcherItems = [
   { label: 'Dashboard', type: 'App', to: '/' },
@@ -252,6 +287,18 @@ const launcherItems = [
   { label: 'Users', type: 'Setup', to: '/setup#users' },
   { label: 'Roles', type: 'Setup', to: '/setup#roles' },
   { label: 'Object Manager', type: 'Setup', to: '/setup#objects' }
+]
+const navItems = [
+  { label: 'Dashboard', to: '/', match: ['/'], icon: '<svg viewBox="0 0 24 24"><path d="M4 13h7V4H4v9Zm0 7h7v-5H4v5Zm9 0h7v-9h-7v9Zm0-16v5h7V4h-7Z" fill="currentColor"/></svg>' },
+  { label: 'Customers', to: '/customers', match: ['/customers'], icon: '<svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3ZM8 11c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z" fill="currentColor"/></svg>' },
+  { label: 'Opportunities', to: '/opportunities', match: ['/opportunities'], icon: '<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10h-2a8 8 0 1 1-8-8V2Zm1 1v9l6.4 6.4 1.4-1.4-5-5H22A9 9 0 0 0 13 3Z" fill="currentColor"/></svg>' },
+  { label: 'Projects', to: '/projects', match: ['/projects'], icon: '<svg viewBox="0 0 24 24"><path d="M10 4h4v3h-4V4ZM4 9h16v11H4V9Zm2 2v7h12v-7H6Zm10-7h2a2 2 0 0 1 2 2v1h-2V6h-2V4ZM6 4h2v2H6v1H4V6a2 2 0 0 1 2-2Z" fill="currentColor"/></svg>' },
+  { label: 'Finance', to: '/finance', match: ['/finance'], requires: 'finance', icon: '<svg viewBox="0 0 24 24"><path d="M3 6h18v12H3V6Zm2 2v8h14V8H5Zm7 7a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-6-5a2 2 0 0 0 2-2H6v2Zm10-2a2 2 0 0 0 2 2V8h-2Zm2 6a2 2 0 0 0-2 2h2v-2ZM6 16h2a2 2 0 0 0-2-2v2Z" fill="currentColor"/></svg>' },
+  { label: 'Invoices', to: '/finance/invoices', match: ['/finance/invoices'], requires: 'finance', icon: '<svg viewBox="0 0 24 24"><path d="M7 2h10a2 2 0 0 1 2 2v18l-3-2-2 2-2-2-2 2-2-2-3 2V4a2 2 0 0 1 2-2Zm2 5v2h6V7H9Zm0 4v2h6v-2H9Zm0 4v2h4v-2H9Z" fill="currentColor"/></svg>' },
+  { label: 'Reports', to: '/finance/reports/general-ledger', match: ['/finance/reports'], requires: 'finance', icon: '<svg viewBox="0 0 24 24"><path d="M5 3h14v18H5V3Zm3 14h2v-6H8v6Zm3 0h2V7h-2v10Zm3 0h2v-4h-2v4Z" fill="currentColor"/></svg>' },
+  { label: 'Treasury', to: '/treasury', match: ['/treasury'], requires: 'treasury', icon: '<svg viewBox="0 0 24 24"><path d="M12 2 3 6v2h18V6l-9-4ZM5 10v7H3v3h18v-3h-2v-7h-3v7h-2v-7h-4v7H8v-7H5Z" fill="currentColor"/></svg>' },
+  { label: 'Vault', to: '/vault', match: ['/vault'], requires: 'vault', icon: '<svg viewBox="0 0 24 24"><path d="M17 8V6a5 5 0 0 0-10 0v2H5v14h14V8h-2ZM9 6a3 3 0 0 1 6 0v2H9V6Zm4 10.73V19h-2v-2.27A2 2 0 1 1 13 16.73Z" fill="currentColor"/></svg>' },
+  { label: 'Settings', to: '/setup', match: ['/setup'], requires: 'admin', icon: '<svg viewBox="0 0 24 24"><path d="m19.43 12.98.04-.98-.04-.98 2.11-1.65-2-3.46-2.49 1a7.1 7.1 0 0 0-1.69-.98L15 3h-4l-.36 2.93c-.6.24-1.17.56-1.69.98l-2.49-1-2 3.46 2.11 1.65-.04.98.04.98-2.11 1.65 2 3.46 2.49-1c.52.42 1.09.74 1.69.98L11 21h4l.36-2.93c.6-.24 1.17-.56 1.69-.98l2.49 1 2-3.46-2.11-1.65ZM13 15.5A3.5 3.5 0 1 1 13 8a3.5 3.5 0 0 1 0 7.5Z" fill="currentColor"/></svg>' }
 ]
 
 const showBack = computed(() => {
@@ -271,6 +318,18 @@ const filteredLauncherItems = computed(() => {
   }
   return items.filter((item) => `${item.label} ${item.type}`.toLowerCase().includes(term))
 })
+const visibleNavItems = computed(() => navItems.filter((item) => {
+  if (item.requires === 'admin' && !isAdmin.value) return false
+  if (item.requires === 'finance' && !hasFinanceAccess.value) return false
+  if (item.requires === 'treasury' && !hasTreasuryAccess.value) return false
+  if (item.requires === 'vault' && !hasVaultAccess.value) return false
+  return true
+}))
+
+function isNavActive(item) {
+  if (item.to === '/') return route.path === '/'
+  return item.match.some((prefix) => route.path.startsWith(prefix))
+}
 
 watch(globalSearch, (value) => {
   if (searchTimer) clearTimeout(searchTimer)
