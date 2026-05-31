@@ -108,6 +108,7 @@ const detailFields = computed(() => {
     { label: 'Type', value: t.type },
     { label: 'Account', value: t.account_name },
     { label: 'Party', value: partyLabel(t) },
+    { label: 'Invoice Number', value: t.invoice_number || '' },
     { label: 'Associated Project', value: t.project_name || 'None' },
     { label: 'Category', value: t.category || '' },
     { label: 'Currency', value: t.currency },

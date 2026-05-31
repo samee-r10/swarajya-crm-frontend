@@ -129,6 +129,7 @@
               <div class="party-info">
                 <strong>{{ transaction.category || 'Uncategorized' }}</strong>
                 <span class="party-label">{{ partyLabel(transaction) }}</span>
+                <span v-if="transaction.invoice_number" class="party-label">Invoice: {{ transaction.invoice_number }}</span>
                 <p v-if="transaction.description" class="muted small-desc">{{ transaction.description }}</p>
               </div>
             </td>

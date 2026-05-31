@@ -14,8 +14,17 @@
       <input v-model="form.transaction_date" type="date" required>
     </label>
     <label>Type<select v-model="form.type"><option>Income</option><option>Expense</option></select></label>
-    <label>Account<select v-model="form.account_id" required><option value="">Select Account</option><option v-for="account in filteredAccountsForDropdown" :key="account.id" :value="account.id">{{ account.name }}</option></select></label>
+    <label>Account<select v-model="form.account_id" required><option value="">Select Account</option><option v-for="account in filteredAccountsForDropdown" :key="account.id" :value="account.id">{{ accountLabel(account) }}</option></select></label>
     <label v-if="form.type === 'Income'">Customer<select v-model="form.customer_id"><option value="">Select Customer</option><option v-for="customer in customers" :key="customer.id" :value="customer.id">{{ customer.company_name }}</option></select></label>
+    <label v-if="isSalesRevenueReceipt">Invoice Number
+      <select v-model="form.invoice_id" :disabled="!form.customer_id || invoiceLoading" required>
+        <option value="">{{ invoiceSelectPlaceholder }}</option>
+        <option v-for="invoice in receivableInvoices" :key="invoice.id" :value="invoice.id">
+          {{ invoiceLabel(invoice) }}
+        </option>
+      </select>
+      <span v-if="invoiceHint" class="field-hint">{{ invoiceHint }}</span>
+    </label>
     <label v-if="form.type === 'Income'">Associated Project<select v-model="form.project_id"><option value="">Select Project</option><option v-for="project in filteredProjects" :key="project.id" :value="project.id">{{ project.project_name }}</option></select></label>
     <label v-else>Vendor<select v-model="form.vendor_id"><option value="">Select Vendor</option><option v-for="vendor in vendors" :key="vendor.id" :value="vendor.id">{{ vendor.name }}</option></select></label>
     <label>Currency<select v-model="form.currency"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }}</option></select></label>
@@ -111,7 +120,8 @@
             <div class="overview-item"><span>Type</span><strong>{{ form.type }}</strong></div>
             <div class="overview-item"><span>Account</span><strong>{{ selectedAccountName }}</strong></div>
             <div class="overview-item" v-if="form.type === 'Income'"><span>Customer Name</span><strong>{{ selectedPartyName }}</strong></div>
-            <div class="overview-item" v-else><span>Vendor Name</span><strong>{{ selectedPartyName }}</strong></div>
+            <div class="overview-item" v-if="selectedInvoice"><span>Invoice Number</span><strong>{{ selectedInvoice.invoice_number }}</strong></div>
+            <div class="overview-item" v-if="form.type !== 'Income'"><span>Vendor Name</span><strong>{{ selectedPartyName }}</strong></div>
             <div class="overview-item" v-if="form.category"><span>Category</span><strong>{{ form.category }}</strong></div>
             <div class="overview-item" v-if="form.category === 'Fixed Assets' && form.depreciation_value"><span>Current Value</span><strong>{{ money(form.depreciation_value) }}</strong></div>
             <div class="overview-item"><span>Currency</span><strong>{{ form.currency }}</strong></div>
@@ -186,9 +196,11 @@ const customers = ref([])
 const vendors = ref([])
 const currencies = ref([])
 const projects = ref([])
+const receivableInvoices = ref([])
+const invoiceLoading = ref(false)
 const transactionFields = ref([])
 const error = ref('')
-const form = reactive({ transaction_date: new Date().toISOString().slice(0, 10), type: 'Income', account_id: '', customer_id: '', project_id: '', vendor_id: '', currency: 'INR', amount: '', cgst_percent: 0, igst_percent: 0, tds_percent: 0, category: '', depreciation_value: '', description: '' })
+const form = reactive({ transaction_date: new Date().toISOString().slice(0, 10), type: 'Income', account_id: '', customer_id: '', project_id: '', vendor_id: '', invoice_id: '', invoice_number: '', currency: 'INR', amount: '', cgst_percent: 0, igst_percent: 0, tds_percent: 0, category: '', depreciation_value: '', description: '' })
 const postingDateOption = ref('today')
 
 const showPreviewModal = ref(false)
@@ -254,6 +266,7 @@ watch(() => form.type, (newType) => {
     if (salesRev) form.account_id = salesRev.id
   } else {
     form.account_id = ''
+    clearInvoiceSelection()
   }
 })
 
@@ -264,6 +277,11 @@ watch(() => form.project_id, (newProjId) => {
       form.customer_id = selected.customer_id
     }
   }
+})
+
+watch([() => form.account_id, () => form.customer_id, () => form.type], () => {
+  clearInvoiceSelection()
+  loadReceivableInvoices()
 })
 
 const filteredProjects = computed(() => {
@@ -318,13 +336,92 @@ const selectedAccountName = computed(() => {
   return acc ? acc.name : 'Unknown'
 })
 
-const filteredAccountsForDropdown = computed(() => {
-  if (form.type === 'Income') {
-    return accounts.value.filter(a => a.type === 'Revenue')
-  } else {
-    return accounts.value.filter(a => a.type === 'Expense')
+const selectedAccount = computed(() => {
+  if (!form.account_id) return null
+  return accounts.value.find(a => a.id === parseInt(form.account_id)) || null
+})
+
+const isSalesRevenueReceipt = computed(() => {
+  return form.type === 'Income' && selectedAccount.value?.name === 'Sales Revenue'
+})
+
+const selectedInvoice = computed(() => {
+  if (!form.invoice_id) return null
+  return receivableInvoices.value.find(invoice => Number(invoice.id) === Number(form.invoice_id)) || null
+})
+
+const invoiceSelectPlaceholder = computed(() => {
+  if (!form.customer_id) return 'Select customer first'
+  if (invoiceLoading.value) return 'Loading approved invoices...'
+  if (receivableInvoices.value.length === 0) return 'No approved invoices found'
+  return 'Select approved invoice'
+})
+
+const invoiceHint = computed(() => {
+  if (!isSalesRevenueReceipt.value) return ''
+  if (!form.customer_id) return 'Select a customer to load approved invoices.'
+  if (!invoiceLoading.value && receivableInvoices.value.length === 0) {
+    return 'Only Approved or Partially Paid invoices for this customer and Sales Revenue account are shown.'
+  }
+  return ''
+})
+
+function accountLabel(account) {
+  return account.gl_code ? `${account.gl_code} - ${account.name}` : account.name
+}
+
+function invoiceLabel(invoice) {
+  return `${invoice.invoice_number} - ${invoice.currency} ${Number(invoice.balance_due || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} due`
+}
+
+function clearInvoiceSelection() {
+  form.invoice_id = ''
+  form.invoice_number = ''
+  receivableInvoices.value = []
+}
+
+async function loadReceivableInvoices() {
+  if (!isSalesRevenueReceipt.value || !form.customer_id || !form.account_id) return
+  invoiceLoading.value = true
+  try {
+    const params = new URLSearchParams({
+      customer_id: form.customer_id,
+      account_id: form.account_id
+    })
+    const data = await apiGet(`/api/finance/invoices/receivable?${params}`)
+    receivableInvoices.value = data.invoices || []
+  } catch (err) {
+    error.value = err.message || 'Unable to load approved invoices.'
+  } finally {
+    invoiceLoading.value = false
+  }
+}
+
+watch(selectedInvoice, (invoice) => {
+  form.invoice_number = invoice?.invoice_number || ''
+  if (invoice?.project_id && !form.project_id) {
+    form.project_id = invoice.project_id
+  }
+  if (invoice?.currency) {
+    form.currency = invoice.currency
   }
 })
+
+const filteredAccountsForDropdown = computed(() => {
+  if (form.type === 'Income') {
+    return accounts.value.filter(account => accountAvailableFor(account, 'Income'))
+  } else {
+    return accounts.value.filter(account => accountAvailableFor(account, 'Expense'))
+  }
+})
+
+function accountAvailableFor(account, transactionType) {
+  if (!account || account.is_active === 0 || account.is_active === false) return false
+  if (transactionType === 'Income') {
+    return account.show_in_income === 1 || account.show_in_income === true || (account.show_in_income === undefined && account.type === 'Revenue')
+  }
+  return account.show_in_expense === 1 || account.show_in_expense === true || (account.show_in_expense === undefined && account.type === 'Expense')
+}
 
 const selectedPartyName = computed(() => {
   if (form.type === 'Income') {
@@ -424,6 +521,10 @@ function openPreview() {
   error.value = ''
   if (!form.transaction_date || !form.account_id || !form.amount) {
     error.value = 'Please fill out all required fields (Date, Account, Amount) before previewing.'
+    return
+  }
+  if (isSalesRevenueReceipt.value && !form.invoice_id) {
+    error.value = 'Please select the approved invoice number for this Sales Revenue receipt.'
     return
   }
   showPreviewModal.value = true

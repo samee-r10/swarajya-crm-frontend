@@ -104,6 +104,14 @@
         </div>
       </RouterLink>
 
+      <RouterLink class="module-tile" to="/finance/accounts">
+        <div class="icon-wrap accounts"><svg viewBox="0 0 24 24" width="24" height="24"><path d="M4 4h16v4H4V4Zm0 6h7v10H4V10Zm9 0h7v10h-7V10Zm-7 3v2h3v-2H6Zm9 0v2h3v-2h-3Z" fill="currentColor"/></svg></div>
+        <div class="content">
+          <strong>Chart of Accounts</strong>
+          <span>Create and edit GL codes and account names.</span>
+        </div>
+      </RouterLink>
+
       <RouterLink class="module-tile" to="/finance/reports/general-ledger">
         <div class="icon-wrap gl"><svg viewBox="0 0 24 24" width="24" height="24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" fill="currentColor"/></svg></div>
         <div class="content">
@@ -308,6 +316,7 @@ function money(amount, currency) {
 .icon-wrap.inv { background: #6366f1; }
 .icon-wrap.ledger { background: #10b981; }
 .icon-wrap.vendor { background: #f59e0b; }
+.icon-wrap.accounts { background: #0f766e; }
 .icon-wrap.gl { background: #e11d48; }
 
 .content strong { display: block; font-size: 18px; color: var(--primary); margin-bottom: 4px; }

@@ -27,6 +27,7 @@ import GLReport from './views/GLReport.vue'
 import Treasury from './views/Treasury.vue'
 import Vault from './views/Vault.vue'
 import ForceChangePassword from './views/ForceChangePassword.vue'
+import ChartOfAccounts from './views/ChartOfAccounts.vue'
 
 
 
@@ -55,6 +56,7 @@ const routes = [
   { path: '/finance/transactions', name: 'transaction-ledger', component: TransactionLedger },
   { path: '/finance/transactions/new', name: 'transaction-new', component: TransactionForm },
   { path: '/finance/transactions/:id', name: 'transaction-detail', component: TransactionDetail, props: true },
+  { path: '/finance/accounts', name: 'chart-of-accounts', component: ChartOfAccounts },
   { path: '/finance/invoices', name: 'invoices', component: Invoices },
   { path: '/finance/invoices/new', name: 'invoice-new', component: InvoiceForm },
   { path: '/finance/invoices/:id', name: 'invoice-detail', component: InvoiceDetail, props: true },

@@ -153,7 +153,10 @@ const form = reactive({
 })
 
 const incomeAccounts = computed(() => {
-  return accounts.value.filter(a => a.type === 'Revenue')
+  return accounts.value.filter(account => {
+    if (account.is_active === 0 || account.is_active === false) return false
+    return account.show_in_income === 1 || account.show_in_income === true || (account.show_in_income === undefined && account.type === 'Revenue')
+  })
 })
 
 const filteredProjects = computed(() => {
