@@ -204,6 +204,11 @@ onMounted(async () => {
 
   if (props.id) {
     const data = await apiGet(`/api/finance/invoices/${props.id}`)
+    if (['Approved', 'Partially Paid', 'Paid'].includes(data.invoice?.status)) {
+      alert('Approved invoices cannot be edited. Void this invoice and create a new one if correction is required.')
+      router.replace(`/finance/invoices/${props.id}`)
+      return
+    }
     Object.assign(form, data.invoice)
     // Recalculate just in case
     calculateTotals()
