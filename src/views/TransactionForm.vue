@@ -352,16 +352,16 @@ const selectedInvoice = computed(() => {
 
 const invoiceSelectPlaceholder = computed(() => {
   if (!form.customer_id) return 'Select customer first'
-  if (invoiceLoading.value) return 'Loading approved invoices...'
-  if (receivableInvoices.value.length === 0) return 'No approved invoices found'
-  return 'Select approved invoice'
+  if (invoiceLoading.value) return 'Loading invoice records...'
+  if (receivableInvoices.value.length === 0) return 'No eligible invoices found'
+  return 'Select invoice'
 })
 
 const invoiceHint = computed(() => {
   if (!isSalesRevenueReceipt.value) return ''
-  if (!form.customer_id) return 'Select a customer to load approved invoices.'
+  if (!form.customer_id) return 'Select a customer to load approved, partially paid, or paid invoices.'
   if (!invoiceLoading.value && receivableInvoices.value.length === 0) {
-    return 'Only Approved or Partially Paid invoices for this customer and Sales Revenue account are shown.'
+    return 'Approved, Partially Paid, and Paid invoices for this customer and Sales Revenue account are shown.'
   }
   return ''
 })
@@ -391,7 +391,7 @@ async function loadReceivableInvoices() {
     const data = await apiGet(`/api/finance/invoices/receivable?${params}`)
     receivableInvoices.value = data.invoices || []
   } catch (err) {
-    error.value = err.message || 'Unable to load approved invoices.'
+    error.value = err.message || 'Unable to load invoice records.'
   } finally {
     invoiceLoading.value = false
   }
@@ -524,7 +524,7 @@ function openPreview() {
     return
   }
   if (isSalesRevenueReceipt.value && !form.invoice_id) {
-    error.value = 'Please select the approved invoice number for this Sales Revenue receipt.'
+    error.value = 'Please select the invoice number for this Sales Revenue receipt.'
     return
   }
   showPreviewModal.value = true
