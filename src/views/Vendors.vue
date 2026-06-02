@@ -150,17 +150,55 @@ const router = useRouter()
 const vendors = ref([])
 const search = ref('')
 const showNewModal = ref(false)
-const newForm = reactive({ name: '', contact_person: '', email: '', phone: '', category: '', notes: '' })
+const vendorCategoryOptions = ['Supply', 'Service', 'Both']
+const paymentTerms = ref([])
+const paymentModes = ref([])
+const newForm = reactive({
+  name: '', contact_person: '', email: '', phone: '', category: 'Both', notes: '',
+  address_line_1: '', address_line_2: '', city: '', pincode: '', state: '', country: '',
+  registration_type: 'Not Registered', supplier_category: 'Non-MSME', payment_terms: '', payment_mode: ''
+})
 
 const defaultFields = [
   { label: 'Vendor Name', api_name: 'name', field_type: 'Text', is_required: true },
   { label: 'Contact Person', api_name: 'contact_person', field_type: 'Text', is_required: false },
   { label: 'Email', api_name: 'email', field_type: 'Text', is_required: false },
   { label: 'Phone', api_name: 'phone', field_type: 'Text', is_required: false },
-  { label: 'Category', api_name: 'category', field_type: 'Text', is_required: false },
+  { label: 'Category', api_name: 'category', field_type: 'Dropdown', is_required: false, picklist_options: JSON.stringify(vendorCategoryOptions) },
+  { label: 'Address Line 1', api_name: 'address_line_1', field_type: 'Text', is_required: false },
+  { label: 'Address Line 2', api_name: 'address_line_2', field_type: 'Text', is_required: false },
+  { label: 'City', api_name: 'city', field_type: 'Text', is_required: false },
+  { label: 'Pincode', api_name: 'pincode', field_type: 'Text', is_required: false },
+  { label: 'State', api_name: 'state', field_type: 'Text', is_required: false },
+  { label: 'Country', api_name: 'country', field_type: 'Text', is_required: false },
+  { label: 'Registration Type', api_name: 'registration_type', field_type: 'Dropdown', is_required: false, picklist_options: '["Registered","Not Registered"]' },
+  { label: 'Supplier Category', api_name: 'supplier_category', field_type: 'Dropdown', is_required: false, picklist_options: '["MSME","Non-MSME"]' },
+  { label: 'Payment Terms', api_name: 'payment_terms', field_type: 'Dropdown', is_required: false, picklist_options: '[]' },
+  { label: 'Payment Mode', api_name: 'payment_mode', field_type: 'Dropdown', is_required: false, picklist_options: '[]' },
   { label: 'Notes', api_name: 'notes', field_type: 'Long Text', is_required: false }
 ]
 const vendorFields = ref([...defaultFields])
+
+function normalizeVendorFields(fields) {
+  const byApi = new Map(fields.map(field => [field.api_name, field]))
+  defaultFields.forEach(field => {
+    byApi.set(field.api_name, { ...field, ...(byApi.get(field.api_name) || {}) })
+  })
+  return Array.from(byApi.values()).map(field => {
+    if (field.api_name === 'category') {
+      return {
+        ...field,
+        field_type: 'Dropdown',
+        picklist_options: JSON.stringify(vendorCategoryOptions)
+      }
+    }
+    if (field.api_name === 'payment_terms') return { ...field, field_type: 'Dropdown', picklist_options: JSON.stringify(paymentTerms.value) }
+    if (field.api_name === 'payment_mode') return { ...field, field_type: 'Dropdown', picklist_options: JSON.stringify(paymentModes.value) }
+    if (field.api_name === 'registration_type') return { ...field, field_type: 'Dropdown', picklist_options: '["Registered","Not Registered"]' }
+    if (field.api_name === 'supplier_category') return { ...field, field_type: 'Dropdown', picklist_options: '["MSME","Non-MSME"]' }
+    return field
+  })
+}
 
 function isSpan2(field) {
   return field.field_type === 'Long Text' || field.api_name === 'notes'
@@ -202,10 +240,14 @@ watch(search, () => {
 
 onMounted(async () => {
   try {
+    const options = await apiGet('/api/options')
+    paymentTerms.value = options.payment_terms || []
+    paymentModes.value = options.payment_modes || []
+    vendorFields.value = normalizeVendorFields(vendorFields.value)
     const data = await apiGet('/api/finance/vendors')
     vendors.value = data.vendors || []
     if (data.fields && data.fields.length > 0) {
-      vendorFields.value = data.fields
+      vendorFields.value = normalizeVendorFields(data.fields)
       data.fields.forEach(field => {
         if (!(field.api_name in newForm)) {
           newForm[field.api_name] = field.field_type === 'Checkbox' ? false : ''
@@ -224,10 +266,17 @@ async function saveNew() {
     showNewModal.value = false
     
     // Clear and reset form dynamically
-    Object.assign(newForm, { name: '', contact_person: '', email: '', phone: '', category: '', notes: '' })
+    Object.assign(newForm, {
+      name: '', contact_person: '', email: '', phone: '', category: 'Both', notes: '',
+      address_line_1: '', address_line_2: '', city: '', pincode: '', state: '', country: '',
+      registration_type: 'Not Registered', supplier_category: 'Non-MSME', payment_terms: '', payment_mode: ''
+    })
     vendorFields.value.forEach(field => {
       if (field.api_name !== 'id' && field.api_name !== 'created_at') {
-        newForm[field.api_name] = field.field_type === 'Checkbox' ? false : ''
+        if (field.api_name === 'category') newForm[field.api_name] = 'Both'
+        else if (field.api_name === 'registration_type') newForm[field.api_name] = 'Not Registered'
+        else if (field.api_name === 'supplier_category') newForm[field.api_name] = 'Non-MSME'
+        else newForm[field.api_name] = field.field_type === 'Checkbox' ? false : ''
       }
     })
   } catch (err) {

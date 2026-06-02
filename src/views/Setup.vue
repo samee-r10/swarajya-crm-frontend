@@ -13,6 +13,7 @@
       <button :class="{ active: activeTab === 'roles' }" @click="activeTab = 'roles'">Profiles (Roles)</button>
       <button :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'">User Management</button>
       <button :class="{ active: activeTab === 'company' }" @click="activeTab = 'company'">Company Information</button>
+      <button :class="{ active: activeTab === 'masters' }" @click="activeTab = 'masters'">Master Data</button>
       <button :class="{ active: activeTab === 'banks' }" @click="activeTab = 'banks'">Bank Accounts</button>
       <button :class="{ active: activeTab === 'rates' }" @click="activeTab = 'rates'">Exchange Rates</button>
       <button :class="{ active: activeTab === 'logs' }" @click="activeTab = 'logs'">Activity Logs</button>
@@ -93,6 +94,79 @@
               <button type="submit" class="button">Save Company Information</button>
             </div>
           </form>
+        </div>
+      </section>
+
+      <section v-if="activeTab === 'masters'" class="master-data-setup">
+        <div class="master-grid">
+          <div class="record-card shadow-premium master-card">
+            <div class="card-section-title bank-accounts-header">
+              <div>
+                <h2>Payment Terms</h2>
+                <p class="muted small">Active terms appear in customer and vendor profile dropdowns.</p>
+              </div>
+              <button type="button" class="button" @click="openMasterModal('payment-terms')">Add Term</button>
+            </div>
+            <div v-if="paymentTerms.length === 0" class="empty-state muted">No payment terms configured.</div>
+            <table v-else class="data-table">
+              <thead><tr><th>Name</th><th>Status</th><th></th></tr></thead>
+              <tbody>
+                <tr v-for="term in paymentTerms" :key="term.id">
+                  <td><strong>{{ term.name }}</strong></td>
+                  <td><span class="pill" :class="term.is_active ? 'status-success' : 'status-muted'">{{ term.is_active ? 'Active' : 'Inactive' }}</span></td>
+                  <td class="actions-cell"><button type="button" class="button secondary small" @click="openMasterModal('payment-terms', term)">Edit</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="record-card shadow-premium master-card">
+            <div class="card-section-title bank-accounts-header">
+              <div>
+                <h2>Payment Modes</h2>
+                <p class="muted small">Active modes appear in customer and vendor profile dropdowns.</p>
+              </div>
+              <button type="button" class="button" @click="openMasterModal('payment-modes')">Add Mode</button>
+            </div>
+            <div v-if="paymentModes.length === 0" class="empty-state muted">No payment modes configured.</div>
+            <table v-else class="data-table">
+              <thead><tr><th>Name</th><th>Status</th><th></th></tr></thead>
+              <tbody>
+                <tr v-for="mode in paymentModes" :key="mode.id">
+                  <td><strong>{{ mode.name }}</strong></td>
+                  <td><span class="pill" :class="mode.is_active ? 'status-success' : 'status-muted'">{{ mode.is_active ? 'Active' : 'Inactive' }}</span></td>
+                  <td class="actions-cell"><button type="button" class="button secondary small" @click="openMasterModal('payment-modes', mode)">Edit</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div v-if="showMasterModal" class="modal-overlay" @click.self="showMasterModal = false">
+          <div class="modal-content bank-modal">
+            <div class="bank-modal-header">
+              <div>
+                <p class="eyebrow">Master Data</p>
+                <h2>{{ masterForm.id ? 'Edit' : 'New' }} {{ masterTypeLabel }}</h2>
+              </div>
+              <button type="button" class="modal-close" @click="showMasterModal = false">&times;</button>
+            </div>
+            <form class="setup-form bank-modal-form" @submit.prevent="saveMasterOption">
+              <div class="bank-form-grid">
+                <label class="span-2">Name
+                  <input v-model="masterForm.name" placeholder="Enter option name" required>
+                </label>
+                <label class="checkbox-row bank-default-row span-2">
+                  <input type="checkbox" v-model="masterForm.is_active">
+                  <span>Active</span>
+                </label>
+              </div>
+              <div class="form-actions bank-modal-actions">
+                <button type="button" class="button secondary" @click="showMasterModal = false">Cancel</button>
+                <button type="submit" class="button">Save</button>
+              </div>
+            </form>
+          </div>
         </div>
       </section>
 
@@ -676,6 +750,12 @@ const bankForm = reactive({
   ifsc_code: '',
   is_default: false,
 })
+const paymentTerms = ref([])
+const paymentModes = ref([])
+const showMasterModal = ref(false)
+const masterOptionType = ref('payment-terms')
+const masterForm = reactive({ id: null, name: '', is_active: true })
+const masterTypeLabel = computed(() => masterOptionType.value === 'payment-terms' ? 'Payment Term' : 'Payment Mode')
 
 // Exchange Rates config
 const ratesConfig = reactive({
@@ -849,6 +929,35 @@ async function loadData() {
   }
 
   await loadBankAccounts()
+  await loadMasterOptions()
+}
+
+async function loadMasterOptions() {
+  const terms = await apiGet('/api/settings/master-options/payment-terms')
+  paymentTerms.value = terms.payment_terms || []
+  const modes = await apiGet('/api/settings/master-options/payment-modes')
+  paymentModes.value = modes.payment_modes || []
+}
+
+function openMasterModal(type, option = null) {
+  masterOptionType.value = type
+  Object.assign(masterForm, {
+    id: option?.id || null,
+    name: option?.name || '',
+    is_active: option ? !!option.is_active : true,
+  })
+  showMasterModal.value = true
+}
+
+async function saveMasterOption() {
+  const payload = { name: masterForm.name, is_active: masterForm.is_active }
+  if (masterForm.id) {
+    await apiPut(`/api/settings/master-options/${masterOptionType.value}/${masterForm.id}`, payload)
+  } else {
+    await apiPost(`/api/settings/master-options/${masterOptionType.value}`, payload)
+  }
+  showMasterModal.value = false
+  await loadMasterOptions()
 }
 
 async function loadBankAccounts() {
@@ -1233,6 +1342,16 @@ async function saveRates() {
   text-align: left;
   border-bottom: 1px solid var(--line);
   font-size: 13px;
+}
+
+.master-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.master-card {
+  min-height: 260px;
 }
 
 .actions-cell {

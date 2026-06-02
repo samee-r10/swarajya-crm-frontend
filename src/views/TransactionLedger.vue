@@ -81,8 +81,8 @@
       <div class="filter-group">
         <label>Sort By:</label>
         <select v-model="filters.sort">
-          <option value="newest">Newest First</option>
-          <option value="oldest">Oldest First</option>
+          <option value="newest">Posting Date/Time (Newest)</option>
+          <option value="oldest">Posting Date/Time (Oldest)</option>
           <option value="amount-high">Amount (High to Low)</option>
           <option value="amount-low">Amount (Low to High)</option>
         </select>
@@ -338,8 +338,8 @@ const filteredTransactions = computed(() => {
   }
   
   result.sort((a, b) => {
-    if (filters.sort === 'newest') return new Date(b.transaction_date) - new Date(a.transaction_date)
-    if (filters.sort === 'oldest') return new Date(a.transaction_date) - new Date(b.transaction_date)
+    if (filters.sort === 'newest') return comparePostingOrder(b, a)
+    if (filters.sort === 'oldest') return comparePostingOrder(a, b)
     const amtA = parseFloat(a.total_amount || a.amount)
     const amtB = parseFloat(b.total_amount || b.amount)
     if (filters.sort === 'amount-high') return amtB - amtA
@@ -349,6 +349,26 @@ const filteredTransactions = computed(() => {
   
   return result
 })
+
+function comparePostingOrder(a, b) {
+  const dateDiff = postingDateValue(a) - postingDateValue(b)
+  if (dateDiff !== 0) return dateDiff
+  const timeDiff = postedAtValue(a) - postedAtValue(b)
+  if (timeDiff !== 0) return timeDiff
+  return (Number(a.id) || 0) - (Number(b.id) || 0)
+}
+
+function postingDateValue(transaction) {
+  const dateOnly = transaction.transaction_date || transaction.date
+  const parsed = dateOnly ? new Date(dateOnly).getTime() : 0
+  return Number.isNaN(parsed) ? 0 : parsed
+}
+
+function postedAtValue(transaction) {
+  const postedAt = transaction.created_at || transaction.updated_at
+  const parsed = postedAt ? new Date(postedAt).getTime() : 0
+  return Number.isNaN(parsed) ? 0 : parsed
+}
 
 const currentPage = ref(1)
 const itemsPerPage = 10
@@ -399,7 +419,71 @@ function goToDetail(id) {
 }
 
 function exportData() {
-  alert('Export feature coming soon! (CSV/PDF)')
+  const rows = filteredTransactions.value.map(transaction => {
+    const baseAmount = convertAmount(transaction.amount, transaction.currency, transaction.transaction_date)
+    const cgstAmount = convertAmount(transaction.cgst_amount, transaction.currency, transaction.transaction_date)
+    const igstAmount = convertAmount(transaction.igst_amount, transaction.currency, transaction.transaction_date)
+    const tdsAmount = convertAmount(transaction.tds_amount, transaction.currency, transaction.transaction_date)
+    const totalAmount = convertAmount(transaction.total_amount || transaction.amount, transaction.currency, transaction.transaction_date)
+    return {
+      'Transaction ID': transaction.id,
+      'Posting Date': transaction.transaction_date || transaction.date || '',
+      'Posted At': transaction.created_at || '',
+      'Type': transaction.type || '',
+      'Status': transaction.status || '',
+      'Account': transaction.account_name || '',
+      'Category': transaction.category || '',
+      'Party': partyLabel(transaction),
+      'Customer': transaction.customer_name || '',
+      'Vendor': transaction.vendor_name || '',
+      'Project': transaction.project_name || '',
+      'Invoice Number': transaction.invoice_number || '',
+      'Description': transaction.description || '',
+      'Original Currency': transaction.currency || '',
+      'Original Base Amount': transaction.amount || 0,
+      'Original Total Amount': transaction.total_amount || transaction.amount || 0,
+      [`Base Amount (${viewCurrency.value})`]: roundAmount(baseAmount),
+      [`CGST (${viewCurrency.value})`]: roundAmount(cgstAmount),
+      [`IGST (${viewCurrency.value})`]: roundAmount(igstAmount),
+      [`TDS (${viewCurrency.value})`]: roundAmount(tdsAmount),
+      [`Net Total (${viewCurrency.value})`]: transaction.type === 'Expense' ? -roundAmount(totalAmount) : roundAmount(totalAmount),
+      'Reference': transaction.reference || '',
+    }
+  })
+
+  if (rows.length === 0) {
+    alert('No transaction records available to export.')
+    return
+  }
+
+  const csv = toCsv(rows)
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `transaction-ledger-${new Date().toISOString().slice(0, 10)}.csv`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+function toCsv(rows) {
+  const headers = Object.keys(rows[0])
+  const lines = [
+    headers.map(csvEscape).join(','),
+    ...rows.map(row => headers.map(header => csvEscape(row[header])).join(','))
+  ]
+  return lines.join('\n')
+}
+
+function csvEscape(value) {
+  const text = value === null || value === undefined ? '' : String(value)
+  return `"${text.replace(/"/g, '""')}"`
+}
+
+function roundAmount(value) {
+  return Math.round((Number(value) || 0) * 100) / 100
 }
 </script>
 

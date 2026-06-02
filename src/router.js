@@ -28,6 +28,11 @@ import Treasury from './views/Treasury.vue'
 import Vault from './views/Vault.vue'
 import ForceChangePassword from './views/ForceChangePassword.vue'
 import ChartOfAccounts from './views/ChartOfAccounts.vue'
+import ExpenseClaims from './views/ExpenseClaims.vue'
+import LoanManagement from './views/LoanManagement.vue'
+import PendingClaimApprovals from './views/PendingClaimApprovals.vue'
+import StakeholderPayouts from './views/StakeholderPayouts.vue'
+import Payables from './views/Payables.vue'
 
 
 
@@ -56,6 +61,8 @@ const routes = [
   { path: '/finance/transactions', name: 'transaction-ledger', component: TransactionLedger },
   { path: '/finance/transactions/new', name: 'transaction-new', component: TransactionForm },
   { path: '/finance/transactions/:id', name: 'transaction-detail', component: TransactionDetail, props: true },
+  { path: '/finance/claims', name: 'expense-claims', component: ExpenseClaims },
+  { path: '/claims/approvals', name: 'claim-approvals', component: PendingClaimApprovals },
   { path: '/finance/accounts', name: 'chart-of-accounts', component: ChartOfAccounts },
   { path: '/finance/invoices', name: 'invoices', component: Invoices },
   { path: '/finance/invoices/new', name: 'invoice-new', component: InvoiceForm },
@@ -63,6 +70,10 @@ const routes = [
   { path: '/finance/invoices/:id/edit', name: 'invoice-edit', component: InvoiceForm, props: true },
   { path: '/finance/reports/general-ledger', name: 'gl-report', component: GLReport },
   { path: '/treasury', name: 'treasury', component: Treasury },
+  { path: '/treasury/payables', name: 'payables', component: Payables },
+  { path: '/treasury/loans', name: 'loan-management', component: LoanManagement },
+  { path: '/treasury/stakeholder-payouts', name: 'stakeholder-payouts', component: StakeholderPayouts },
+  { path: '/treasury/stakeholder-payouts/approvals', name: 'stakeholder-payout-approvals', component: StakeholderPayouts },
   { path: '/vault', name: 'vault', component: Vault },
   { path: '/profile', name: 'profile', component: Profile },
   { path: '/force-change-password', name: 'force-change-password', component: ForceChangePassword }

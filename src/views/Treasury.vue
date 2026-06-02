@@ -572,12 +572,20 @@
               </td>
               <td class="text-muted text-xs text-truncate" style="max-width: 150px;">{{ entry.description || '-' }}</td>
               <td>
-                <span v-if="isRevenueSettled(entry)" class="status-pill active">Settled</span>
+                <span v-if="isCompanyExpense(entry)" class="status-pill inactive">Moved to Payables</span>
+                <span v-else-if="isRevenueSettled(entry)" class="status-pill active">Settled</span>
                 <span v-else class="status-pill inactive">Pending</span>
               </td>
               <td>
                 <button
-                  v-if="!isRevenueSettled(entry)"
+                  v-if="isCompanyExpense(entry)"
+                  class="button secondary text-xs"
+                  @click="goToPayables"
+                >
+                  View Payable
+                </button>
+                <button
+                  v-else-if="!isRevenueSettled(entry)"
                   class="button secondary text-xs"
                   @click="openEditSplitModal(entry)"
                 >
@@ -625,6 +633,9 @@
           <thead>
             <tr>
               <th>Owner Name</th>
+              <th>Email</th>
+              <th>Linked User</th>
+              <th>Approval Sequence</th>
               <th>Equity Share (%)</th>
               <th>Bank/Payment Details</th>
               <th>Status</th>
@@ -633,10 +644,13 @@
           </thead>
           <tbody>
             <tr v-if="stakeholders.length === 0">
-              <td colspan="5" class="text-center py-24 text-muted">No company owners registered.</td>
+              <td colspan="8" class="text-center py-24 text-muted">No company owners registered.</td>
             </tr>
             <tr v-for="stk in stakeholders" :key="stk.id">
               <td class="text-semibold">{{ stk.name }}</td>
+              <td>{{ stk.email || '-' }}</td>
+              <td>{{ stk.linked_user_name || 'Not linked' }}</td>
+              <td>{{ stk.approval_sequence || '-' }}</td>
               <td>
                 <span class="percentage-pill">{{ stk.payout_percentage }}%</span>
               </td>
@@ -870,6 +884,24 @@
             </div>
 
             <div class="form-group">
+              <label>Email ID <span class="required">*</span></label>
+              <input v-model="stakeholderForm.email" type="email" required placeholder="owner@example.com" />
+            </div>
+
+            <div class="form-group">
+              <label>Linked User Account <span class="required">*</span></label>
+              <select v-model="stakeholderForm.linked_user_id" required>
+                <option value="">Select active user</option>
+                <option v-for="user in activeUsers" :key="user.id" :value="user.id">{{ user.full_name }} - {{ user.email }}</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Approval Sequence <span class="required">*</span></label>
+              <input v-model.number="stakeholderForm.approval_sequence" type="number" min="1" step="1" required placeholder="e.g. 1" />
+            </div>
+
+            <div class="form-group">
               <label>Equity Ownership (%) <span class="required">*</span></label>
               <input v-model.number="stakeholderForm.payout_percentage" type="number" step="0.01" min="0.01" max="100" required placeholder="e.g. 50.00" />
               <small class="text-muted block mt-4">Share of company ownership (all active owners must total 100%)</small>
@@ -878,6 +910,11 @@
             <div class="form-group">
               <label>Payment / Bank details</label>
               <textarea v-model="stakeholderForm.payment_details" placeholder="Include bank account number, IFC code, or UPI details..."></textarea>
+            </div>
+
+            <div class="form-group">
+              <label>Remarks</label>
+              <textarea v-model="stakeholderForm.remarks" placeholder="Internal notes for this owner..."></textarea>
             </div>
 
             <div class="form-group checkbox-group" style="display: flex; align-items: center; gap: 8px;">
@@ -944,7 +981,7 @@
         </div>
         <form class="modal-form p-24" @submit.prevent="saveEditSplit">
           <p class="text-sm text-muted mb-16">
-            Allocate 100% of this revenue across reserve, partners, and stakeholders. Once confirmed, this entry is settled and cannot be edited.
+            Allocate 100% of this revenue to the company fund. Once confirmed, this entry is settled and cannot be edited.
           </p>
           <div class="form-grid">
             <div class="form-group span-2 bg-soft p-16 rounded mb-12 d-flex justify-between align-center">
@@ -959,60 +996,16 @@
             </div>
 
             <!-- Reserve Revenue Split -->
-            <div class="form-group">
-              <label>Reserve Fund Percentage (%) <span class="required">*</span></label>
-              <input v-model.number="editSplitForm.reserve_percentage" type="number" step="0.1" min="0" max="100" required />
-              <small class="text-muted block mt-4">Allocated: <strong>₹{{ formatCurrency(editSplitReserveAmount) }}</strong></small>
+            <div class="form-group span-2">
+              <label>Company Fund Allocation (%)</label>
+              <input v-model.number="editSplitForm.reserve_percentage" type="number" readonly />
+              <small class="text-muted block mt-4">Company fund receives: <strong>₹{{ formatCurrency(editSplitReserveAmount) }}</strong></small>
             </div>
 
-            <!-- Channel Partner split -->
-            <div class="form-group">
-              <label>Channel Partner</label>
-              <select v-model="editSplitForm.channel_partner_id">
-                <option :value="null">-- No Commission Applied --</option>
-                <option v-for="cp in activePartners" :key="cp.id" :value="cp.id">
-                  {{ cp.name }}
-                </option>
-              </select>
-            </div>
-
-            <div class="form-group" v-if="editSplitForm.channel_partner_id">
-              <label>Partner Commission Percentage (%) <span class="required">*</span></label>
-              <input v-model.number="editSplitForm.partner_commission_percentage" type="number" step="0.1" min="0" max="100" required />
-              <small class="text-muted block mt-4">Allocated: <strong>₹{{ formatCurrency(editSplitPartnerCommission) }}</strong></small>
-            </div>
-
-            <div class="form-group" :class="{ 'span-2': !editSplitForm.channel_partner_id }">
-              <label>Stakeholders Pool (Remaining)</label>
-              <div class="p-12 bg-soft border rounded text-semibold text-success">
-                ₹{{ formatCurrency(editSplitStakeholderPool) }}
-              </div>
-            </div>
-
-            <!-- Stakeholders Custom Splits -->
             <div class="form-group span-2 border-top pt-16">
-              <h4 class="m-0 mb-12">
-                {{ editSplitForm.amount < 0 ? 'Owner Contribution Split' : 'Owner Earnings Split' }}
-              </h4>
-              <p class="text-xs text-muted mb-16">
-                Review and confirm the owner allocation before settlement.
-              </p>
-              
-              <div class="grid-2col border rounded p-16">
-                <div v-for="stk in editSplitForm.stakeholders" :key="stk.id" class="form-group">
-                  <label>{{ stk.name }} Split (%)</label>
-                  <input v-model.number="stk.percentage" type="number" step="0.01" min="0" max="100" placeholder="0.00" />
-                  <small class="text-muted block mt-4">Receives: <strong>₹{{ formatCurrency(editSplitStakeholderShare(stk.percentage)) }}</strong></small>
-                </div>
-              </div>
-
-              <div class="d-flex justify-between align-center mt-12 px-8">
-                <span>Total Split Percentage (Reserve + Partner + Stakeholders):</span>
-                <strong :class="editSplitTotalPercentageSum === 100 ? 'text-success' : 'text-danger'">
-                  {{ editSplitTotalPercentageSum }}%
-                  <small v-if="editSplitTotalPercentageSum !== 100"> (Must sum to exactly 100%)</small>
-                </strong>
-              </div>
+              <h4 class="m-0 mb-12">Settlement Rule</h4>
+              <p class="text-xs text-muted mb-16">Channel partner and stakeholder allocation are skipped at revenue settlement. The full amount is first moved into company fund.</p>
+              <div class="p-12 bg-soft border rounded text-semibold text-success">Total Settlement Percentage: 100%</div>
             </div>
           </div>
 
@@ -1031,7 +1024,10 @@
 
 <script setup>
 import { ref, computed, reactive, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { apiGet, apiPost, apiPut } from '../api/client'
+
+const router = useRouter()
 
 // Tabs
 const activeTab = ref('dashboard')
@@ -1060,6 +1056,7 @@ const dashboardData = ref({
 const revenueEntries = ref([])
 const revenueSearch = ref('')
 const stakeholders = ref([])
+const users = ref([])
 const partners = ref([])
 const payoutLedger = ref([])
 const auditLogs = ref([])
@@ -1076,7 +1073,7 @@ const showEditSplitModal = ref(false)
 const editSplitForm = reactive({
   revenue_id: null,
   amount: 0,
-  reserve_percentage: 20.00,
+  reserve_percentage: 100.00,
   channel_partner_id: null,
   partner_commission_percentage: 0.00,
   stakeholders: []
@@ -1086,8 +1083,12 @@ const showStakeholderModal = ref(false)
 const stakeholderForm = reactive({
   id: null,
   name: '',
+  email: '',
+  linked_user_id: '',
+  approval_sequence: 1,
   payout_percentage: 0,
   payment_details: '',
+  remarks: '',
   is_active: true
 })
 
@@ -1103,6 +1104,10 @@ const partnerForm = reactive({
 // Computeds
 const activeStakeholders = computed(() => {
   return stakeholders.value.filter(s => s.is_active)
+})
+
+const activeUsers = computed(() => {
+  return users.value.filter(user => user.is_active === 1 || user.is_active === true)
 })
 
 const activeStakeholderSum = computed(() => {
@@ -1122,15 +1127,20 @@ function isCompanyExpense(entry) {
   return parseFloat(entry.amount) < 0
 }
 
+function goToPayables() {
+  router.push('/treasury/payables')
+}
+
 const revenueSettlementStats = computed(() => {
-  const settled = revenueEntries.value.filter((e) => isRevenueSettled(e))
-  const pending = revenueEntries.value.filter((e) => !isRevenueSettled(e))
+  const settlementEntries = revenueEntries.value.filter((e) => !isCompanyExpense(e))
+  const settled = settlementEntries.filter((e) => isRevenueSettled(e))
+  const pending = settlementEntries.filter((e) => !isRevenueSettled(e))
   const sumAbs = (list) =>
     Math.round(list.reduce((sum, e) => sum + Math.abs(parseFloat(e.amount) || 0), 0) * 100) / 100
   return {
     settledCount: settled.length,
     pendingCount: pending.length,
-    totalCount: revenueEntries.value.length,
+    totalCount: settlementEntries.length,
     settledAmount: sumAbs(settled),
     pendingAmount: sumAbs(pending),
   }
@@ -1273,6 +1283,8 @@ async function loadAllData() {
 
   const stks = await safe(() => apiGet('/api/treasury/stakeholders'), 'stakeholders')
   if (stks?.stakeholders) stakeholders.value = stks.stakeholders
+  const userData = await safe(() => apiGet('/api/setup/users'), 'users')
+  if (userData?.users) users.value = userData.users
 
   const pts = await safe(() => apiGet('/api/treasury/channel-partners'), 'channel-partners')
   if (pts?.partners) partners.value = pts.partners
@@ -1312,62 +1324,34 @@ async function settlePartner(partner) {
 }
 
 function openEditSplitModal(entry) {
+  if (isCompanyExpense(entry)) {
+    goToPayables()
+    return
+  }
   if (isRevenueSettled(entry)) {
     alert('This revenue entry is already settled and cannot be edited.')
     return
   }
   editSplitForm.revenue_id = entry.id
   editSplitForm.amount = parseFloat(entry.amount)
-  editSplitForm.reserve_percentage = parseFloat(entry.reserve_percentage || 20.00)
-  editSplitForm.channel_partner_id = entry.channel_partner_id || null
-  
-  if (entry.channel_partner_id && entry.partner_commission) {
-    editSplitForm.partner_commission_percentage = Math.round((parseFloat(entry.partner_commission) / parseFloat(entry.amount)) * 10000) / 100
-  } else {
-    editSplitForm.partner_commission_percentage = 0.00
-  }
-
-  const existingPayouts = payoutLedger.value.filter(p => p.revenue_id === entry.id && p.payout_type === 'Stakeholder')
-  const amtAbs = Math.abs(parseFloat(entry.amount)) || 0
-  const reservePct = parseFloat(entry.reserve_percentage || 20)
-  const partnerPct = editSplitForm.channel_partner_id ? (parseFloat(editSplitForm.partner_commission_percentage) || 0) : 0
-  const stakeholderPoolPct = Math.max(0, 100 - reservePct - partnerPct)
-
-  editSplitForm.stakeholders = activeStakeholders.value.map(stk => {
-    const existing = existingPayouts.find(p => p.stakeholder_id === stk.id)
-    let percentage
-    if (existing && amtAbs > 0) {
-      percentage = Math.round((parseFloat(existing.amount) / amtAbs) * 10000) / 100
-    } else {
-      percentage = Math.round(stakeholderPoolPct * (parseFloat(stk.payout_percentage) || 0) / 100 * 100) / 100
-    }
-    return {
-      id: stk.id,
-      name: stk.name,
-      percentage
-    }
-  })
+  editSplitForm.reserve_percentage = 100
+  editSplitForm.channel_partner_id = null
+  editSplitForm.partner_commission_percentage = 0
+  editSplitForm.stakeholders = []
 
   showEditSplitModal.value = true
 }
 
 async function saveEditSplit() {
-  if (editSplitTotalPercentageSum.value !== 100) {
-    alert('Split percentages must sum to exactly 100% before settlement.')
-    return
-  }
-  if (!confirm('Confirm 100% settlement? This revenue entry will be locked and cannot be edited later.')) {
+  if (!confirm('Confirm settlement? 100% of this entry will move into company fund and the entry will be locked.')) {
     return
   }
   try {
     const payload = {
-      reserve_percentage: editSplitForm.reserve_percentage,
-      channel_partner_id: editSplitForm.channel_partner_id,
-      partner_commission_percentage: editSplitForm.partner_commission_percentage,
-      stakeholders: editSplitForm.stakeholders.map(s => ({
-        id: s.id,
-        percentage: parseFloat(s.percentage || 0)
-      }))
+      reserve_percentage: 100,
+      channel_partner_id: null,
+      partner_commission_percentage: 0,
+      stakeholders: []
     }
     await apiPut(`/api/treasury/revenue/${editSplitForm.revenue_id}`, payload)
     showEditSplitModal.value = false
@@ -1382,16 +1366,24 @@ function openStakeholderModal(stk = null) {
     Object.assign(stakeholderForm, {
       id: stk.id,
       name: stk.name,
+      email: stk.email || '',
+      linked_user_id: stk.linked_user_id || '',
+      approval_sequence: stk.approval_sequence || 1,
       payout_percentage: stk.payout_percentage,
       payment_details: stk.payment_details,
+      remarks: stk.remarks || '',
       is_active: !!stk.is_active
     })
   } else {
     Object.assign(stakeholderForm, {
       id: null,
       name: '',
+      email: '',
+      linked_user_id: '',
+      approval_sequence: 1,
       payout_percentage: 0,
       payment_details: '',
+      remarks: '',
       is_active: true
     })
   }

@@ -15,6 +15,15 @@
     </label>
     <label>Type<select v-model="form.type"><option>Income</option><option>Expense</option></select></label>
     <label>Account<select v-model="form.account_id" required><option value="">Select Account</option><option v-for="account in filteredAccountsForDropdown" :key="account.id" :value="account.id">{{ accountLabel(account) }}</option></select></label>
+    <label v-if="isEmployeeClaimsAccount">Approved Claim
+      <select v-model="form.expense_claim_id" required>
+        <option value="">Select approved claim</option>
+        <option v-for="claim in approvedClaims" :key="claim.id" :value="claim.id">
+          {{ claim.employee_name }} - {{ money(claim.total_claim_amount) }}
+        </option>
+      </select>
+      <span class="field-hint">Only approved, unposted claims are available for GL 7010 - Employee Claims.</span>
+    </label>
     <label v-if="form.type === 'Income'">Customer<select v-model="form.customer_id"><option value="">Select Customer</option><option v-for="customer in customers" :key="customer.id" :value="customer.id">{{ customer.company_name }}</option></select></label>
     <label v-if="isSalesRevenueReceipt">Invoice Number
       <select v-model="form.invoice_id" :disabled="!form.customer_id || invoiceLoading" required>
@@ -32,13 +41,35 @@
     <label>CGST %<input v-model="form.cgst_percent" type="number" step="0.01"></label>
     <label>IGST %<input v-model="form.igst_percent" type="number" step="0.01"></label>
     <label>TDS %<input v-model="form.tds_percent" type="number" step="0.01"></label>
-    <label>Category<select v-model="form.category"><option value="">Select Category</option><option>Item</option><option>Service</option><option>Fixed Assets</option></select></label>
+    <label>Category<select v-model="form.category"><option value="">Select Category</option><option>Item</option><option>Service</option><option>Fixed Assets</option><option>Loan Disbursement</option><option>Loan Repayment</option></select></label>
+    <label v-if="requiresLoanAccount">Loan Account
+      <select v-model="form.loan_account_id" required>
+        <option value="">Select Loan Account</option>
+        <option v-for="loan in loans" :key="loan.id" :value="loan.id">{{ loan.loan_account_number }} · {{ loan.provider_name }}</option>
+      </select>
+    </label>
+    <label v-if="form.category === 'Loan Repayment'">Repayment Schedule
+      <select v-model="form.loan_schedule_id" required>
+        <option value="">Select Schedule Line</option>
+        <option v-for="schedule in selectedLoanSchedules" :key="schedule.id" :value="schedule.id">
+          #{{ schedule.installment_number }} · {{ schedule.due_date }} · {{ money(schedule.total_amount) }}
+        </option>
+      </select>
+    </label>
     <label v-if="form.category === 'Fixed Assets'">
       Current / Depreciated Value
       <input v-model="form.depreciation_value" type="number" step="0.01" placeholder="Enter current or depreciated value">
       <span class="field-hint">The present/book value of this asset after depreciation</span>
     </label>
     <label class="span-2">Description<textarea v-model="form.description" rows="5"></textarea></label>
+    <label class="span-2">Supporting Documents
+      <input type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" :disabled="uploadingDocument" multiple @change="handleTransactionDocuments">
+      <span v-if="uploadingDocument" class="field-hint">Uploading document...</span>
+      <span v-else class="field-hint">Attach invoices, receipts, payment proof, or supporting files for this entry.</span>
+    </label>
+    <div v-if="form.attachments.length" class="span-2 attached-documents">
+      <DocumentPreview v-for="doc in form.attachments" :key="doc.public_id || doc.secure_url || doc.name" :document="doc" label="Transaction Document" />
+    </div>
     <label
       v-for="field in customTransactionFields"
       :key="field.api_name"
@@ -123,6 +154,7 @@
             <div class="overview-item" v-if="selectedInvoice"><span>Invoice Number</span><strong>{{ selectedInvoice.invoice_number }}</strong></div>
             <div class="overview-item" v-if="form.type !== 'Income'"><span>Vendor Name</span><strong>{{ selectedPartyName }}</strong></div>
             <div class="overview-item" v-if="form.category"><span>Category</span><strong>{{ form.category }}</strong></div>
+            <div class="overview-item" v-if="form.attachments.length"><span>Documents</span><strong>{{ form.attachments.length }} attached</strong></div>
             <div class="overview-item" v-if="form.category === 'Fixed Assets' && form.depreciation_value"><span>Current Value</span><strong>{{ money(form.depreciation_value) }}</strong></div>
             <div class="overview-item"><span>Currency</span><strong>{{ form.currency }}</strong></div>
             <div
@@ -181,7 +213,8 @@
 <script setup>
 import { onMounted, reactive, ref, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { apiGet, apiPost } from '../api/client'
+import { apiGet, apiPost, apiUploadFile } from '../api/client'
+import DocumentPreview from '../components/DocumentPreview.vue'
 
 const props = defineProps({
   isModal: {
@@ -194,14 +227,17 @@ const router = useRouter()
 const accounts = ref([])
 const customers = ref([])
 const vendors = ref([])
+const loans = ref([])
+const approvedClaims = ref([])
 const currencies = ref([])
 const projects = ref([])
 const receivableInvoices = ref([])
 const invoiceLoading = ref(false)
 const transactionFields = ref([])
 const error = ref('')
-const form = reactive({ transaction_date: new Date().toISOString().slice(0, 10), type: 'Income', account_id: '', customer_id: '', project_id: '', vendor_id: '', invoice_id: '', invoice_number: '', currency: 'INR', amount: '', cgst_percent: 0, igst_percent: 0, tds_percent: 0, category: '', depreciation_value: '', description: '' })
+const form = reactive({ transaction_date: new Date().toISOString().slice(0, 10), type: 'Income', account_id: '', customer_id: '', project_id: '', vendor_id: '', invoice_id: '', invoice_number: '', expense_claim_id: '', loan_account_id: '', loan_schedule_id: '', currency: 'INR', amount: '', cgst_percent: 0, igst_percent: 0, tds_percent: 0, category: '', depreciation_value: '', description: '', attachments: [] })
 const postingDateOption = ref('today')
+const uploadingDocument = ref(false)
 
 const showPreviewModal = ref(false)
 const isPosting = ref(false)
@@ -281,7 +317,24 @@ watch(() => form.project_id, (newProjId) => {
 
 watch([() => form.account_id, () => form.customer_id, () => form.type], () => {
   clearInvoiceSelection()
+  if (!isEmployeeClaimsAccount.value) form.expense_claim_id = ''
   loadReceivableInvoices()
+})
+
+watch(() => form.category, (category) => {
+  if (category === 'Loan Disbursement') {
+    form.type = 'Income'
+    form.loan_schedule_id = ''
+  } else if (category === 'Loan Repayment') {
+    form.type = 'Expense'
+  } else {
+    form.loan_account_id = ''
+    form.loan_schedule_id = ''
+  }
+})
+
+watch(() => form.loan_account_id, () => {
+  form.loan_schedule_id = ''
 })
 
 const filteredProjects = computed(() => {
@@ -296,6 +349,18 @@ onMounted(async () => {
   vendors.value = options.vendors || []
   currencies.value = options.currencies || []
   projects.value = options.projects || []
+  try {
+    const loanData = await apiGet('/api/treasury/loans')
+    loans.value = loanData.loans || []
+  } catch (err) {
+    loans.value = []
+  }
+  try {
+    const claimData = await apiGet('/api/finance/expense-claims/approved-unposted')
+    approvedClaims.value = claimData.claims || []
+  } catch (err) {
+    approvedClaims.value = []
+  }
 
   const transactionData = await apiGet('/api/finance/transactions')
   transactionFields.value = transactionData.fields || []
@@ -305,6 +370,16 @@ onMounted(async () => {
     const salesRev = accounts.value.find(a => a.name === 'Sales Revenue')
     if (salesRev) form.account_id = salesRev.id
   }
+})
+
+const requiresLoanAccount = computed(() => ['Loan Disbursement', 'Loan Repayment'].includes(form.category))
+const selectedLoanSchedules = computed(() => {
+  const loan = loans.value.find(item => Number(item.id) === Number(form.loan_account_id))
+  return loan?.schedules || []
+})
+
+const selectedLoan = computed(() => {
+  return loans.value.find(item => Number(item.id) === Number(form.loan_account_id)) || null
 })
 
 const computedCGST = computed(() => {
@@ -339,6 +414,12 @@ const selectedAccountName = computed(() => {
 const selectedAccount = computed(() => {
   if (!form.account_id) return null
   return accounts.value.find(a => a.id === parseInt(form.account_id)) || null
+})
+
+const isEmployeeClaimsAccount = computed(() => {
+  return form.type === 'Expense' && selectedAccount.value && (
+    String(selectedAccount.value.gl_code || '').trim() === '7010' || selectedAccount.value.name === 'Employee Claims'
+  )
 })
 
 const isSalesRevenueReceipt = computed(() => {
@@ -405,6 +486,15 @@ watch(selectedInvoice, (invoice) => {
   if (invoice?.currency) {
     form.currency = invoice.currency
   }
+})
+
+watch(() => form.expense_claim_id, (claimId) => {
+  const claim = approvedClaims.value.find(item => Number(item.id) === Number(claimId))
+  if (!claim) return
+  form.amount = claim.total_claim_amount || claim.amount || ''
+  form.category = claim.expense_category || 'Employee Claim'
+  form.description = `Employee claim ${claim.claim_number} - ${claim.employee_name || ''}`.trim()
+  form.attachments = claim.attachment ? [claim.attachment] : []
 })
 
 const filteredAccountsForDropdown = computed(() => {
@@ -519,15 +609,70 @@ const simulatedLedger = computed(() => {
 
 function openPreview() {
   error.value = ''
+  if (!validateBeforePosting()) return
+  showPreviewModal.value = true
+}
+
+async function handleTransactionDocuments(event) {
+  const files = Array.from(event.target.files || [])
+  if (!files.length) return
+  uploadingDocument.value = true
+  error.value = ''
+  try {
+    for (const file of files) {
+      const data = await apiUploadFile('/api/uploads/cloudinary', file, { folder: 'transactions' })
+      form.attachments.push(data.document)
+    }
+  } catch (err) {
+    error.value = err.message || 'Unable to upload transaction document.'
+  } finally {
+    uploadingDocument.value = false
+    event.target.value = ''
+  }
+}
+
+function validateBeforePosting() {
   if (!form.transaction_date || !form.account_id || !form.amount) {
     error.value = 'Please fill out all required fields (Date, Account, Amount) before previewing.'
-    return
+    return false
+  }
+  if (Number(form.amount || 0) <= 0) {
+    error.value = 'Amount must be greater than zero.'
+    return false
   }
   if (isSalesRevenueReceipt.value && !form.invoice_id) {
     error.value = 'Please select the invoice number for this Sales Revenue receipt.'
-    return
+    return false
   }
-  showPreviewModal.value = true
+  if (isEmployeeClaimsAccount.value && !form.expense_claim_id) {
+    error.value = 'Please select an approved employee claim for GL 7010 - Employee Claims.'
+    return false
+  }
+  if (form.category === 'Loan Disbursement') {
+    if (form.type !== 'Income') {
+      error.value = 'Loan disbursement must be posted as an Income transaction.'
+      return false
+    }
+    if (!form.loan_account_id) {
+      error.value = 'Please select the Loan Account Number for this disbursement.'
+      return false
+    }
+  }
+  if (form.category === 'Loan Repayment') {
+    if (form.type !== 'Expense') {
+      error.value = 'Loan repayment must be posted as an Expense transaction.'
+      return false
+    }
+    if (!form.loan_account_id) {
+      error.value = 'Please select the Loan Account Number for this repayment.'
+      return false
+    }
+    if (!form.loan_schedule_id) {
+      error.value = 'Please select the repayment schedule line before posting.'
+      return false
+    }
+  }
+  return true
 }
 
 async function confirmAndPost() {
@@ -561,6 +706,7 @@ function money(amount) {
 
 async function save() {
   error.value = ''
+  if (!validateBeforePosting()) return
   try {
     const data = await apiPost('/api/finance/transactions', form)
     if (props.isModal) {
@@ -597,6 +743,11 @@ async function save() {
   color: var(--muted);
   margin-top: 4px;
   font-style: italic;
+}
+
+.attached-documents {
+  display: grid;
+  gap: 12px;
 }
 
 .preview-modal-overlay {

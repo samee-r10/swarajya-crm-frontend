@@ -1,16 +1,17 @@
 <template>
   <div class="customers-page">
-    <section class="page-header">
-      <div>
-        <p class="eyebrow">Sales</p>
-        <h1>Customers</h1>
-        <p class="muted">Manage your client relationships and accounts.</p>
-      </div>
+    <CrmPageHeader
+      eyebrow="Sales"
+      title="Customers"
+      description="Manage accounts, contacts, statuses, and relationship health from one customer workspace."
+    >
+      <template #actions>
       <button class="button" @click="showNewModal = true">
         <svg viewBox="0 0 24 24" width="18" height="18" style="margin-right: 8px;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/></svg>
         New Customer
       </button>
-    </section>
+      </template>
+    </CrmPageHeader>
 
     <section class="filters-bar">
       <div class="filter-group search">
@@ -26,20 +27,34 @@
       </div>
     </section>
 
+    <section v-if="selectedIds.length" class="bulk-action-bar">
+      <strong>{{ selectedIds.length }} selected</strong>
+      <span class="muted">Use row actions to open or review selected accounts.</span>
+      <button class="button secondary small" type="button" @click="selectedIds = []">Clear selection</button>
+    </section>
+
     <section class="table-container shadow-premium">
-      <table class="record-table">
+      <CrmTableSkeleton v-if="loading" :rows="7" :columns="7" />
+      <table v-else class="record-table">
         <thead>
           <tr>
-            <th>Company Name</th>
-            <th>Primary Contact</th>
-            <th>Industry</th>
-            <th>Status</th>
+            <th class="checkbox-col">
+              <input class="table-checkbox" type="checkbox" :checked="allPageSelected" @change="togglePageSelection">
+            </th>
+            <th><button class="table-sort" type="button" @click="setSort('company_name')">Company Name <span>{{ sortIndicator('company_name') }}</span></button></th>
+            <th><button class="table-sort" type="button" @click="setSort('contact_name')">Primary Contact <span>{{ sortIndicator('contact_name') }}</span></button></th>
+            <th><button class="table-sort" type="button" @click="setSort('industry')">Industry <span>{{ sortIndicator('industry') }}</span></button></th>
+            <th><button class="table-sort" type="button" @click="setSort('status')">Status <span>{{ sortIndicator('status') }}</span></button></th>
             <th>Billing Address</th>
-            <th>Last Updated</th>
+            <th><button class="table-sort" type="button" @click="setSort('updated_at')">Last Updated <span>{{ sortIndicator('updated_at') }}</span></button></th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="customer in paginatedCustomers" :key="customer.id" @click="goToDetail(customer.id)">
+            <td class="checkbox-col" @click.stop>
+              <input class="table-checkbox" type="checkbox" :value="customer.id" v-model="selectedIds">
+            </td>
             <td>
               <div class="name-cell">
                 <strong>{{ customer.company_name }}</strong>
@@ -56,9 +71,14 @@
             <td><span class="pill status" :class="customer.status.toLowerCase()">{{ customer.status }}</span></td>
             <td><span class="muted small truncate">{{ customer.billing_address || '--' }}</span></td>
             <td class="date-col">{{ formatDate(customer.updated_at) }}</td>
+            <td class="table-actions" @click.stop>
+              <button class="button secondary small" type="button" @click="goToDetail(customer.id)">Open</button>
+            </td>
           </tr>
-          <tr v-if="filteredCustomers.length === 0">
-            <td colspan="6" class="empty-state">No customers found matching your criteria.</td>
+          <tr v-if="!loading && filteredCustomers.length === 0">
+            <td colspan="8">
+              <CrmEmptyState title="No customers found" description="Adjust your search or filters, or create a new customer account." />
+            </td>
           </tr>
         </tbody>
       </table>
@@ -165,12 +185,19 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet, apiPost } from '../api/client'
+import CrmEmptyState from '../components/CrmEmptyState.vue'
+import CrmPageHeader from '../components/CrmPageHeader.vue'
+import CrmTableSkeleton from '../components/CrmTableSkeleton.vue'
 
 const router = useRouter()
 const customers = ref([])
 const statuses = ref([])
+const loading = ref(true)
 const search = ref('')
 const status = ref('')
+const sortKey = ref('updated_at')
+const sortDir = ref('desc')
+const selectedIds = ref([])
 const showNewModal = ref(false)
 const saving = ref(false)
 const errorMessage = ref('')
@@ -202,10 +229,19 @@ function parseOptions(options) {
   }
 }
 
-const filteredCustomers = computed(() => customers.value.filter((customer) => {
-  const text = `${customer.company_name} ${customer.contact_name} ${customer.email || ''}`.toLowerCase()
-  return (!status.value || customer.status === status.value) && text.includes(search.value.toLowerCase())
-}))
+const filteredCustomers = computed(() => {
+  const filtered = customers.value.filter((customer) => {
+    const text = `${customer.company_name} ${customer.contact_name} ${customer.email || ''}`.toLowerCase()
+    return (!status.value || customer.status === status.value) && text.includes(search.value.toLowerCase())
+  })
+  return filtered.sort((a, b) => {
+    const left = String(a[sortKey.value] || '').toLowerCase()
+    const right = String(b[sortKey.value] || '').toLowerCase()
+    if (left === right) return 0
+    const result = left > right ? 1 : -1
+    return sortDir.value === 'asc' ? result : -result
+  })
+})
 
 const currentPage = ref(1)
 const itemsPerPage = 10
@@ -220,6 +256,11 @@ const paginatedCustomers = computed(() => {
 
 watch([search, status], () => {
   currentPage.value = 1
+})
+
+const allPageSelected = computed(() => {
+  if (!paginatedCustomers.value.length) return false
+  return paginatedCustomers.value.every(customer => selectedIds.value.includes(customer.id))
 })
 
 onMounted(async () => {
@@ -237,6 +278,8 @@ onMounted(async () => {
     }
   } catch (err) {
     console.error('Failed to load customers', err)
+  } finally {
+    loading.value = false
   }
 })
 
@@ -274,6 +317,29 @@ function formatDate(dateStr) {
 
 function goToDetail(id) {
   router.push(`/customers/${id}`)
+}
+
+function setSort(key) {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortDir.value = 'asc'
+  }
+}
+
+function sortIndicator(key) {
+  if (sortKey.value !== key) return ''
+  return sortDir.value === 'asc' ? 'Asc' : 'Desc'
+}
+
+function togglePageSelection(event) {
+  const pageIds = paginatedCustomers.value.map(customer => customer.id)
+  if (event.target.checked) {
+    selectedIds.value = Array.from(new Set([...selectedIds.value, ...pageIds]))
+  } else {
+    selectedIds.value = selectedIds.value.filter(id => !pageIds.includes(id))
+  }
 }
 </script>
 

@@ -1,19 +1,18 @@
 <template>
   <div class="dashboard">
     <!-- Welcome Header -->
-    <header class="dashboard-header">
-      <div class="welcome-section">
-        <p class="eyebrow">Performance Overview</p>
-        <h1>Welcome back, {{ userName }}</h1>
-        <p class="muted">Here's what's happening with your sales pipeline today.</p>
-      </div>
-      <div class="header-actions">
+    <CrmPageHeader
+      eyebrow="Performance Overview"
+      :title="`Welcome back, ${userName}`"
+      description="Track sales momentum, delivery work, reminders, and revenue focus from one command center."
+    >
+      <template #actions>
         <RouterLink class="button" to="/customers/new">
           <svg viewBox="0 0 24 24" width="18" height="18" style="margin-right: 8px;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/></svg>
           New Customer
         </RouterLink>
-      </div>
-    </header>
+      </template>
+    </CrmPageHeader>
 
     <!-- Metrics Grid -->
     <section v-if="loading" class="loading-state">
@@ -23,38 +22,18 @@
 
     <template v-else>
       <section class="metrics-grid">
-        <div class="metric-card customers">
-          <div class="card-icon"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3ZM8 11c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z" fill="currentColor"/></svg></div>
-          <div class="card-info">
-            <span>Total Customers</span>
-            <strong>{{ data.metrics.customers }}</strong>
-          </div>
-          <div class="card-trend positive">↑ 12% vs last month</div>
-        </div>
-        <div class="metric-card opportunities">
-          <div class="card-icon"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10h-2a8 8 0 1 1-8-8V2Zm1 1v9l6.4 6.4 1.4-1.4-5-5H22A9 9 0 0 0 13 3Z" fill="currentColor"/></svg></div>
-          <div class="card-info">
-            <span>Open Opportunities</span>
-            <strong>{{ data.metrics.open_opportunities }}</strong>
-          </div>
-          <div class="card-trend">Ongoing discussions</div>
-        </div>
-        <div class="metric-card projects">
-          <div class="card-icon"><svg viewBox="0 0 24 24"><path d="M10 4h4v3h-4V4ZM4 9h16v11H4V9Zm2 2v7h12v-7H6Zm10-7h2a2 2 0 0 1 2 2v1h-2V6h-2V4ZM6 4h2v2H6v1H4V6a2 2 0 0 1 2-2Z" fill="currentColor"/></svg></div>
-          <div class="card-info">
-            <span>Active Projects</span>
-            <strong>{{ data.metrics.active_projects }}</strong>
-          </div>
-          <div class="card-trend">4 nearing delivery</div>
-        </div>
-        <div class="metric-card revenue">
-          <div class="card-icon"><svg viewBox="0 0 24 24"><path d="M3 6h18v12H3V6Zm2 2v8h14V8H5Zm7 7a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-6-5a2 2 0 0 0 2-2H6v2Zm10-2a2 2 0 0 0 2 2V8h-2Zm2 6a2 2 0 0 0-2 2h2v-2ZM6 16h2a2 2 0 0 0-2-2v2Z" fill="currentColor"/></svg></div>
-          <div class="card-info">
-            <span>Total Pipeline</span>
-            <strong>{{ pipelineTotal }}</strong>
-          </div>
-          <div class="card-trend positive">Strong growth</div>
-        </div>
+        <CrmKpiCard label="Total Customers" :value="data.metrics.customers" meta="Accounts under management" tone="blue">
+          <template #icon><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3ZM8 11c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z" fill="currentColor"/></svg></template>
+        </CrmKpiCard>
+        <CrmKpiCard label="Open Opportunities" :value="data.metrics.open_opportunities" meta="Active sales motion" tone="green">
+          <template #icon><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10h-2a8 8 0 1 1-8-8V2Zm1 1v9l6.4 6.4 1.4-1.4-5-5H22A9 9 0 0 0 13 3Z" fill="currentColor"/></svg></template>
+        </CrmKpiCard>
+        <CrmKpiCard label="Active Projects" :value="data.metrics.active_projects" meta="Delivery work in flight" tone="amber">
+          <template #icon><svg viewBox="0 0 24 24"><path d="M10 4h4v3h-4V4ZM4 9h16v11H4V9Zm2 2v7h12v-7H6Zm10-7h2a2 2 0 0 1 2 2v1h-2V6h-2V4ZM6 4h2v2H6v1H4V6a2 2 0 0 1 2-2Z" fill="currentColor"/></svg></template>
+        </CrmKpiCard>
+        <CrmKpiCard label="Total Pipeline" :value="pipelineTotal" meta="Forecasted deal value" tone="violet">
+          <template #icon><svg viewBox="0 0 24 24"><path d="M3 6h18v12H3V6Zm2 2v8h14V8H5Zm7 7a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-6-5a2 2 0 0 0 2-2H6v2Zm10-2a2 2 0 0 0 2 2V8h-2Zm2 6a2 2 0 0 0-2 2h2v-2ZM6 16h2a2 2 0 0 0-2-2v2Z" fill="currentColor"/></svg></template>
+        </CrmKpiCard>
       </section>
 
       <section class="pipeline-panel panel">
@@ -104,9 +83,7 @@
                 <span class="pill stage">{{ opp.stage }}</span>
               </div>
             </RouterLink>
-            <div v-if="!data.recent_opportunities.length" class="empty-state">
-              No recent opportunities.
-            </div>
+            <CrmEmptyState v-if="!data.recent_opportunities.length" title="No recent opportunities" description="New deals will appear here as your team adds them." />
           </div>
         </div>
 
@@ -134,9 +111,7 @@
                 <span class="date">{{ formatDate(project.delivery_timeline) }}</span>
               </div>
             </RouterLink>
-            <div v-if="!data.upcoming_projects.length" class="empty-state">
-              No upcoming projects.
-            </div>
+            <CrmEmptyState v-if="!data.upcoming_projects.length" title="No upcoming projects" description="Delivery milestones will appear here when project dates are available." />
           </div>
         </div>
 
@@ -170,6 +145,9 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { apiGet } from '../api/client'
+import CrmEmptyState from '../components/CrmEmptyState.vue'
+import CrmKpiCard from '../components/CrmKpiCard.vue'
+import CrmPageHeader from '../components/CrmPageHeader.vue'
 
 const loading = ref(true)
 const data = reactive({

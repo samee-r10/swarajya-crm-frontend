@@ -109,6 +109,17 @@ const opportunities = ref([])
 const projects = ref([])
 const customerFields = ref([])
 const showEditModal = ref(false)
+const profileFieldFallbacks = [
+  { label: 'Address Line 1', api_name: 'address_line_1', field_type: 'Text' },
+  { label: 'Address Line 2', api_name: 'address_line_2', field_type: 'Text' },
+  { label: 'City', api_name: 'city', field_type: 'Text' },
+  { label: 'Pincode', api_name: 'pincode', field_type: 'Text' },
+  { label: 'State', api_name: 'state', field_type: 'Text' },
+  { label: 'Country', api_name: 'country', field_type: 'Text' },
+  { label: 'Registration Type', api_name: 'registration_type', field_type: 'Text' },
+  { label: 'Payment Terms', api_name: 'payment_terms', field_type: 'Text' },
+  { label: 'Payment Mode', api_name: 'payment_mode', field_type: 'Text' },
+]
 
 const fetchData = async () => {
   try {
@@ -116,7 +127,7 @@ const fetchData = async () => {
     customer.value = data.customer
     opportunities.value = data.opportunities || []
     projects.value = data.projects || []
-    customerFields.value = data.fields || []
+    customerFields.value = mergeProfileFields(data.fields || [])
   } catch (err) {
     console.error('Failed to load customer details', err)
   }
@@ -157,6 +168,14 @@ const fields = computed(() => {
     { label: 'Notes', value: customer.value.notes || '', long: true }
   ]
 })
+
+function mergeProfileFields(fields) {
+  const byApi = new Map(fields.map(field => [field.api_name, field]))
+  profileFieldFallbacks.forEach(field => {
+    if (!byApi.has(field.api_name)) byApi.set(field.api_name, field)
+  })
+  return Array.from(byApi.values())
+}
 const initials = computed(() => {
   if (!customer.value?.company_name) return 'CR'
   return customer.value.company_name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()

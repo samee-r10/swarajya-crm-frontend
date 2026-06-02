@@ -21,6 +21,18 @@ import SystemInfo from '../components/SystemInfo.vue'
 const props = defineProps({ id: { type: String, required: true } })
 const vendor = ref(null)
 const vendorFields = ref([])
+const profileFieldFallbacks = [
+  { label: 'Address Line 1', api_name: 'address_line_1', field_type: 'Text' },
+  { label: 'Address Line 2', api_name: 'address_line_2', field_type: 'Text' },
+  { label: 'City', api_name: 'city', field_type: 'Text' },
+  { label: 'Pincode', api_name: 'pincode', field_type: 'Text' },
+  { label: 'State', api_name: 'state', field_type: 'Text' },
+  { label: 'Country', api_name: 'country', field_type: 'Text' },
+  { label: 'Registration Type', api_name: 'registration_type', field_type: 'Text' },
+  { label: 'Supplier Category', api_name: 'supplier_category', field_type: 'Text' },
+  { label: 'Payment Terms', api_name: 'payment_terms', field_type: 'Text' },
+  { label: 'Payment Mode', api_name: 'payment_mode', field_type: 'Text' },
+]
 
 const fields = computed(() => {
   if (!vendor.value) return []
@@ -53,9 +65,17 @@ onMounted(async () => {
   try {
     const data = await apiGet(`/api/finance/vendors/${props.id}`)
     vendor.value = data.vendor
-    vendorFields.value = data.fields || []
+    vendorFields.value = mergeProfileFields(data.fields || [])
   } catch (err) {
     console.error('Failed to load vendor details', err)
   }
 })
+
+function mergeProfileFields(fields) {
+  const byApi = new Map(fields.map(field => [field.api_name, field]))
+  profileFieldFallbacks.forEach(field => {
+    if (!byApi.has(field.api_name)) byApi.set(field.api_name, field)
+  })
+  return Array.from(byApi.values())
+}
 </script>

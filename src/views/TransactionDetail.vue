@@ -36,6 +36,10 @@
         <textarea v-if="field.long" readonly rows="5" :value="field.value"></textarea>
         <input v-else readonly :value="field.value">
       </label>
+      <div v-if="transaction.attachments?.length" class="span-2 transaction-documents">
+        <h2>Supporting Documents</h2>
+        <DocumentPreview v-for="doc in transaction.attachments" :key="doc.public_id || doc.secure_url || doc.name" :document="doc" label="Transaction Document" />
+      </div>
       <div class="span-2">
         <SystemInfo :record="transaction" />
       </div>
@@ -47,6 +51,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { apiGet, apiPost } from '../api/client'
+import DocumentPreview from '../components/DocumentPreview.vue'
 import SystemInfo from '../components/SystemInfo.vue'
 
 const props = defineProps({
@@ -171,6 +176,15 @@ function money(currency, amount) {
   font-weight: 600;
   font-size: 14px;
   animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.transaction-documents {
+  display: grid;
+  gap: 12px;
+}
+
+.transaction-documents h2 {
+  margin: 0;
 }
 
 @keyframes slideDown {

@@ -75,6 +75,12 @@
       </div>
     </div>
     <div class="header-right">
+      <button class="header-icon-button" type="button" aria-label="Notifications" title="Notifications">
+        <svg viewBox="0 0 24 24" width="18" height="18">
+          <path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5-6.7V3a2 2 0 1 0-4 0v1.3A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z" fill="currentColor"/>
+        </svg>
+        <span class="notification-dot"></span>
+      </button>
       <details v-if="user" ref="userDropdownRef" class="user-dropdown">
         <summary>
           <svg class="icon-user" viewBox="0 0 24 24" width="24" height="24">
@@ -139,7 +145,10 @@
 
     <main class="main">
       <div class="top-bar">
-        <button v-if="showBack" class="back-button" type="button" @click="goBack">Back</button>
+        <button v-if="showBack" class="back-button" type="button" @click="goBack">
+          <svg viewBox="0 0 24 24" width="16" height="16"><path d="M20 11H7.8l5.6-5.6L12 4 4 12l8 8 1.4-1.4L7.8 13H20v-2Z" fill="currentColor"/></svg>
+          Back
+        </button>
       </div>
       <RouterView />
     </main>
@@ -282,8 +291,13 @@ const launcherItems = [
   { label: 'Vault', type: 'Secure Module', to: '/vault' },
   { label: 'Vendors', type: 'Finance', to: '/finance/vendors' },
   { label: 'Transaction Ledger', type: 'Finance', to: '/finance/transactions' },
+  { label: 'Claims', type: 'Finance', to: '/finance/claims' },
+  { label: 'Claim Approvals', type: 'Approvals', to: '/claims/approvals' },
   { label: 'Chart of Accounts', type: 'Finance', to: '/finance/accounts' },
   { label: 'General Ledger Report', type: 'Finance', to: '/finance/reports/general-ledger' },
+  { label: 'Payables', type: 'Treasury', to: '/treasury/payables' },
+  { label: 'Loan Management', type: 'Treasury', to: '/treasury/loans' },
+  { label: 'Stakeholder Payouts', type: 'Treasury', to: '/treasury/stakeholder-payouts' },
   { label: 'Setup', type: 'Admin', to: '/setup' },
   { label: 'Users', type: 'Setup', to: '/setup#users' },
   { label: 'Roles', type: 'Setup', to: '/setup#roles' },
@@ -296,9 +310,14 @@ const navItems = [
   { label: 'Projects', to: '/projects', match: ['/projects'], icon: '<svg viewBox="0 0 24 24"><path d="M10 4h4v3h-4V4ZM4 9h16v11H4V9Zm2 2v7h12v-7H6Zm10-7h2a2 2 0 0 1 2 2v1h-2V6h-2V4ZM6 4h2v2H6v1H4V6a2 2 0 0 1 2-2Z" fill="currentColor"/></svg>' },
   { label: 'Finance', to: '/finance', match: ['/finance'], requires: 'finance', icon: '<svg viewBox="0 0 24 24"><path d="M3 6h18v12H3V6Zm2 2v8h14V8H5Zm7 7a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-6-5a2 2 0 0 0 2-2H6v2Zm10-2a2 2 0 0 0 2 2V8h-2Zm2 6a2 2 0 0 0-2 2h2v-2ZM6 16h2a2 2 0 0 0-2-2v2Z" fill="currentColor"/></svg>' },
   { label: 'Invoices', to: '/finance/invoices', match: ['/finance/invoices'], requires: 'finance', icon: '<svg viewBox="0 0 24 24"><path d="M7 2h10a2 2 0 0 1 2 2v18l-3-2-2 2-2-2-2 2-2-2-3 2V4a2 2 0 0 1 2-2Zm2 5v2h6V7H9Zm0 4v2h6v-2H9Zm0 4v2h4v-2H9Z" fill="currentColor"/></svg>' },
+  { label: 'Claims', to: '/finance/claims', match: ['/finance/claims'], requires: 'finance', icon: '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm-1 7V3.5L18.5 9H13Zm-5 4h8v2H8v-2Zm0 4h6v2H8v-2Zm0-8h3v2H8V9Z" fill="currentColor"/></svg>' },
+  { label: 'Approvals', to: '/claims/approvals', match: ['/claims/approvals'], icon: '<svg viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2Z" fill="currentColor"/></svg>' },
   { label: 'Accounts', to: '/finance/accounts', match: ['/finance/accounts'], requires: 'finance', icon: '<svg viewBox="0 0 24 24"><path d="M4 4h16v4H4V4Zm0 6h7v10H4V10Zm9 0h7v10h-7V10Zm-7 3v2h3v-2H6Zm9 0v2h3v-2h-3Z" fill="currentColor"/></svg>' },
   { label: 'Reports', to: '/finance/reports/general-ledger', match: ['/finance/reports'], requires: 'finance', icon: '<svg viewBox="0 0 24 24"><path d="M5 3h14v18H5V3Zm3 14h2v-6H8v6Zm3 0h2V7h-2v10Zm3 0h2v-4h-2v4Z" fill="currentColor"/></svg>' },
   { label: 'Treasury', to: '/treasury', match: ['/treasury'], requires: 'treasury', icon: '<svg viewBox="0 0 24 24"><path d="M12 2 3 6v2h18V6l-9-4ZM5 10v7H3v3h18v-3h-2v-7h-3v7h-2v-7h-4v7H8v-7H5Z" fill="currentColor"/></svg>' },
+  { label: 'Payables', to: '/treasury/payables', match: ['/treasury/payables'], requires: 'treasury', icon: '<svg viewBox="0 0 24 24"><path d="M5 3h14v18H5V3Zm3 4v2h8V7H8Zm0 4v2h8v-2H8Zm0 4v2h5v-2H8Z" fill="currentColor"/></svg>' },
+  { label: 'Loans', to: '/treasury/loans', match: ['/treasury/loans'], requires: 'treasury', icon: '<svg viewBox="0 0 24 24"><path d="M4 4h16v5H4V4Zm0 7h16v9H4v-9Zm3 2v2h5v-2H7Zm0 4v1h10v-1H7Zm9-4v2h2v-2h-2Z" fill="currentColor"/></svg>' },
+  { label: 'Payouts', to: '/treasury/stakeholder-payouts', match: ['/treasury/stakeholder-payouts'], requires: 'treasury', icon: '<svg viewBox="0 0 24 24"><path d="M12 2 3 6v2h18V6l-9-4ZM5 10h14v9H5v-9Zm3 2v5h2v-5H8Zm4 0v5h2v-5h-2Z" fill="currentColor"/></svg>' },
   { label: 'Vault', to: '/vault', match: ['/vault'], requires: 'vault', icon: '<svg viewBox="0 0 24 24"><path d="M17 8V6a5 5 0 0 0-10 0v2H5v14h14V8h-2ZM9 6a3 3 0 0 1 6 0v2H9V6Zm4 10.73V19h-2v-2.27A2 2 0 1 1 13 16.73Z" fill="currentColor"/></svg>' },
   { label: 'Settings', to: '/setup', match: ['/setup'], requires: 'admin', icon: '<svg viewBox="0 0 24 24"><path d="m19.43 12.98.04-.98-.04-.98 2.11-1.65-2-3.46-2.49 1a7.1 7.1 0 0 0-1.69-.98L15 3h-4l-.36 2.93c-.6.24-1.17.56-1.69.98l-2.49-1-2 3.46 2.11 1.65-.04.98.04.98-2.11 1.65 2 3.46 2.49-1c.52.42 1.09.74 1.69.98L11 21h4l.36-2.93c.6-.24 1.17-.56 1.69-.98l2.49 1 2-3.46-2.11-1.65ZM13 15.5A3.5 3.5 0 1 1 13 8a3.5 3.5 0 0 1 0 7.5Z" fill="currentColor"/></svg>' }
 ]

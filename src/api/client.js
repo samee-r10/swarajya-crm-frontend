@@ -26,17 +26,33 @@ export async function apiDelete(path) {
   })
 }
 
-async function apiRequest(path, options = {}) {
+export async function apiUploadFile(path, file, extraFields = {}) {
+  const formData = new FormData()
+  formData.append('file', file)
+  Object.entries(extraFields).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) formData.append(key, value)
+  })
+  return apiRequest(path, {
+    method: 'POST',
+    body: formData,
+    headers: {}
+  }, { multipart: true })
+}
+
+async function apiRequest(path, options = {}, requestOptions = {}) {
   const url = `${API_BASE}${path}`
   window.dispatchEvent(new CustomEvent('app-loading-start'))
   try {
+    const headers = requestOptions.multipart
+      ? { Accept: 'application/json', ...(options.headers || {}) }
+      : {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...(options.headers || {})
+        }
     const response = await fetch(url, {
       credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        ...(options.headers || {})
-      },
+      headers,
       ...options
     })
 
