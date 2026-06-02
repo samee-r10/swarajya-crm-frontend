@@ -159,7 +159,7 @@
                 <tr v-for="p in dashboardData.recent_payouts" :key="p.id">
                   <td>
                     <span v-if="p.payout_type === 'Reserve Fund'">Company Reserve</span>
-                    <span v-else-if="p.payout_type === 'Channel Partner'">{{ p.partner_name || 'Channel Partner' }}</span>
+                    <span v-else-if="['Channel Partner', 'Channel Partner Payout'].includes(p.payout_type)">{{ p.partner_name || 'Channel Partner' }}</span>
                     <span v-else-if="p.payout_type === 'Stakeholder Contribution'">{{ p.stakeholder_name || 'Owner' }} (paid in)</span>
                     <span v-else>{{ p.stakeholder_name || 'Owner' }}</span>
                   </td>
@@ -757,11 +757,11 @@
               <td>
                 <div class="recipient-details">
                   <span v-if="p.payout_type === 'Reserve Fund'" class="text-semibold text-primary">Company Reserve Fund</span>
-                  <span v-else-if="p.payout_type === 'Channel Partner'" class="text-semibold">{{ p.partner_name || 'Channel Partner' }}</span>
+                  <span v-else-if="['Channel Partner', 'Channel Partner Payout'].includes(p.payout_type)" class="text-semibold">{{ p.partner_name || 'Channel Partner' }}</span>
                   <span v-else class="text-semibold">{{ p.stakeholder_name || 'Owner' }}</span>
                   <small class="text-muted" v-if="p.payout_type === 'Stakeholder'">Earning from company</small>
                   <small class="text-muted" v-if="p.payout_type === 'Stakeholder Contribution'">Paid to company</small>
-                  <small class="text-muted" v-if="p.payout_type === 'Channel Partner'">Partner</small>
+                  <small class="text-muted" v-if="['Channel Partner', 'Channel Partner Payout'].includes(p.payout_type)">Partner</small>
                 </div>
               </td>
               <td>

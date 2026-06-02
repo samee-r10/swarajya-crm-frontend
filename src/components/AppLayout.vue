@@ -297,7 +297,7 @@ const launcherItems = [
   { label: 'General Ledger Report', type: 'Finance', to: '/finance/reports/general-ledger' },
   { label: 'Payables', type: 'Treasury', to: '/treasury/payables' },
   { label: 'Loan Management', type: 'Treasury', to: '/treasury/loans' },
-  { label: 'Stakeholder Payouts', type: 'Treasury', to: '/treasury/stakeholder-payouts' },
+  { label: 'Stakeholder and CP Payouts', type: 'Treasury', to: '/treasury/stakeholder-payouts' },
   { label: 'Setup', type: 'Admin', to: '/setup' },
   { label: 'Users', type: 'Setup', to: '/setup#users' },
   { label: 'Roles', type: 'Setup', to: '/setup#roles' },
@@ -317,7 +317,7 @@ const navItems = [
   { label: 'Treasury', to: '/treasury', match: ['/treasury'], requires: 'treasury', icon: '<svg viewBox="0 0 24 24"><path d="M12 2 3 6v2h18V6l-9-4ZM5 10v7H3v3h18v-3h-2v-7h-3v7h-2v-7h-4v7H8v-7H5Z" fill="currentColor"/></svg>' },
   { label: 'Payables', to: '/treasury/payables', match: ['/treasury/payables'], requires: 'treasury', icon: '<svg viewBox="0 0 24 24"><path d="M5 3h14v18H5V3Zm3 4v2h8V7H8Zm0 4v2h8v-2H8Zm0 4v2h5v-2H8Z" fill="currentColor"/></svg>' },
   { label: 'Loans', to: '/treasury/loans', match: ['/treasury/loans'], requires: 'treasury', icon: '<svg viewBox="0 0 24 24"><path d="M4 4h16v5H4V4Zm0 7h16v9H4v-9Zm3 2v2h5v-2H7Zm0 4v1h10v-1H7Zm9-4v2h2v-2h-2Z" fill="currentColor"/></svg>' },
-  { label: 'Payouts', to: '/treasury/stakeholder-payouts', match: ['/treasury/stakeholder-payouts'], requires: 'treasury', icon: '<svg viewBox="0 0 24 24"><path d="M12 2 3 6v2h18V6l-9-4ZM5 10h14v9H5v-9Zm3 2v5h2v-5H8Zm4 0v5h2v-5h-2Z" fill="currentColor"/></svg>' },
+  { label: 'Stakeholder and CP Payouts', to: '/treasury/stakeholder-payouts', match: ['/treasury/stakeholder-payouts'], requires: 'treasury', icon: '<svg viewBox="0 0 24 24"><path d="M12 2 3 6v2h18V6l-9-4ZM5 10h14v9H5v-9Zm3 2v5h2v-5H8Zm4 0v5h2v-5h-2Z" fill="currentColor"/></svg>' },
   { label: 'Vault', to: '/vault', match: ['/vault'], requires: 'vault', icon: '<svg viewBox="0 0 24 24"><path d="M17 8V6a5 5 0 0 0-10 0v2H5v14h14V8h-2ZM9 6a3 3 0 0 1 6 0v2H9V6Zm4 10.73V19h-2v-2.27A2 2 0 1 1 13 16.73Z" fill="currentColor"/></svg>' },
   { label: 'Settings', to: '/setup', match: ['/setup'], requires: 'admin', icon: '<svg viewBox="0 0 24 24"><path d="m19.43 12.98.04-.98-.04-.98 2.11-1.65-2-3.46-2.49 1a7.1 7.1 0 0 0-1.69-.98L15 3h-4l-.36 2.93c-.6.24-1.17.56-1.69.98l-2.49-1-2 3.46 2.11 1.65-.04.98.04.98-2.11 1.65 2 3.46 2.49-1c.52.42 1.09.74 1.69.98L11 21h4l.36-2.93c.6-.24 1.17-.56 1.69-.98l2.49 1 2-3.46-2.11-1.65ZM13 15.5A3.5 3.5 0 1 1 13 8a3.5 3.5 0 0 1 0 7.5Z" fill="currentColor"/></svg>' }
 ]
