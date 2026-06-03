@@ -19,7 +19,7 @@
       <select v-model="form.expense_claim_id" required>
         <option value="">Select approved claim</option>
         <option v-for="claim in approvedClaims" :key="claim.id" :value="claim.id">
-          {{ claim.employee_name }} - {{ money(claim.total_claim_amount) }}
+          {{ claim.employee_name }} - {{ money(claim.amount || claim.total_claim_amount) }}
         </option>
       </select>
       <span class="field-hint">Only approved, unposted claims are available for GL 7010 - Employee Claims.</span>
@@ -491,7 +491,13 @@ watch(selectedInvoice, (invoice) => {
 watch(() => form.expense_claim_id, (claimId) => {
   const claim = approvedClaims.value.find(item => Number(item.id) === Number(claimId))
   if (!claim) return
-  form.amount = claim.total_claim_amount || claim.amount || ''
+  const claimAmount = Number(claim.amount || 0)
+  const gstAmount = Number(claim.gst_amount || 0)
+  const gstPercent = Number(claim.gst_percent || 0)
+  form.amount = claimAmount || ''
+  form.cgst_percent = gstPercent || (claimAmount > 0 && gstAmount > 0 ? Number(((gstAmount / claimAmount) * 100).toFixed(2)) : 0)
+  form.igst_percent = 0
+  form.tds_percent = 0
   form.category = claim.expense_category || 'Employee Claim'
   form.description = `Employee claim ${claim.claim_number} - ${claim.employee_name || ''}`.trim()
   form.attachments = claim.attachment ? [claim.attachment] : []

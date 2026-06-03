@@ -23,6 +23,7 @@
         <option>Pending</option>
         <option>Partially Paid</option>
         <option>Paid</option>
+        <option>Reversed</option>
         <option>Cancelled</option>
       </select>
     </section>
@@ -174,7 +175,7 @@ function money(value) {
 
 function statusClass(status) {
   if (status === 'Paid') return 'status-success'
-  if (status === 'Cancelled') return 'status-danger'
+  if (['Cancelled', 'Reversed'].includes(status)) return 'status-danger'
   if (status === 'Partially Paid') return 'status-warning'
   return 'status-muted'
 }

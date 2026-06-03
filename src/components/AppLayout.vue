@@ -9,6 +9,18 @@
   </div>
   <header class="global-header">
     <div class="header-left">
+      <button
+        class="mobile-menu-button"
+        type="button"
+        :aria-expanded="mobileNavOpen"
+        aria-controls="primary-sidebar"
+        aria-label="Open navigation"
+        @click="mobileNavOpen = true"
+      >
+        <svg viewBox="0 0 24 24" width="22" height="22">
+          <path d="M4 7h16v2H4V7Zm0 4h16v2H4v-2Zm0 4h16v2H4v-2Z" fill="currentColor"/>
+        </svg>
+      </button>
       <div class="app-launcher">
         <details ref="launcherRef" class="launcher-dropdown">
           <summary title="App Launcher">
@@ -110,13 +122,22 @@
     </div>
   </header>
 
-  <div class="app-shell" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
-    <aside class="enterprise-sidebar" aria-label="Primary navigation">
+  <div
+    v-if="mobileNavOpen"
+    class="mobile-sidebar-backdrop"
+    aria-hidden="true"
+    @click="mobileNavOpen = false"
+  ></div>
+  <div class="app-shell" :class="{ 'sidebar-collapsed': sidebarCollapsed, 'mobile-nav-open': mobileNavOpen }">
+    <aside id="primary-sidebar" class="enterprise-sidebar" aria-label="Primary navigation">
       <div class="sidebar-head">
         <div>
           <span class="sidebar-kicker">CRM Workspace</span>
           <strong>Swarajya</strong>
         </div>
+        <button class="icon-button mobile-sidebar-close" type="button" aria-label="Close navigation" @click="mobileNavOpen = false">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="m6.4 5 12.6 12.6-1.4 1.4L5 6.4 6.4 5Zm12.6 1.4L6.4 19 5 17.6 17.6 5 19 6.4Z" fill="currentColor"/></svg>
+        </button>
         <button class="icon-button sidebar-toggle" type="button" :aria-label="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'" @click="sidebarCollapsed = !sidebarCollapsed">
           <svg viewBox="0 0 24 24" width="18" height="18"><path d="M15.5 19 8.5 12l7-7 1.4 1.4-5.6 5.6 5.6 5.6-1.4 1.4Z" fill="currentColor"/></svg>
         </button>
@@ -206,6 +227,7 @@ watch(() => route.path, () => {
   user.value = window.localStorage.getItem('lms_user')
   // Auto-close the launcher whenever navigation occurs
   if (launcherRef.value) launcherRef.value.removeAttribute('open')
+  mobileNavOpen.value = false
   closeGlobalSearch()
   showRouteLoader()
 })
@@ -280,6 +302,7 @@ const globalSearchOpen = ref(false)
 const globalSearchResults = ref([])
 const searchLoading = ref(false)
 const sidebarCollapsed = ref(false)
+const mobileNavOpen = ref(false)
 let searchTimer = null
 const launcherItems = [
   { label: 'Dashboard', type: 'App', to: '/' },
@@ -665,6 +688,19 @@ async function logout() {
     position: static;
     transform: none;
     width: 100%;
+  }
+}
+
+@media (max-width: 767px) {
+  .global-search {
+    grid-column: 1 / -1;
+    margin: 0;
+    position: relative;
+    top: auto;
+  }
+
+  .global-search-results {
+    max-height: min(56vh, 420px);
   }
 }
 </style>
