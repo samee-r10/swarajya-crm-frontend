@@ -11,6 +11,7 @@ import OpportunityForm from './views/OpportunityForm.vue'
 import ProjectDetail from './views/ProjectDetail.vue'
 import ProjectForm from './views/ProjectForm.vue'
 import Projects from './views/Projects.vue'
+import Products from './views/Products.vue'
 import Setup from './views/Setup.vue'
 import TransactionDetail from './views/TransactionDetail.vue'
 import TransactionForm from './views/TransactionForm.vue'
@@ -25,6 +26,8 @@ import InvoiceDetail from './views/InvoiceDetail.vue'
 import ObjectDetail from './views/ObjectDetail.vue'
 import GLReport from './views/GLReport.vue'
 import Treasury from './views/Treasury.vue'
+import CompanyBankAccounts from './views/CompanyBankAccounts.vue'
+import FundTransfers from './views/FundTransfers.vue'
 import Vault from './views/Vault.vue'
 import ForceChangePassword from './views/ForceChangePassword.vue'
 import ChartOfAccounts from './views/ChartOfAccounts.vue'
@@ -48,6 +51,7 @@ const routes = [
   { path: '/opportunities/:id', name: 'opportunity-detail', component: OpportunityDetail, props: true },
   { path: '/opportunities/:id/edit', name: 'opportunity-edit', component: OpportunityForm, props: true },
   { path: '/projects', name: 'projects', component: Projects },
+  { path: '/products', name: 'products', component: Products },
   { path: '/projects/new', name: 'project-new', component: ProjectForm },
   { path: '/projects/:id', name: 'project-detail', component: ProjectDetail, props: true },
   { path: '/projects/:id/edit', name: 'project-edit', component: ProjectForm, props: true },
@@ -60,6 +64,7 @@ const routes = [
   { path: '/finance/vendors/:id/edit', name: 'vendor-edit', component: VendorForm, props: true },
   { path: '/finance/transactions', name: 'transaction-ledger', component: TransactionLedger },
   { path: '/finance/transactions/new', name: 'transaction-new', component: TransactionForm },
+  { path: '/finance/transactions/:id/edit', name: 'transaction-edit', component: TransactionForm, props: true },
   { path: '/finance/transactions/:id', name: 'transaction-detail', component: TransactionDetail, props: true },
   { path: '/finance/claims', name: 'expense-claims', component: ExpenseClaims },
   { path: '/claims/approvals', name: 'claim-approvals', component: PendingClaimApprovals },
@@ -70,6 +75,8 @@ const routes = [
   { path: '/finance/invoices/:id/edit', name: 'invoice-edit', component: InvoiceForm, props: true },
   { path: '/finance/reports/general-ledger', name: 'gl-report', component: GLReport },
   { path: '/treasury', name: 'treasury', component: Treasury },
+  { path: '/treasury/bank-accounts', name: 'company-bank-accounts', component: CompanyBankAccounts },
+  { path: '/treasury/fund-transfers', name: 'fund-transfers', component: FundTransfers },
   { path: '/treasury/payables', name: 'payables', component: Payables },
   { path: '/treasury/loans', name: 'loan-management', component: LoanManagement },
   { path: '/treasury/stakeholder-payouts', name: 'stakeholder-payouts', component: StakeholderPayouts },

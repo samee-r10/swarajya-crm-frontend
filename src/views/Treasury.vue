@@ -11,6 +11,10 @@
         <span>Reserve balance</span>
         <strong>₹{{ formatCurrency(dashboardData.reserve_available) }}</strong>
       </div>
+      <div class="hero-actions">
+        <RouterLink class="button secondary" to="/treasury/bank-accounts">Bank Accounts</RouterLink>
+        <RouterLink class="button secondary" to="/treasury/fund-transfers">Fund Transfer</RouterLink>
+      </div>
     </div>
 
     <!-- Navigation Tabs -->
@@ -269,7 +273,7 @@
                 <td>
                   <div class="d-flex align-center gap-8">
                     <div class="avatar-small">{{ stk.name.charAt(0).toUpperCase() }}</div>
-                    <strong>{{ stk.name }}</strong>
+                    <button class="name-link" type="button" @click="openStakeholderHistory(stk)">{{ stk.name }}</button>
                   </div>
                 </td>
                 <td>
@@ -348,7 +352,7 @@
                 <td colspan="6" class="text-center py-24 text-muted">No channel partners configured yet.</td>
               </tr>
               <tr v-for="cp in paginatedPaymentPartners" :key="cp.id">
-                <td><strong>{{ cp.name }}</strong></td>
+              <td><button class="name-link" type="button" @click="openPartnerHistory(cp)">{{ cp.name }}</button></td>
                 <td>
                   <span v-if="cp.commission_type === 'Percentage'">{{ cp.commission_value }}% of Revenue</span>
                   <span v-else>₹{{ formatCurrency(cp.commission_value) }} Flat Rate</span>
@@ -572,7 +576,7 @@
               </td>
               <td class="text-muted text-xs text-truncate" style="max-width: 150px;">{{ entry.description || '-' }}</td>
               <td>
-                <span v-if="isCompanyExpense(entry)" class="status-pill inactive">Moved to Payables</span>
+                <span v-if="isCompanyExpense(entry)" class="status-pill" :class="expenseSettlementClass(entry)">{{ expenseSettlementLabel(entry) }}</span>
                 <span v-else-if="isRevenueSettled(entry)" class="status-pill active">Settled</span>
                 <span v-else class="status-pill inactive">Pending</span>
               </td>
@@ -647,7 +651,7 @@
               <td colspan="8" class="text-center py-24 text-muted">No company owners registered.</td>
             </tr>
             <tr v-for="stk in stakeholders" :key="stk.id">
-              <td class="text-semibold">{{ stk.name }}</td>
+              <td><button class="name-link text-semibold" type="button" @click="openStakeholderHistory(stk)">{{ stk.name }}</button></td>
               <td>{{ stk.email || '-' }}</td>
               <td>{{ stk.linked_user_name || 'Not linked' }}</td>
               <td>{{ stk.approval_sequence || '-' }}</td>
@@ -701,7 +705,7 @@
               <td colspan="5" class="text-center py-24 text-muted">No channel partners registered.</td>
             </tr>
             <tr v-for="cp in partners" :key="cp.id">
-              <td class="text-semibold">{{ cp.name }}</td>
+              <td><button class="name-link text-semibold" type="button" @click="openPartnerHistory(cp)">{{ cp.name }}</button></td>
               <td><span class="commission-pill">{{ cp.commission_type }}</span></td>
               <td>
                 <strong v-if="cp.commission_type === 'Percentage'">{{ cp.commission_value }}% of Revenue</strong>
@@ -1002,6 +1006,14 @@
               <small class="text-muted block mt-4">Company fund receives: <strong>₹{{ formatCurrency(editSplitReserveAmount) }}</strong></small>
             </div>
 
+            <div class="form-group span-2">
+              <label>Received In Bank Account</label>
+              <select v-model="editSplitForm.bank_account_id" required>
+                <option value="">Select bank account</option>
+                <option v-for="account in activeBankAccounts" :key="account.id" :value="account.id">{{ account.label }}</option>
+              </select>
+            </div>
+
             <div class="form-group span-2 border-top pt-16">
               <h4 class="m-0 mb-12">Settlement Rule</h4>
               <p class="text-xs text-muted mb-16">Channel partner and stakeholder allocation are skipped at revenue settlement. The full amount is first moved into company fund.</p>
@@ -1016,6 +1028,67 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <div v-if="historyModal.visible" class="modal-overlay" @click.self="closeHistoryModal">
+      <div class="modal-content large" @click.stop>
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">{{ historyModal.kind === 'stakeholder' ? 'Company Owner' : 'Channel Partner' }}</p>
+            <h2>{{ historyModal.name }} Transactions</h2>
+          </div>
+          <button class="modal-close" type="button" @click="closeHistoryModal">&times;</button>
+        </div>
+        <div class="p-24">
+          <div class="history-summary-grid mb-16">
+            <div>
+              <span>{{ historyModal.kind === 'stakeholder' ? 'Paid to Company' : 'Paid In' }}</span>
+              <strong>₹{{ formatCurrency(historyModal.totals.pay_in || 0) }}</strong>
+            </div>
+            <div>
+              <span>Paid Out</span>
+              <strong>₹{{ formatCurrency(historyModal.totals.pay_out || 0) }}</strong>
+            </div>
+            <div>
+              <span>Pending</span>
+              <strong>₹{{ formatCurrency(historyModal.totals.pending_out || 0) }}</strong>
+            </div>
+          </div>
+          <div v-if="historyModal.loading" class="text-center py-24 text-muted">Loading transactions...</div>
+          <div v-else-if="historyModal.error" class="flash warning">{{ historyModal.error }}</div>
+          <div v-else class="table-responsive">
+            <table class="grid-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Reference</th>
+                  <th>Transaction</th>
+                  <th>Description</th>
+                  <th>Status</th>
+                  <th class="text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="historyModal.transactions.length === 0">
+                  <td colspan="7" class="text-center py-24 text-muted">No pay-in or payout transactions found.</td>
+                </tr>
+                <tr v-for="entry in historyModal.transactions" :key="`${entry.entry_type}-${entry.id}`">
+                  <td>{{ formatDate(entry.date) }}</td>
+                  <td><span class="type-pill">{{ entry.entry_type }}</span></td>
+                  <td>{{ entry.reference || '-' }}</td>
+                  <td>{{ entry.transaction_id ? `#${entry.transaction_id}` : '-' }}</td>
+                  <td class="text-muted text-xs">{{ entry.description || '-' }}</td>
+                  <td><span class="status-pill" :class="String(entry.status || '').toLowerCase()">{{ entry.status || '-' }}</span></td>
+                  <td class="text-right text-semibold" :class="entry.direction === 'in' ? 'text-primary' : 'text-success'">
+                    {{ entry.direction === 'in' ? '+' : '-' }}₹{{ formatCurrency(entry.amount) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1060,6 +1133,7 @@ const users = ref([])
 const partners = ref([])
 const payoutLedger = ref([])
 const auditLogs = ref([])
+const bankAccounts = ref([])
 
 // Payment Dashboard states
 const paymentStats = ref({
@@ -1074,6 +1148,7 @@ const editSplitForm = reactive({
   revenue_id: null,
   amount: 0,
   reserve_percentage: 100.00,
+  bank_account_id: '',
   channel_partner_id: null,
   partner_commission_percentage: 0.00,
   stakeholders: []
@@ -1101,6 +1176,16 @@ const partnerForm = reactive({
   is_active: true
 })
 
+const historyModal = reactive({
+  visible: false,
+  kind: '',
+  name: '',
+  loading: false,
+  error: '',
+  transactions: [],
+  totals: { pay_in: 0, pay_out: 0, pending_out: 0 }
+})
+
 // Computeds
 const activeStakeholders = computed(() => {
   return stakeholders.value.filter(s => s.is_active)
@@ -1121,6 +1206,18 @@ const equitySplitSummary = computed(() => {
 
 function isRevenueSettled(entry) {
   return entry.is_settled === true || entry.is_settled === 1
+}
+
+function expenseSettlementLabel(entry) {
+  if (isRevenueSettled(entry) || entry.payable_status === 'Paid') return 'Settled'
+  if (entry.payable_status === 'Partially Paid') return 'Partially Paid'
+  return 'Moved to Payables'
+}
+
+function expenseSettlementClass(entry) {
+  if (isRevenueSettled(entry) || entry.payable_status === 'Paid') return 'active'
+  if (entry.payable_status === 'Partially Paid') return 'pending'
+  return 'inactive'
 }
 
 function isCompanyExpense(entry) {
@@ -1155,6 +1252,10 @@ const editSplitReserveAmount = computed(() => {
   return Math.round(editSplitForm.amount * (editSplitForm.reserve_percentage / 100) * 100) / 100
 })
 
+const activeBankAccounts = computed(() => {
+  return bankAccounts.value.filter(account => (account.status || 'Active') === 'Active')
+})
+
 const editSplitPartnerCommission = computed(() => {
   if (!editSplitForm.channel_partner_id) return 0
   return Math.round(editSplitForm.amount * (editSplitForm.partner_commission_percentage / 100) * 100) / 100
@@ -1177,7 +1278,7 @@ const editSplitTotalPercentageSum = computed(() => {
 })
 
 const isSaveEditSplitDisabled = computed(() => {
-  return editSplitTotalPercentageSum.value !== 100 || editSplitStakeholderPool.value < 0
+  return editSplitTotalPercentageSum.value !== 100 || editSplitStakeholderPool.value < 0 || !editSplitForm.bank_account_id
 })
 
 // Pagination states
@@ -1297,6 +1398,9 @@ async function loadAllData() {
 
   const payStats = await safe(() => apiGet('/api/treasury/payment-stats'), 'payment-stats')
   if (payStats) paymentStats.value = payStats
+
+  const bankData = await safe(() => apiGet('/api/treasury/bank-accounts'), 'bank accounts')
+  if (bankData?.bank_accounts) bankAccounts.value = bankData.bank_accounts
 }
 
 async function settleStakeholder(stakeholder) {
@@ -1323,6 +1427,37 @@ async function settlePartner(partner) {
   }
 }
 
+async function openStakeholderHistory(stakeholder) {
+  await openHistoryModal('stakeholder', stakeholder.name, `/api/treasury/stakeholders/${stakeholder.id}/transactions`)
+}
+
+async function openPartnerHistory(partner) {
+  await openHistoryModal('partner', partner.name, `/api/treasury/channel-partners/${partner.id}/transactions`)
+}
+
+async function openHistoryModal(kind, name, endpoint) {
+  historyModal.visible = true
+  historyModal.kind = kind
+  historyModal.name = name
+  historyModal.loading = true
+  historyModal.error = ''
+  historyModal.transactions = []
+  historyModal.totals = { pay_in: 0, pay_out: 0, pending_out: 0 }
+  try {
+    const data = await apiGet(endpoint)
+    historyModal.transactions = data.transactions || []
+    historyModal.totals = data.totals || { pay_in: 0, pay_out: 0, pending_out: 0 }
+  } catch (err) {
+    historyModal.error = err.message || 'Unable to load transactions.'
+  } finally {
+    historyModal.loading = false
+  }
+}
+
+function closeHistoryModal() {
+  historyModal.visible = false
+}
+
 function openEditSplitModal(entry) {
   if (isCompanyExpense(entry)) {
     goToPayables()
@@ -1335,6 +1470,7 @@ function openEditSplitModal(entry) {
   editSplitForm.revenue_id = entry.id
   editSplitForm.amount = parseFloat(entry.amount)
   editSplitForm.reserve_percentage = 100
+  editSplitForm.bank_account_id = entry.bank_account_id || ''
   editSplitForm.channel_partner_id = null
   editSplitForm.partner_commission_percentage = 0
   editSplitForm.stakeholders = []
@@ -1349,6 +1485,7 @@ async function saveEditSplit() {
   try {
     const payload = {
       reserve_percentage: 100,
+      bank_account_id: editSplitForm.bank_account_id,
       channel_partner_id: null,
       partner_commission_percentage: 0,
       stakeholders: []
@@ -1562,6 +1699,12 @@ function formatTimestamp(val) {
 .hero-summary strong {
   font-size: 26px;
   font-weight: 850;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 /* Tabs */
@@ -2292,6 +2435,49 @@ function formatTimestamp(val) {
   color: var(--text-muted, #64748b);
   font-weight: 600;
   text-align: center;
+}
+
+.name-link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--primary, #2563eb);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  padding: 0;
+  text-align: left;
+}
+
+.name-link:hover {
+  text-decoration: underline;
+}
+
+.history-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.history-summary-grid > div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: #f8fafc;
+}
+
+.history-summary-grid span {
+  display: block;
+  color: var(--text-muted, #64748b);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.history-summary-grid strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 20px;
 }
 
 @media (max-width: 1100px) {

@@ -6,7 +6,10 @@
         <h1>Payables</h1>
         <p class="muted">Review expense obligations and deduct company fund only when paid.</p>
       </div>
-      <button class="button secondary" type="button" @click="loadPayables">Refresh</button>
+      <div class="action-row">
+        <button class="button secondary" type="button" @click="showRecipientAccounts = true">Recipient Bank Accounts</button>
+        <button class="button secondary" type="button" @click="loadPayables">Refresh</button>
+      </div>
     </header>
 
     <section class="metrics-grid">
@@ -86,6 +89,7 @@
           <div><span>Transaction ID / Ref</span><strong><button v-if="selectedPayable.transaction_id" class="link-button" type="button" @click="openTransaction(selectedPayable.transaction_id)">#{{ selectedPayable.transaction_id }}</button><span v-else>{{ paymentReference(selectedPayable) || '-' }}</span></strong></div>
           <div><span>Payment Date</span><strong>{{ formatDate(selectedPayable.last_payment_date) }}</strong></div>
           <div><span>Payment Mode</span><strong>{{ selectedPayable.last_payment_mode || selectedPayable.payment_mode || '-' }}</strong></div>
+          <div><span>Paid To Account</span><strong>{{ selectedPayable.recipient_account_label || '-' }}</strong></div>
           <div><span>Outstanding</span><strong>{{ money(selectedPayable.outstanding_amount) }}</strong></div>
           <div><span>Status</span><strong>{{ selectedPayable.status }}</strong></div>
         </section>
@@ -94,9 +98,17 @@
           <label>Payment Amount<input v-model.number="payment.payment_amount" type="number" min="0" step="0.01" required></label>
           <label>Payment Date<input v-model="payment.payment_date" type="date" required></label>
           <label>Payment Mode<select v-model="payment.payment_mode"><option value="">Select mode</option><option v-for="mode in paymentModes" :key="mode">{{ mode }}</option></select></label>
-          <label>Company Bank Account<select v-model="payment.bank_account_id"><option value="">Select account</option><option v-for="account in bankAccounts" :key="account.id" :value="account.id">{{ account.label }}</option></select></label>
+          <label>Paid From Bank Account<select v-model="payment.bank_account_id" required><option value="">Select account</option><option v-for="account in bankAccounts" :key="account.id" :value="account.id">{{ account.label }}</option></select></label>
+          <label>Paid To Type<select v-model="payment.recipient_owner_type" required><option v-for="type in recipientTypes" :key="type" :value="type">{{ type }}</option></select></label>
+          <label>Paid To Account
+            <select v-model="payment.recipient_account_id" required>
+              <option value="">Select recipient account</option>
+              <option v-for="account in filteredRecipientAccounts" :key="account.id" :value="account.id">{{ account.label }}</option>
+            </select>
+          </label>
           <label>Payment Transaction ID / Reference<input v-model="payment.reference"></label>
           <label>Remarks<input v-model="payment.remarks"></label>
+          <button class="button secondary span-2" type="button" @click="openRecipientAccountForm">Add Recipient Bank Account</button>
           <p v-if="error" class="span-2 flash warning">{{ error }}</p>
           <div class="span-2 action-row">
             <button class="button secondary" type="button" @click="selectedPayable = null">Cancel</button>
@@ -106,6 +118,52 @@
         <div v-else class="action-row">
           <button class="button secondary" type="button" @click="selectedPayable = null">Close</button>
         </div>
+      </div>
+    </div>
+
+    <div v-if="showRecipientAccounts" class="modal-overlay" @click.self="closeRecipientAccounts">
+      <div class="modal-content payable-modal">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Payables</p>
+            <h2>Recipient Bank Accounts</h2>
+          </div>
+          <button class="modal-close" type="button" @click="closeRecipientAccounts">&times;</button>
+        </div>
+        <form class="form-grid" @submit.prevent="saveRecipientAccount">
+          <label>Payee Type<select v-model="recipientForm.owner_type" required @change="handleRecipientTypeChange"><option v-for="type in recipientTypes" :key="type" :value="type">{{ type }}</option></select></label>
+          <label v-if="recipientForm.owner_type === 'Stakeholder'">Stakeholder<select v-model="recipientForm.owner_id" required @change="fillRecipientName"><option value="">Select stakeholder</option><option v-for="item in recipientOptions.stakeholders" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
+          <label v-else-if="recipientForm.owner_type === 'Channel Partner'">Channel Partner<select v-model="recipientForm.owner_id" required @change="fillRecipientName"><option value="">Select channel partner</option><option v-for="item in recipientOptions.partners" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
+          <label v-else-if="recipientForm.owner_type === 'Employee'">Employee<select v-model="recipientForm.owner_name" required><option value="">Select employee</option><option v-for="item in recipientOptions.employees" :key="item.name" :value="item.name">{{ item.name }}</option></select></label>
+          <label v-else>Payee Name<input v-model="recipientForm.owner_name" required></label>
+          <label>Account Name<input v-model="recipientForm.account_name"></label>
+          <label>Bank Name<input v-model="recipientForm.bank_name"></label>
+          <label>Account Number<input v-model="recipientForm.account_number"></label>
+          <label>IFSC<input v-model="recipientForm.ifsc"></label>
+          <label>UPI ID<input v-model="recipientForm.upi_id"></label>
+          <label class="span-2">Remarks<input v-model="recipientForm.remarks"></label>
+          <p v-if="recipientError" class="span-2 flash warning">{{ recipientError }}</p>
+          <div class="span-2 action-row">
+            <button class="button secondary" type="button" @click="resetRecipientForm">Reset</button>
+            <button class="button" type="submit">Save Recipient Account</button>
+          </div>
+        </form>
+        <section class="recipient-list">
+          <h3>Saved Accounts</h3>
+          <table class="record-table">
+            <thead><tr><th>Payee</th><th>Type</th><th>Bank</th><th>Account / UPI</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr v-for="account in recipientAccounts" :key="account.id">
+                <td><strong>{{ account.owner_name }}</strong></td>
+                <td>{{ account.owner_type }}</td>
+                <td>{{ account.bank_name || '-' }}</td>
+                <td>{{ account.account_number || account.upi_id || '-' }}</td>
+                <td><span class="pill" :class="account.status === 'Active' ? 'status-success' : 'status-muted'">{{ account.status }}</span></td>
+              </tr>
+              <tr v-if="recipientAccounts.length === 0"><td colspan="5" class="empty-state">No recipient bank accounts added yet.</td></tr>
+            </tbody>
+          </table>
+        </section>
       </div>
     </div>
   </div>
@@ -126,7 +184,14 @@ const selectedPayable = ref(null)
 const error = ref('')
 const paymentModes = ref([])
 const bankAccounts = ref([])
+const recipientAccounts = ref([])
+const recipientOptions = ref({ stakeholders: [], partners: [], employees: [] })
+const showRecipientAccounts = ref(false)
+const recipientError = ref('')
+const recipientTypes = ['Employee', 'Stakeholder', 'Channel Partner', 'Vendor', 'Other']
+const LOCAL_TREASURY_BANKS_KEY = 'crm_treasury_bank_accounts'
 const payment = reactive(defaultPayment())
+const recipientForm = reactive(defaultRecipientForm())
 const canPaySelected = computed(() => selectedPayable.value && ['Pending', 'Partially Paid'].includes(selectedPayable.value.status))
 
 const filteredPayables = computed(() => {
@@ -140,19 +205,72 @@ const filteredPayables = computed(() => {
 const pendingPayables = computed(() => filteredPayables.value.filter(payable => ['Pending', 'Partially Paid'].includes(payable.status)))
 const paidPayables = computed(() => filteredPayables.value.filter(payable => payable.status === 'Paid'))
 const visiblePayables = computed(() => activeTab.value === 'paid' ? paidPayables.value : pendingPayables.value)
+const filteredRecipientAccounts = computed(() => {
+  return recipientAccounts.value.filter(account => (account.status || 'Active') === 'Active' && account.owner_type === payment.recipient_owner_type)
+})
 
 onMounted(async () => {
   await Promise.all([loadPayables(), loadOptions()])
 })
 
 function defaultPayment() {
-  return { payment_amount: 0, payment_date: new Date().toISOString().slice(0, 10), payment_mode: '', bank_account_id: '', reference: '', remarks: '' }
+  return { payment_amount: 0, payment_date: new Date().toISOString().slice(0, 10), payment_mode: '', bank_account_id: '', recipient_owner_type: 'Employee', recipient_account_id: '', reference: '', remarks: '' }
+}
+
+function defaultRecipientForm() {
+  return { owner_type: 'Employee', owner_id: '', owner_name: '', account_name: '', bank_name: '', account_number: '', ifsc: '', upi_id: '', remarks: '', status: 'Active' }
 }
 
 async function loadOptions() {
   const options = await apiGet('/api/options')
   paymentModes.value = options.payment_modes || []
-  bankAccounts.value = options.bank_accounts || []
+  bankAccounts.value = await loadTreasuryBankAccounts()
+  await loadRecipientAccounts()
+}
+
+async function loadRecipientAccounts() {
+  const data = await apiGet('/api/treasury/payee-bank-accounts')
+  recipientAccounts.value = data.accounts || []
+  recipientOptions.value = data.recipients || { stakeholders: [], partners: [], employees: [] }
+}
+
+async function loadTreasuryBankAccounts() {
+  let treasuryAccounts = []
+  try {
+    const data = await apiGet('/api/treasury/bank-accounts')
+    treasuryAccounts = data.bank_accounts || data.accounts || []
+  } catch {
+    treasuryAccounts = []
+  }
+  return mergeBankAccounts(treasuryAccounts, loadLocalBankAccounts())
+}
+
+function loadLocalBankAccounts() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(LOCAL_TREASURY_BANKS_KEY) || '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function mergeBankAccounts(primary, fallback) {
+  const merged = []
+  const seen = new Set()
+  ;[...primary, ...fallback].forEach(bank => {
+    const accountName = bank.account_name || bank.beneficiary_name || bank.label || ''
+    const normalized = {
+      ...bank,
+      account_name: accountName,
+      label: bank.label || [accountName, bank.bank_name, bank.account_number ? `••${String(bank.account_number).slice(-4)}` : ''].filter(Boolean).join(' · '),
+      status: bank.status || 'Active',
+    }
+    const key = String(normalized.account_number || normalized.id || '')
+    if (!key || seen.has(key)) return
+    seen.add(key)
+    merged.push(normalized)
+  })
+  return merged.filter(bank => (bank.status || 'Active') === 'Active')
 }
 
 async function loadPayables() {
@@ -168,8 +286,21 @@ async function loadPayables() {
 
 function openPayment(payable) {
   selectedPayable.value = payable
-  Object.assign(payment, defaultPayment(), { payment_amount: payable.outstanding_amount || 0 })
+  const recipientType = inferRecipientType(payable)
+  Object.assign(payment, defaultPayment(), {
+    payment_amount: payable.outstanding_amount || 0,
+    recipient_owner_type: recipientType
+  })
   error.value = ''
+}
+
+function inferRecipientType(payable) {
+  const text = [payable.source_module, payable.source_reference, payable.party_name, payable.remarks].join(' ').toLowerCase()
+  if (text.includes('channel partner')) return 'Channel Partner'
+  if (text.includes('stakeholder') || text.includes('owner')) return 'Stakeholder'
+  if (text.includes('claim') || text.includes('employee')) return 'Employee'
+  if (text.includes('vendor')) return 'Vendor'
+  return 'Other'
 }
 
 function openTransaction(transactionId) {
@@ -182,7 +313,14 @@ function paymentReference(payable) {
 }
 
 async function markPaid() {
-  if (!confirm('Confirm payable payment? This will deduct company fund.')) return
+  if (!payment.bank_account_id) {
+    error.value = 'Select the bank account used for this payable payment.'
+    return
+  }
+  if (!payment.recipient_account_id) {
+    error.value = 'Select the recipient account paid to.'
+    return
+  }
   error.value = ''
   try {
     await apiPost(`/api/treasury/payables/${selectedPayable.value.id}/payments`, payment)
@@ -190,6 +328,56 @@ async function markPaid() {
     await loadPayables()
   } catch (err) {
     error.value = err.message
+  }
+}
+
+function openRecipientAccountForm() {
+  Object.assign(recipientForm, defaultRecipientForm(), { owner_type: payment.recipient_owner_type })
+  showRecipientAccounts.value = true
+  recipientError.value = ''
+}
+
+function closeRecipientAccounts() {
+  showRecipientAccounts.value = false
+  recipientError.value = ''
+}
+
+function resetRecipientForm() {
+  Object.assign(recipientForm, defaultRecipientForm())
+  recipientError.value = ''
+}
+
+function handleRecipientTypeChange() {
+  recipientForm.owner_id = ''
+  recipientForm.owner_name = ''
+}
+
+function fillRecipientName() {
+  if (recipientForm.owner_type === 'Stakeholder') {
+    const item = recipientOptions.value.stakeholders.find(row => Number(row.id) === Number(recipientForm.owner_id))
+    recipientForm.owner_name = item?.name || ''
+  } else if (recipientForm.owner_type === 'Channel Partner') {
+    const item = recipientOptions.value.partners.find(row => Number(row.id) === Number(recipientForm.owner_id))
+    recipientForm.owner_name = item?.name || ''
+  }
+}
+
+async function saveRecipientAccount() {
+  recipientError.value = ''
+  try {
+    await apiPost('/api/treasury/payee-bank-accounts', recipientForm)
+    await loadRecipientAccounts()
+    const latest = recipientAccounts.value.find(account =>
+      account.owner_type === recipientForm.owner_type &&
+      account.owner_name === recipientForm.owner_name &&
+      ((recipientForm.account_number && account.account_number === recipientForm.account_number) || (recipientForm.upi_id && account.upi_id === recipientForm.upi_id))
+    )
+    if (latest && payment.recipient_owner_type === recipientForm.owner_type) {
+      payment.recipient_account_id = latest.id
+    }
+    resetRecipientForm()
+  } catch (err) {
+    recipientError.value = err.message || 'Unable to save recipient account.'
   }
 }
 
@@ -228,4 +416,6 @@ function statusClass(status) {
 .detail-grid div { border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: var(--surface); }
 .detail-grid span { display: block; color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
 .link-button { border: 0; background: transparent; color: var(--primary); padding: 0; font-weight: 800; cursor: pointer; }
+.recipient-list { margin-top: 22px; }
+.recipient-list h3 { margin: 0 0 10px; font-size: 16px; }
 </style>

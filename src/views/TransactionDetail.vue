@@ -9,7 +9,8 @@
     </div>
     <div class="action-row" style="display: flex; gap: 12px; align-items: center;">
       <RouterLink v-if="isPosted" class="button btn-animate" to="/finance/transactions?new=1">New Transaction</RouterLink>
-      <button v-if="transaction && transaction.status !== 'Reversed'" class="button danger btn-animate" type="button" @click="reverseTransaction" style="background: #ef4444; color: white;">Reverse Entry</button>
+      <RouterLink v-if="transaction && transaction.status !== 'Reversed'" class="button secondary btn-animate" :to="`/finance/transactions/${id}/edit`">Edit</RouterLink>
+      <button v-if="transaction && transaction.status !== 'Reversed'" class="button danger btn-animate" type="button" @click="showReverseConfirm = true" style="background: #ef4444; color: white;">Reverse Entry</button>
       <RouterLink class="button secondary" to="/finance/transactions">Back to Ledger</RouterLink>
     </div>
   </section>
@@ -45,6 +46,25 @@
       </div>
     </div>
   </section>
+
+  <div v-if="showReverseConfirm" class="confirm-overlay" @click.self="closeReverseConfirm">
+    <section class="confirm-panel">
+      <header>
+        <p class="eyebrow">Confirm Reversal</p>
+        <h2>Reverse Transaction #{{ id }}</h2>
+      </header>
+      <p class="muted">
+        This will negate this entry and remove any synced treasury revenue splits or payouts.
+      </p>
+      <p v-if="reverseError" class="flash warning">{{ reverseError }}</p>
+      <div class="confirm-actions">
+        <button class="button secondary" type="button" :disabled="reversing" @click="closeReverseConfirm">Cancel</button>
+        <button class="button danger" type="button" :disabled="reversing" @click="reverseTransaction">
+          {{ reversing ? 'Reversing...' : 'Confirm Reverse' }}
+        </button>
+      </div>
+    </section>
+  </div>
 </template>
 
 <script setup>
@@ -67,6 +87,9 @@ const transactionFields = ref([])
 const currencySymbols = ref({})
 const loading = ref(true)
 const error = ref('')
+const showReverseConfirm = ref(false)
+const reversing = ref(false)
+const reverseError = ref('')
 // Show success banner if navigated here from form posting
 const showSuccessMsg = ref(route.query.posted === 'true')
 const isPosted = ref(route.query.posted === 'true')
@@ -85,19 +108,25 @@ onMounted(async () => {
 })
 
 async function reverseTransaction() {
-  if (!confirm("Are you sure you want to reverse this transaction? This will negate this entry and remove any synced treasury revenue splits/payouts.")) {
-    return
-  }
+  if (reversing.value) return
+  reverseError.value = ''
   try {
-    loading.value = true
+    reversing.value = true
     await apiPost(`/api/finance/transactions/${props.id}/reverse`)
     const data = await apiGet(`/api/finance/transactions/${props.id}`)
     transaction.value = data.transaction
+    showReverseConfirm.value = false
   } catch (err) {
-    alert(err.message || "Failed to reverse transaction.")
+    reverseError.value = err.message || 'Failed to reverse transaction.'
   } finally {
-    loading.value = false
+    reversing.value = false
   }
+}
+
+function closeReverseConfirm() {
+  if (reversing.value) return
+  showReverseConfirm.value = false
+  reverseError.value = ''
 }
 
 const detailFields = computed(() => {
@@ -112,6 +141,8 @@ const detailFields = computed(() => {
     { label: 'Transaction Date', value: t.transaction_date },
     { label: 'Type', value: t.type },
     { label: 'Account', value: t.account_name },
+    { label: 'Product', value: t.product_name || t.product_code || '' },
+    { label: 'Bank Account', value: t.bank_account_name || '' },
     { label: 'Party', value: partyLabel(t) },
     { label: 'Invoice Number', value: t.invoice_number || '' },
     { label: 'Associated Project', value: t.project_name || 'None' },
@@ -185,6 +216,37 @@ function money(currency, amount) {
 
 .transaction-documents h2 {
   margin: 0;
+}
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.confirm-panel {
+  width: min(520px, 100%);
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+  padding: 24px;
+}
+
+.confirm-panel h2 {
+  margin: 4px 0 12px;
+  font-size: 22px;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
 }
 
 @keyframes slideDown {

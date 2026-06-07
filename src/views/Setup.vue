@@ -14,7 +14,6 @@
       <button :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'">User Management</button>
       <button :class="{ active: activeTab === 'company' }" @click="activeTab = 'company'">Company Information</button>
       <button :class="{ active: activeTab === 'masters' }" @click="activeTab = 'masters'">Master Data</button>
-      <button :class="{ active: activeTab === 'banks' }" @click="activeTab = 'banks'">Bank Accounts</button>
       <button :class="{ active: activeTab === 'rates' }" @click="activeTab = 'rates'">Exchange Rates</button>
       <button :class="{ active: activeTab === 'logs' }" @click="activeTab = 'logs'">Activity Logs</button>
     </nav>
@@ -164,91 +163,6 @@
               <div class="form-actions bank-modal-actions">
                 <button type="button" class="button secondary" @click="showMasterModal = false">Cancel</button>
                 <button type="submit" class="button">Save</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </section>
-
-      <!-- Bank Accounts Tab -->
-      <section v-if="activeTab === 'banks'" class="bank-accounts-setup">
-        <div class="record-card shadow-premium">
-          <div class="card-section-title bank-accounts-header">
-            <div>
-              <h2>Bank Accounts for Invoices</h2>
-              <p class="muted small">Add NEFT/RTGS details here. When creating an invoice, select a bank and payment details appear below the notes.</p>
-            </div>
-            <button type="button" class="button" @click="openBankModal()">Add Bank Account</button>
-          </div>
-
-          <div v-if="bankAccounts.length === 0" class="empty-state muted">
-            No bank accounts configured yet.
-          </div>
-
-          <table v-else class="data-table">
-            <thead>
-              <tr>
-                <th>Label</th>
-                <th>Beneficiary</th>
-                <th>Bank</th>
-                <th>Account</th>
-                <th>IFSC</th>
-                <th>Default</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="bank in bankAccounts" :key="bank.id">
-                <td><strong>{{ bank.label }}</strong></td>
-                <td>{{ bank.beneficiary_name }}</td>
-                <td>{{ bank.bank_name }}</td>
-                <td>{{ bank.account_number }}</td>
-                <td>{{ bank.ifsc_code }}</td>
-                <td><span v-if="bank.is_default" class="pill status-success">Default</span></td>
-                <td class="actions-cell">
-                  <button type="button" class="button secondary small" @click="openBankModal(bank)">Edit</button>
-                  <button type="button" class="button secondary small danger-text" @click="deleteBankAccount(bank)">Delete</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div v-if="showBankModal" class="modal-overlay" @click.self="showBankModal = false">
-          <div class="modal-content bank-modal">
-            <div class="bank-modal-header">
-              <div>
-                <p class="eyebrow">Invoice Payments</p>
-                <h2>{{ bankForm.id ? 'Edit Bank Account' : 'New Bank Account' }}</h2>
-              </div>
-              <button type="button" class="modal-close" @click="showBankModal = false">&times;</button>
-            </div>
-            <form class="setup-form bank-modal-form" @submit.prevent="saveBankAccount">
-              <div class="bank-form-grid">
-                <label class="span-2">Display Label
-                  <input v-model="bankForm.label" placeholder="e.g. HDFC Current Account" required>
-                  <span class="help-text">Shown when selecting payment details on invoices.</span>
-                </label>
-                <label class="span-2">Beneficiary Name
-                  <input v-model="bankForm.beneficiary_name" placeholder="Registered account holder name" required>
-                </label>
-                <label>Bank Name
-                  <input v-model="bankForm.bank_name" placeholder="e.g. HDFC Bank" required>
-                </label>
-                <label>Account Number
-                  <input v-model="bankForm.account_number" placeholder="Enter account number" required>
-                </label>
-                <label>IFSC Code
-                  <input v-model="bankForm.ifsc_code" placeholder="e.g. HDFC0001234" required>
-                </label>
-                <label class="checkbox-row bank-default-row span-2">
-                  <input type="checkbox" v-model="bankForm.is_default">
-                  <span>Set as default bank for new invoices</span>
-                </label>
-              </div>
-              <div class="form-actions bank-modal-actions">
-                <button type="button" class="button secondary" @click="showBankModal = false">Cancel</button>
-                <button type="submit" class="button">Save Bank Account</button>
               </div>
             </form>
           </div>
@@ -739,17 +653,6 @@ const companyFormState = reactive({
   tax_id: ''
 })
 
-const bankAccounts = ref([])
-const showBankModal = ref(false)
-const bankForm = reactive({
-  id: null,
-  label: '',
-  beneficiary_name: '',
-  bank_name: '',
-  account_number: '',
-  ifsc_code: '',
-  is_default: false,
-})
 const paymentTerms = ref([])
 const paymentModes = ref([])
 const showMasterModal = ref(false)
@@ -928,7 +831,6 @@ async function loadData() {
     console.error("Failed to load exchange rates", err)
   }
 
-  await loadBankAccounts()
   await loadMasterOptions()
 }
 
@@ -958,64 +860,6 @@ async function saveMasterOption() {
   }
   showMasterModal.value = false
   await loadMasterOptions()
-}
-
-async function loadBankAccounts() {
-  try {
-    const res = await apiGet('/api/settings/bank-accounts')
-    bankAccounts.value = res.bank_accounts || []
-  } catch (err) {
-    console.error('Failed to load bank accounts', err)
-  }
-}
-
-function openBankModal(bank = null) {
-  if (bank) {
-    Object.assign(bankForm, {
-      id: bank.id,
-      label: bank.label,
-      beneficiary_name: bank.beneficiary_name,
-      bank_name: bank.bank_name,
-      account_number: bank.account_number,
-      ifsc_code: bank.ifsc_code,
-      is_default: !!bank.is_default,
-    })
-  } else {
-    Object.assign(bankForm, {
-      id: null,
-      label: '',
-      beneficiary_name: '',
-      bank_name: '',
-      account_number: '',
-      ifsc_code: '',
-      is_default: bankAccounts.value.length === 0,
-    })
-  }
-  showBankModal.value = true
-}
-
-async function saveBankAccount() {
-  const payload = {
-    label: bankForm.label,
-    beneficiary_name: bankForm.beneficiary_name,
-    bank_name: bankForm.bank_name,
-    account_number: bankForm.account_number,
-    ifsc_code: bankForm.ifsc_code,
-    is_default: bankForm.is_default,
-  }
-  if (bankForm.id) {
-    await apiPut(`/api/settings/bank-accounts/${bankForm.id}`, payload)
-  } else {
-    await apiPost('/api/settings/bank-accounts', payload)
-  }
-  showBankModal.value = false
-  await loadBankAccounts()
-}
-
-async function deleteBankAccount(bank) {
-  if (!confirm(`Delete bank account "${bank.label}"?`)) return
-  await apiDelete(`/api/settings/bank-accounts/${bank.id}`)
-  await loadBankAccounts()
 }
 
 function startEdit() {

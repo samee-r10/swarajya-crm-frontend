@@ -194,6 +194,7 @@ const stakeholders = ref([])
 const partners = ref([])
 const paymentModes = ref([])
 const bankAccounts = ref([])
+const LOCAL_TREASURY_BANKS_KEY = 'crm_treasury_bank_accounts'
 const companyFundAvailable = ref(0)
 const activeTab = ref(route.path.includes('/approvals') ? 'approvals' : 'payouts')
 const showPayoutModal = ref(false)
@@ -251,10 +252,49 @@ async function loadAll() {
     stakeholders.value = (stakeholderData.stakeholders || []).filter(s => s.is_active)
     partners.value = (partnerData.partners || []).filter(p => p.is_active !== false)
     paymentModes.value = options.payment_modes || []
-    bankAccounts.value = options.bank_accounts || []
+    bankAccounts.value = await loadTreasuryBankAccounts()
   } catch (err) {
     loadError.value = err.message || 'Unable to load payout approvals.'
   }
+}
+
+async function loadTreasuryBankAccounts() {
+  let treasuryAccounts = []
+  try {
+    const data = await apiGet('/api/treasury/bank-accounts')
+    treasuryAccounts = data.bank_accounts || data.accounts || []
+  } catch {
+    treasuryAccounts = []
+  }
+  return mergeBankAccounts(treasuryAccounts, loadLocalBankAccounts())
+}
+
+function loadLocalBankAccounts() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(LOCAL_TREASURY_BANKS_KEY) || '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function mergeBankAccounts(primary, fallback) {
+  const merged = []
+  const seen = new Set()
+  ;[...primary, ...fallback].forEach(bank => {
+    const accountName = bank.account_name || bank.beneficiary_name || bank.label || ''
+    const normalized = {
+      ...bank,
+      account_name: accountName,
+      label: bank.label || [accountName, bank.bank_name, bank.account_number ? `••${String(bank.account_number).slice(-4)}` : ''].filter(Boolean).join(' · '),
+      status: bank.status || 'Active',
+    }
+    const key = String(normalized.account_number || normalized.id || '')
+    if (!key || seen.has(key)) return
+    seen.add(key)
+    merged.push(normalized)
+  })
+  return merged.filter(bank => (bank.status || 'Active') === 'Active')
 }
 
 async function pendingApprovalsFromPayoutDetails(payoutRows) {

@@ -11,6 +11,13 @@
     <form class="invoice-form" @submit.prevent="save">
       <div class="form-grid record-card">
         <div class="span-2 card-section-title"><h2>Invoice Basic Info</h2></div>
+
+        <label>Invoice Type
+          <select v-model="form.invoice_type">
+            <option>Normal Invoice</option>
+            <option>Product Invoice</option>
+          </select>
+        </label>
         
         <label>Customer
           <select v-model="form.customer_id" required>
@@ -19,9 +26,16 @@
           </select>
         </label>
 
+        <label v-if="isProductInvoice">Product
+          <select v-model="form.product_id" required>
+            <option value="">Select Product</option>
+            <option v-for="product in activeProducts" :key="product.id || product.product_code" :value="product.id || product.product_code">{{ productName(product) }}</option>
+          </select>
+        </label>
+
         <label>Project
-          <select v-model="form.project_id">
-            <option value="">Select Project (Optional)</option>
+          <select v-model="form.project_id" :required="isProductInvoice">
+            <option value="">{{ isProductInvoice ? 'Select Project' : 'Select Project (Optional)' }}</option>
             <option v-for="p in filteredProjects" :key="p.id" :value="p.id">{{ p.project_name }}</option>
           </select>
         </label>
@@ -93,7 +107,7 @@
         <label>Bank account for payment details
           <select v-model="form.bank_account_id">
             <option value="">No payment details on invoice</option>
-            <option v-for="b in bankAccounts" :key="b.id" :value="b.id">{{ b.label }}</option>
+            <option v-for="b in activeBankAccounts" :key="b.id" :value="b.id">{{ bankAccountLabel(b) }}</option>
           </select>
         </label>
         <div v-if="paymentPreview" class="payment-preview span-2">
@@ -126,14 +140,19 @@ const props = defineProps({ id: String })
 const router = useRouter()
 const customers = ref([])
 const projects = ref([])
+const products = ref([])
 const accounts = ref([])
 const bankAccounts = ref([])
 const currencies = ref([])
 const statuses = ['Draft', 'Sent', 'Approved', 'Partially Paid', 'Paid', 'Cancelled']
 const error = ref('')
+const LOCAL_PRODUCTS_KEY = 'crm_products_fallback'
+const LOCAL_TREASURY_BANKS_KEY = 'crm_treasury_bank_accounts'
 
 const form = reactive({
+  invoice_type: 'Normal Invoice',
   customer_id: '',
+  product_id: '',
   project_id: '',
   account_id: '',
   invoice_number: '',
@@ -160,8 +179,22 @@ const incomeAccounts = computed(() => {
 })
 
 const filteredProjects = computed(() => {
-  if (!form.customer_id) return projects.value
-  return projects.value.filter(p => Number(p.customer_id) === Number(form.customer_id))
+  let list = form.customer_id ? projects.value.filter(p => Number(p.customer_id) === Number(form.customer_id)) : projects.value
+  if (isProductInvoice.value && form.product_id) {
+    const mapped = list.filter(projectMatchesSelectedProduct)
+    if (mapped.length) list = mapped
+  }
+  return list
+})
+
+const isProductInvoice = computed(() => form.invoice_type === 'Product Invoice')
+
+const activeProducts = computed(() => {
+  return products.value.filter(product => !['Inactive', 'Archived'].includes(product.product_status || product.status || 'Active'))
+})
+
+const activeBankAccounts = computed(() => {
+  return bankAccounts.value.filter(bank => (bank.status || 'Active') === 'Active')
 })
 
 const paymentPreview = computed(() => {
@@ -170,10 +203,10 @@ const paymentPreview = computed(() => {
   if (!bank) return null
   const ref = form.invoice_number?.trim() || '(auto-generated on save)'
   return {
-    beneficiary_name: bank.beneficiary_name,
+    beneficiary_name: bank.beneficiary_name || bank.account_name || bank.label,
     bank_name: bank.bank_name,
     account_number: bank.account_number,
-    ifsc_code: bank.ifsc_code,
+    ifsc_code: bank.ifsc_code || bank.ifsc,
     payment_reference: ref,
   }
 })
@@ -187,18 +220,34 @@ watch(() => form.customer_id, (newCust) => {
   }
 })
 
+watch(() => form.product_id, () => {
+  if (form.project_id) {
+    const project = projects.value.find(p => Number(p.id) === Number(form.project_id))
+    if (project && !projectMatchesSelectedProduct(project)) {
+      form.project_id = ''
+    }
+  }
+})
+
+watch(() => form.invoice_type, (type) => {
+  if (type === 'Normal Invoice') {
+    form.product_id = ''
+  }
+})
+
 onMounted(async () => {
   const options = await apiGet('/api/options')
   customers.value = options.customers || []
   projects.value = options.projects || []
+  products.value = mergeProducts(options.products || [], loadLocalProducts())
   accounts.value = options.accounts || []
   currencies.value = options.currencies || []
-  bankAccounts.value = options.bank_accounts || []
+  bankAccounts.value = await loadTreasuryBankAccounts()
 
   if (!props.id) {
     const salesRev = accounts.value.find(a => a.name === 'Sales Revenue')
     if (salesRev) form.account_id = salesRev.id
-    const defaultBank = bankAccounts.value.find(b => b.is_default)
+    const defaultBank = activeBankAccounts.value.find(b => b.is_default) || activeBankAccounts.value[0]
     if (defaultBank) form.bank_account_id = defaultBank.id
   }
 
@@ -249,6 +298,10 @@ function calculateTotals() {
 async function save() {
   error.value = ''
   try {
+    if (isProductInvoice.value && (!form.customer_id || !form.product_id || !form.project_id)) {
+      error.value = 'Customer, Product, and Project are required for Product Invoice.'
+      return
+    }
     if (form.status === 'Paid') {
       form.amount_paid = form.total_amount
     } else if (form.status !== 'Partially Paid') {
@@ -265,6 +318,88 @@ async function save() {
   } catch (err) {
     error.value = err.message
   }
+}
+
+function productName(product) {
+  const code = product.product_code || product.code
+  const name = product.product_name || product.name
+  return code ? `${code} - ${name}` : name
+}
+
+function loadLocalProducts() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(LOCAL_PRODUCTS_KEY) || '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function mergeProducts(primary, fallback) {
+  const merged = []
+  const seen = new Set()
+  ;[...primary, ...fallback].forEach(product => {
+    const key = String(product.id || product.product_id || product.product_code || product.code || '')
+    if (!key || seen.has(key)) return
+    seen.add(key)
+    merged.push(product)
+  })
+  return merged
+}
+
+async function loadTreasuryBankAccounts() {
+  let treasuryAccounts = []
+  try {
+    const data = await apiGet('/api/treasury/bank-accounts')
+    treasuryAccounts = data.bank_accounts || data.accounts || []
+  } catch {
+    treasuryAccounts = []
+  }
+  return mergeBankAccounts(treasuryAccounts, loadLocalBankAccounts())
+}
+
+function loadLocalBankAccounts() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(LOCAL_TREASURY_BANKS_KEY) || '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function mergeBankAccounts(primary, fallback) {
+  const merged = []
+  const seen = new Set()
+  ;[...primary, ...fallback].forEach(bank => {
+    const normalized = normalizeBankAccount(bank)
+    const key = String(normalized.account_number || normalized.id || '')
+    if (!key || seen.has(key)) return
+    seen.add(key)
+    merged.push(normalized)
+  })
+  return merged
+}
+
+function normalizeBankAccount(bank) {
+  const accountName = bank.account_name || bank.beneficiary_name || bank.label || ''
+  return {
+    ...bank,
+    account_name: accountName,
+    beneficiary_name: bank.beneficiary_name || accountName,
+    ifsc: bank.ifsc || bank.ifsc_code || '',
+    ifsc_code: bank.ifsc_code || bank.ifsc || '',
+    label: bank.label || [accountName, bank.bank_name, bank.account_number ? `••${String(bank.account_number).slice(-4)}` : ''].filter(Boolean).join(' · '),
+    status: bank.status || 'Active',
+  }
+}
+
+function bankAccountLabel(bank) {
+  return bank.label || [bank.account_name || bank.beneficiary_name, bank.bank_name, bank.account_number ? `••${String(bank.account_number).slice(-4)}` : ''].filter(Boolean).join(' · ')
+}
+
+function projectMatchesSelectedProduct(project) {
+  if (!form.product_id) return true
+  return [project.product_id, project.product_code, project.product_name].some(value => value !== undefined && value !== null && String(value) === String(form.product_id))
 }
 </script>
 

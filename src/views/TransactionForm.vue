@@ -1,5 +1,5 @@
 <template>
-  <section class="page-header"><div><p class="eyebrow">Finance</p><h1>New Transaction</h1></div></section>
+  <section class="page-header"><div><p class="eyebrow">Finance</p><h1>{{ isEditing ? `Edit Transaction #${props.id}` : 'New Transaction' }}</h1></div></section>
   <form class="form-grid record-card" @submit.prevent="openPreview">
     <label>
       Posting Date
@@ -15,6 +15,12 @@
     </label>
     <label>Type<select v-model="form.type"><option>Income</option><option>Expense</option></select></label>
     <label>Account<select v-model="form.account_id" required><option value="">Select Account</option><option v-for="account in filteredAccountsForDropdown" :key="account.id" :value="account.id">{{ accountLabel(account) }}</option></select></label>
+    <label>Product
+      <select v-model="form.product_id" :required="form.type === 'Income'">
+        <option value="">{{ form.type === 'Income' ? 'Select Product' : 'No Product' }}</option>
+        <option v-for="product in activeProducts" :key="product.id || product.product_code" :value="product.id || product.product_code">{{ productName(product) }}</option>
+      </select>
+    </label>
     <label v-if="isEmployeeClaimsAccount">Approved Claim
       <select v-model="form.expense_claim_id" required>
         <option value="">Select approved claim</option>
@@ -128,7 +134,7 @@
       <button v-if="props.isModal" class="button secondary btn-animate" type="button" @click="emit('cancel')">
         Cancel
       </button>
-      <button class="button btn-animate" type="submit">Preview Posting</button>
+      <button class="button btn-animate" type="submit">{{ isEditing ? 'Preview Changes' : 'Preview Posting' }}</button>
     </div>
   </form>
 
@@ -150,6 +156,7 @@
             <div class="overview-item"><span>Posting Date</span><strong>{{ form.transaction_date }}</strong></div>
             <div class="overview-item"><span>Type</span><strong>{{ form.type }}</strong></div>
             <div class="overview-item"><span>Account</span><strong>{{ selectedAccountName }}</strong></div>
+            <div class="overview-item"><span>Product</span><strong>{{ selectedProductName }}</strong></div>
             <div class="overview-item" v-if="form.type === 'Income'"><span>Customer Name</span><strong>{{ selectedPartyName }}</strong></div>
             <div class="overview-item" v-if="selectedInvoice"><span>Invoice Number</span><strong>{{ selectedInvoice.invoice_number }}</strong></div>
             <div class="overview-item" v-if="form.type !== 'Income'"><span>Vendor Name</span><strong>{{ selectedPartyName }}</strong></div>
@@ -202,7 +209,7 @@
           <button type="button" class="button secondary" :disabled="isPosting" @click="showPreviewModal = false">Cancel / Edit</button>
           <button type="button" class="button" :disabled="isPosting" @click="confirmAndPost">
             <span v-if="isPosting" class="btn-spinner"></span>
-            {{ isPosting ? 'Posting...' : 'Confirm & Post Entry' }}
+            {{ isPosting ? (isEditing ? 'Saving...' : 'Posting...') : (isEditing ? 'Confirm & Save Changes' : 'Confirm & Post Entry') }}
           </button>
         </footer>
       </div>
@@ -213,10 +220,14 @@
 <script setup>
 import { onMounted, reactive, ref, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { apiGet, apiPost, apiUploadFile } from '../api/client'
+import { apiGet, apiPost, apiPut, apiUploadFile } from '../api/client'
 import DocumentPreview from '../components/DocumentPreview.vue'
 
 const props = defineProps({
+  id: {
+    type: [String, Number],
+    default: null
+  },
   isModal: {
     type: Boolean,
     default: false
@@ -227,6 +238,7 @@ const router = useRouter()
 const accounts = ref([])
 const customers = ref([])
 const vendors = ref([])
+const products = ref([])
 const loans = ref([])
 const approvedClaims = ref([])
 const currencies = ref([])
@@ -235,9 +247,11 @@ const receivableInvoices = ref([])
 const invoiceLoading = ref(false)
 const transactionFields = ref([])
 const error = ref('')
-const form = reactive({ transaction_date: new Date().toISOString().slice(0, 10), type: 'Income', account_id: '', customer_id: '', project_id: '', vendor_id: '', invoice_id: '', invoice_number: '', expense_claim_id: '', loan_account_id: '', loan_schedule_id: '', currency: 'INR', amount: '', cgst_percent: 0, igst_percent: 0, tds_percent: 0, category: '', depreciation_value: '', description: '', attachments: [] })
+const form = reactive({ transaction_date: new Date().toISOString().slice(0, 10), type: 'Income', account_id: '', product_id: '', customer_id: '', project_id: '', vendor_id: '', invoice_id: '', invoice_number: '', expense_claim_id: '', loan_account_id: '', loan_schedule_id: '', currency: 'INR', amount: '', cgst_percent: 0, igst_percent: 0, tds_percent: 0, category: '', depreciation_value: '', description: '', attachments: [] })
 const postingDateOption = ref('today')
 const uploadingDocument = ref(false)
+const isEditing = computed(() => !!props.id)
+const LOCAL_PRODUCTS_KEY = 'crm_products_fallback'
 
 const showPreviewModal = ref(false)
 const isPosting = ref(false)
@@ -339,7 +353,12 @@ watch(() => form.loan_account_id, () => {
 
 const filteredProjects = computed(() => {
   if (!form.customer_id) return projects.value
-  return projects.value.filter(p => p.customer_id === parseInt(form.customer_id))
+  let list = projects.value.filter(p => p.customer_id === parseInt(form.customer_id))
+  if (form.product_id) {
+    const mapped = list.filter(projectMatchesSelectedProduct)
+    if (mapped.length) list = mapped
+  }
+  return list
 })
 
 onMounted(async () => {
@@ -347,6 +366,7 @@ onMounted(async () => {
   accounts.value = (options.accounts || []).filter(a => a.name !== 'Bank Account' && a.name !== 'Cash on Hand')
   customers.value = options.customers || []
   vendors.value = options.vendors || []
+  products.value = mergeProducts(options.products || [], loadLocalProducts())
   currencies.value = options.currencies || []
   projects.value = options.projects || []
   try {
@@ -366,7 +386,9 @@ onMounted(async () => {
   transactionFields.value = transactionData.fields || []
   initialiseCustomFields(customTransactionFields.value)
 
-  if (form.type === 'Income') {
+  if (isEditing.value) {
+    await loadExistingTransaction()
+  } else if (form.type === 'Income') {
     const salesRev = accounts.value.find(a => a.name === 'Sales Revenue')
     if (salesRev) form.account_id = salesRev.id
   }
@@ -416,6 +438,18 @@ const selectedAccount = computed(() => {
   return accounts.value.find(a => a.id === parseInt(form.account_id)) || null
 })
 
+const activeProducts = computed(() => {
+  return products.value.filter(product => !['Inactive', 'Archived'].includes(product.product_status || product.status || 'Active'))
+})
+
+const selectedProduct = computed(() => {
+  return products.value.find(product => String(product.id || product.product_code) === String(form.product_id)) || null
+})
+
+const selectedProductName = computed(() => {
+  return selectedProduct.value ? productName(selectedProduct.value) : 'Not Selected'
+})
+
 const isEmployeeClaimsAccount = computed(() => {
   return form.type === 'Expense' && selectedAccount.value && (
     String(selectedAccount.value.gl_code || '').trim() === '7010' || selectedAccount.value.name === 'Employee Claims'
@@ -451,6 +485,38 @@ function accountLabel(account) {
   return account.gl_code ? `${account.gl_code} - ${account.name}` : account.name
 }
 
+function productName(product) {
+  const code = product.product_code || product.code
+  const name = product.product_name || product.name
+  return code ? `${code} - ${name}` : name
+}
+
+function loadLocalProducts() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(LOCAL_PRODUCTS_KEY) || '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function mergeProducts(primary, fallback) {
+  const merged = []
+  const seen = new Set()
+  ;[...primary, ...fallback].forEach(product => {
+    const key = String(product.id || product.product_id || product.product_code || product.code || '')
+    if (!key || seen.has(key)) return
+    seen.add(key)
+    merged.push(product)
+  })
+  return merged
+}
+
+function projectMatchesSelectedProduct(project) {
+  if (!form.product_id) return true
+  return [project.product_id, project.product_code, project.product_name].some(value => value !== undefined && value !== null && String(value) === String(form.product_id))
+}
+
 function invoiceLabel(invoice) {
   return `${invoice.invoice_number} - ${invoice.currency} ${Number(invoice.balance_due || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} due`
 }
@@ -475,6 +541,49 @@ async function loadReceivableInvoices() {
     error.value = err.message || 'Unable to load invoice records.'
   } finally {
     invoiceLoading.value = false
+  }
+}
+
+async function loadExistingTransaction() {
+  try {
+    const data = await apiGet(`/api/finance/transactions/${props.id}`)
+    const tx = data.transaction || {}
+    const invoiceId = tx.invoice_id || ''
+    const invoiceNumber = tx.invoice_number || ''
+    Object.assign(form, {
+      transaction_date: tx.transaction_date || tx.date || new Date().toISOString().slice(0, 10),
+      type: tx.type || 'Income',
+      account_id: tx.account_id || '',
+      product_id: tx.product_id || '',
+      customer_id: tx.customer_id || '',
+      project_id: tx.project_id || '',
+      vendor_id: tx.vendor_id || '',
+      invoice_id: invoiceId,
+      invoice_number: invoiceNumber,
+      expense_claim_id: tx.expense_claim_id || '',
+      loan_account_id: tx.loan_account_id || '',
+      loan_schedule_id: tx.loan_schedule_id || '',
+      currency: tx.currency || 'INR',
+      amount: tx.amount ?? '',
+      cgst_percent: tx.cgst_percent || 0,
+      igst_percent: tx.igst_percent || 0,
+      tds_percent: tx.tds_percent || 0,
+      category: tx.category || '',
+      depreciation_value: tx.depreciation_value ?? '',
+      description: tx.description || '',
+      attachments: Array.isArray(tx.attachments) ? tx.attachments : []
+    })
+    customTransactionFields.value.forEach(field => {
+      if (tx[field.api_name] !== undefined) form[field.api_name] = tx[field.api_name]
+    })
+    postingDateOption.value = 'custom'
+    if (isSalesRevenueReceipt.value && form.customer_id && form.account_id) {
+      await loadReceivableInvoices()
+      form.invoice_id = invoiceId
+      form.invoice_number = invoiceNumber
+    }
+  } catch (err) {
+    error.value = err.message || 'Unable to load this transaction for editing.'
   }
 }
 
@@ -638,8 +747,8 @@ async function handleTransactionDocuments(event) {
 }
 
 function validateBeforePosting() {
-  if (!form.transaction_date || !form.account_id || !form.amount) {
-    error.value = 'Please fill out all required fields (Date, Account, Amount) before previewing.'
+  if (!form.transaction_date || !form.account_id || !form.amount || (form.type === 'Income' && !form.product_id)) {
+    error.value = `Please fill out all required fields (${form.type === 'Income' ? 'Date, Account, Product, Amount' : 'Date, Account, Amount'}) before previewing.`
     return false
   }
   if (Number(form.amount || 0) <= 0) {
@@ -686,13 +795,15 @@ async function confirmAndPost() {
   isPosting.value = true
   error.value = ''
   try {
-    const data = await apiPost('/api/finance/transactions', form)
+    const data = isEditing.value
+      ? await apiPut(`/api/finance/transactions/${props.id}`, form)
+      : await apiPost('/api/finance/transactions', form)
     showPreviewModal.value = false
     isPosting.value = false
     if (props.isModal) {
-      emit('save-success', data.id)
+      emit('save-success', data.id || props.id)
     } else {
-      router.replace(`/finance/transactions/${data.id}?posted=true`)
+      router.replace(`/finance/transactions/${data.id || props.id}?${isEditing.value ? 'updated=true' : 'posted=true'}`)
     }
   } catch (err) {
     isPosting.value = false
