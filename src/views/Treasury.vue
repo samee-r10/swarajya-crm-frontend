@@ -12,6 +12,7 @@
         <strong>₹{{ formatCurrency(dashboardData.reserve_available) }}</strong>
       </div>
       <div class="hero-actions">
+        <RouterLink class="button secondary" to="/treasury/products">Products</RouterLink>
         <RouterLink class="button secondary" to="/treasury/bank-accounts">Bank Accounts</RouterLink>
         <RouterLink class="button secondary" to="/treasury/fund-transfers">Fund Transfer</RouterLink>
       </div>

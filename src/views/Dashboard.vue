@@ -21,6 +21,25 @@
     </section>
 
     <template v-else>
+      <section class="quick-action-strip" aria-label="Quick actions">
+        <RouterLink to="/opportunities" class="quick-action">
+          <span>Pipeline</span>
+          <strong>Review deals</strong>
+        </RouterLink>
+        <RouterLink to="/finance/invoices" class="quick-action">
+          <span>Revenue</span>
+          <strong>Invoices</strong>
+        </RouterLink>
+        <RouterLink to="/claims/approvals" class="quick-action">
+          <span>Approvals</span>
+          <strong>Pending claims</strong>
+        </RouterLink>
+        <RouterLink to="/treasury/payables" class="quick-action">
+          <span>Treasury</span>
+          <strong>Payables</strong>
+        </RouterLink>
+      </section>
+
       <section class="metrics-grid">
         <CrmKpiCard label="Total Customers" :value="data.metrics.customers" meta="Accounts under management" tone="blue">
           <template #icon><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3ZM8 11c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z" fill="currentColor"/></svg></template>
@@ -55,6 +74,55 @@
             </div>
           </div>
         </div>
+      </section>
+
+      <section class="executive-summary-grid">
+        <article class="panel summary-panel">
+          <div class="panel-header">
+            <div>
+              <h2>Revenue Overview</h2>
+              <p class="muted">Pipeline value grouped by currency.</p>
+            </div>
+          </div>
+          <div class="summary-stack">
+            <div v-for="item in data.metrics.pipeline_values" :key="item.currency" class="summary-row">
+              <span>{{ item.currency }}</span>
+              <strong>{{ Number(item.total || 0).toLocaleString() }}</strong>
+            </div>
+            <div v-if="!data.metrics.pipeline_values.length" class="summary-row">
+              <span>Pipeline</span>
+              <strong>0</strong>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel summary-panel">
+          <div class="panel-header">
+            <div>
+              <h2>Pending Approvals</h2>
+              <p class="muted">Mobile-ready action queues for stakeholders and finance users.</p>
+            </div>
+          </div>
+          <div class="approval-links">
+            <RouterLink to="/claims/approvals">Claim approvals</RouterLink>
+            <RouterLink to="/treasury/stakeholder-payouts/approvals">Payout approvals</RouterLink>
+            <RouterLink to="/treasury/payables">Payable settlements</RouterLink>
+          </div>
+        </article>
+
+        <article class="panel summary-panel">
+          <div class="panel-header">
+            <div>
+              <h2>Recent Activities</h2>
+              <p class="muted">A compact view of customer, opportunity, and project movement.</p>
+            </div>
+          </div>
+          <div class="activity-feed">
+            <div><span></span><strong>{{ data.recent_opportunities.length }}</strong> recent opportunity updates</div>
+            <div><span></span><strong>{{ data.upcoming_projects.length }}</strong> project milestones to track</div>
+            <div><span></span><strong>{{ data.metrics.customers }}</strong> customer records available</div>
+          </div>
+        </article>
       </section>
 
       <!-- Main Dashboard Grid -->
@@ -236,6 +304,39 @@ function formatDate(dateStr) {
   margin-bottom: 22px;
 }
 
+.quick-action-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.quick-action {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  gap: 2px;
+  padding: 14px 16px;
+}
+
+.quick-action:hover {
+  border-color: rgba(29, 95, 209, 0.28);
+  background: #f6faff;
+}
+
+.quick-action span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.quick-action strong {
+  color: var(--heading);
+}
+
 .metric-card {
   background: #ffffff;
   border: 1px solid var(--line);
@@ -296,6 +397,71 @@ function formatDate(dateStr) {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
+}
+
+.executive-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.summary-panel {
+  min-height: 210px;
+}
+
+.summary-stack,
+.approval-links,
+.activity-feed {
+  display: grid;
+  gap: 10px;
+}
+
+.summary-row {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  padding: 12px;
+}
+
+.summary-row span,
+.activity-feed div {
+  color: var(--muted);
+}
+
+.summary-row strong {
+  color: var(--heading);
+}
+
+.approval-links a {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--primary);
+  font-weight: 850;
+  padding: 12px;
+}
+
+.approval-links a:hover {
+  background: var(--primary-soft);
+}
+
+.activity-feed div {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.activity-feed span {
+  background: var(--accent);
+  border-radius: 999px;
+  height: 8px;
+  width: 8px;
+}
+
+.activity-feed strong {
+  color: var(--heading);
 }
 
 .panel {
@@ -454,7 +620,9 @@ function formatDate(dateStr) {
 }
 
 @media (max-width: 1100px) {
-  .metrics-grid {
+  .metrics-grid,
+  .quick-action-strip,
+  .executive-summary-grid {
     grid-template-columns: repeat(2, 1fr);
   }
   .dashboard-grid {
@@ -466,6 +634,12 @@ function formatDate(dateStr) {
   .dashboard-header,
   .pipeline-row {
     align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .metrics-grid,
+  .quick-action-strip,
+  .executive-summary-grid {
     grid-template-columns: 1fr;
   }
 
