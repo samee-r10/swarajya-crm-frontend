@@ -252,19 +252,30 @@ function productMatches(record, product) {
   return keys.some(key => key !== undefined && key !== null && productKeys.some(value => String(value || '') === String(key)))
 }
 
+function expenseTransactionMatchesProduct(record, product) {
+  const keys = [record.product_id, record.product_code]
+  const productKeys = [product.id, product.product_id, product.product_code, product.code]
+  return keys.some(key => {
+    if (key === undefined || key === null || String(key).trim() === '') return false
+    return productKeys.some(value => value !== undefined && value !== null && String(value) === String(key))
+  })
+}
+
 function emptyMetrics() {
   return { revenue: 0, expense: 0, net: 0, customerCount: 0, invoiceAmount: 0, outstanding: 0, monthlyRevenue: 0, monthlyExpense: 0, projectCount: 0 }
 }
 
 function metricsFor(product) {
-  const productTransactions = transactions.value.filter(row => productMatches(row, product))
+  const productIncomeTransactions = transactions.value.filter(row => row.type === 'Income' && productMatches(row, product))
+  const productExpenseTransactions = transactions.value.filter(row => row.type === 'Expense' && expenseTransactionMatchesProduct(row, product))
   const productInvoices = invoices.value.filter(row => productMatches(row, product))
-  const revenue = productTransactions.filter(row => row.type === 'Income').reduce((sum, row) => sum + Number(row.total_amount || row.amount || 0), 0)
-  const expense = productTransactions.filter(row => row.type === 'Expense').reduce((sum, row) => sum + Number(row.total_amount || row.amount || 0), 0)
+  const revenue = productIncomeTransactions.reduce((sum, row) => sum + Number(row.total_amount || row.amount || 0), 0)
+  const expense = productExpenseTransactions.reduce((sum, row) => sum + Number(row.total_amount || row.amount || 0), 0)
   const invoiceAmount = productInvoices.reduce((sum, row) => sum + Number(row.total_amount || 0), 0)
   const outstanding = productInvoices.reduce((sum, row) => sum + Math.max(0, Number(row.total_amount || 0) - Number(row.amount_paid || 0)), 0)
-  const customerIds = new Set([...productTransactions, ...productInvoices].map(row => row.customer_id || row.customer_name).filter(Boolean))
-  const projectIds = new Set([...productTransactions, ...productInvoices].map(row => row.project_id || row.project_name).filter(Boolean))
+  const productActivity = [...productIncomeTransactions, ...productExpenseTransactions, ...productInvoices]
+  const customerIds = new Set(productActivity.map(row => row.customer_id || row.customer_name).filter(Boolean))
+  const projectIds = new Set(productActivity.map(row => row.project_id || row.project_name).filter(Boolean))
   return {
     revenue,
     expense,

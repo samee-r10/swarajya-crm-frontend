@@ -984,7 +984,7 @@
           <h2>Revenue Settlement</h2>
           <button class="modal-close" @click="showEditSplitModal = false">&times;</button>
         </div>
-        <form class="modal-form p-24" @submit.prevent="saveEditSplit">
+        <form class="modal-form p-24" @submit.prevent="openRevenueSettlementConfirm">
           <p class="text-sm text-muted mb-16">
             Allocate 100% of this revenue to the company fund. Once confirmed, this entry is settled and cannot be edited.
           </p>
@@ -1029,6 +1029,43 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <div v-if="showRevenueSettlementConfirmModal" class="modal-overlay confirm-overlay" @click.self="closeRevenueSettlementConfirm">
+      <div class="modal-content confirm-modal" @click.stop>
+        <div class="modal-header">
+          <h2>Confirm Settlement</h2>
+          <button class="modal-close" type="button" @click="closeRevenueSettlementConfirm">&times;</button>
+        </div>
+        <div class="p-24">
+          <div class="confirm-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2v20"/>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </div>
+          <p class="confirm-title">Settle this revenue entry?</p>
+          <p class="text-sm text-muted m-0">
+            100% of this entry will move into the company fund and the entry will be locked.
+          </p>
+          <div class="confirm-summary mt-16">
+            <div>
+              <span>Amount</span>
+              <strong>₹{{ formatCurrency(editSplitForm.amount) }}</strong>
+            </div>
+            <div>
+              <span>Bank Account</span>
+              <strong>{{ selectedSettlementBankLabel }}</strong>
+            </div>
+          </div>
+          <div class="form-actions mt-24">
+            <button type="button" class="button secondary" :disabled="isSavingRevenueSettlement" @click="closeRevenueSettlementConfirm">Cancel</button>
+            <button type="button" class="button primary" :disabled="isSavingRevenueSettlement" @click="saveEditSplit">
+              {{ isSavingRevenueSettlement ? 'Settling...' : 'Confirm Settlement' }}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1145,6 +1182,8 @@ const paymentStats = ref({
 
 // Form states
 const showEditSplitModal = ref(false)
+const showRevenueSettlementConfirmModal = ref(false)
+const isSavingRevenueSettlement = ref(false)
 const editSplitForm = reactive({
   revenue_id: null,
   amount: 0,
@@ -1255,6 +1294,11 @@ const editSplitReserveAmount = computed(() => {
 
 const activeBankAccounts = computed(() => {
   return bankAccounts.value.filter(account => (account.status || 'Active') === 'Active')
+})
+
+const selectedSettlementBankLabel = computed(() => {
+  const account = activeBankAccounts.value.find((item) => String(item.id) === String(editSplitForm.bank_account_id))
+  return account?.label || 'Selected bank account'
 })
 
 const editSplitPartnerCommission = computed(() => {
@@ -1479,10 +1523,19 @@ function openEditSplitModal(entry) {
   showEditSplitModal.value = true
 }
 
+function openRevenueSettlementConfirm() {
+  if (isSaveEditSplitDisabled.value) return
+  showRevenueSettlementConfirmModal.value = true
+}
+
+function closeRevenueSettlementConfirm() {
+  if (isSavingRevenueSettlement.value) return
+  showRevenueSettlementConfirmModal.value = false
+}
+
 async function saveEditSplit() {
-  if (!confirm('Confirm settlement? 100% of this entry will move into company fund and the entry will be locked.')) {
-    return
-  }
+  if (isSavingRevenueSettlement.value) return
+  isSavingRevenueSettlement.value = true
   try {
     const payload = {
       reserve_percentage: 100,
@@ -1492,10 +1545,13 @@ async function saveEditSplit() {
       stakeholders: []
     }
     await apiPut(`/api/treasury/revenue/${editSplitForm.revenue_id}`, payload)
+    showRevenueSettlementConfirmModal.value = false
     showEditSplitModal.value = false
     await loadAllData()
   } catch (err) {
     alert(err.message || "Failed to settle revenue entry")
+  } finally {
+    isSavingRevenueSettlement.value = false
   }
 }
 
@@ -2248,6 +2304,62 @@ function formatTimestamp(val) {
 
 .modal-content.large {
   max-width: 750px;
+}
+
+.confirm-overlay {
+  z-index: 1200;
+}
+
+.confirm-modal {
+  max-width: 460px;
+}
+
+.confirm-icon {
+  align-items: center;
+  background: #e0f2fe;
+  border-radius: 10px;
+  color: #0284c7;
+  display: inline-flex;
+  height: 52px;
+  justify-content: center;
+  margin-bottom: 16px;
+  width: 52px;
+}
+
+.confirm-title {
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 850;
+  margin: 0 0 8px;
+}
+
+.confirm-summary {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.confirm-summary div {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.confirm-summary span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.confirm-summary strong {
+  color: #0f172a;
+  font-size: 14px;
+  text-align: right;
 }
 
 .pre-wrap {
