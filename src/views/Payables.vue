@@ -107,7 +107,7 @@
             </select>
           </label>
           <label>Paid To Account
-            <select v-model="payment.recipient_account_id" required :disabled="!paymentRecipientOwnerKey">
+            <select v-model="payment.recipient_account_id" :required="isRecipientAccountRequired" :disabled="!paymentRecipientOwnerKey">
               <option value="">Select recipient account</option>
               <option v-for="account in filteredRecipientAccounts" :key="account.id" :value="account.id">{{ account.label }}</option>
             </select>
@@ -151,6 +151,7 @@
           <label>Payee Type<select v-model="recipientForm.owner_type" required @change="handleRecipientTypeChange"><option v-for="type in recipientTypes" :key="type" :value="type">{{ type }}</option></select></label>
           <label v-if="recipientForm.owner_type === 'Stakeholder'">Stakeholder<select v-model="recipientForm.owner_id" required @change="fillRecipientName"><option value="">Select stakeholder</option><option v-for="item in recipientOptions.stakeholders" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
           <label v-else-if="recipientForm.owner_type === 'Channel Partner'">Channel Partner<select v-model="recipientForm.owner_id" required @change="fillRecipientName"><option value="">Select channel partner</option><option v-for="item in recipientOptions.partners" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
+          <label v-else-if="recipientForm.owner_type === 'Vendor'">Vendor<select v-model="recipientForm.owner_id" required @change="fillRecipientName"><option value="">Select vendor</option><option v-for="item in recipientOptions.vendors" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
           <label v-else-if="recipientForm.owner_type === 'Employee'">Employee<select v-model="recipientForm.owner_name" required><option value="">Select employee</option><option v-for="item in recipientOptions.employees" :key="item.name" :value="item.name">{{ item.name }}</option></select></label>
           <label v-else>Payee Name<input v-model="recipientForm.owner_name" required></label>
           <label>Account Name<input v-model="recipientForm.account_name"></label>
@@ -205,7 +206,7 @@ const error = ref('')
 const paymentModes = ref([])
 const bankAccounts = ref([])
 const recipientAccounts = ref([])
-const recipientOptions = ref({ stakeholders: [], partners: [], employees: [] })
+const recipientOptions = ref({ stakeholders: [], partners: [], employees: [], vendors: [] })
 const showRecipientAccounts = ref(false)
 const recipientAccountsMode = ref('')
 const recipientError = ref('')
@@ -234,6 +235,9 @@ const recipientOwnerLabel = computed(() => {
   return 'payee'
 })
 const filteredRecipientOwners = computed(() => ownerOptionsForType(payment.recipient_owner_type))
+const selectedRecipientOwner = computed(() => filteredRecipientOwners.value.find(option => option.key === paymentRecipientOwnerKey.value) || null)
+const isVendorPayment = computed(() => payment.recipient_owner_type === 'Vendor' || paymentRecipientOwnerKey.value.startsWith('Vendor:'))
+const isRecipientAccountRequired = computed(() => !isVendorPayment.value)
 const recipientAccountsTitle = computed(() => {
   if (recipientAccountsMode.value === 'create') return 'Create Recipient Account'
   if (recipientAccountsMode.value === 'view') return 'Saved Recipient Accounts'
@@ -271,9 +275,17 @@ async function loadOptions() {
 }
 
 async function loadRecipientAccounts() {
-  const data = await apiGet('/api/treasury/payee-bank-accounts')
+  const [data, vendorData] = await Promise.all([
+    apiGet('/api/treasury/payee-bank-accounts'),
+    apiGet('/api/finance/vendors'),
+  ])
   recipientAccounts.value = data.accounts || []
-  recipientOptions.value = data.recipients || { stakeholders: [], partners: [], employees: [] }
+  recipientOptions.value = {
+    stakeholders: data.recipients?.stakeholders || [],
+    partners: data.recipients?.partners || [],
+    employees: data.recipients?.employees || [],
+    vendors: data.recipients?.vendors || vendorData.vendors || [],
+  }
 }
 
 async function loadTreasuryBankAccounts() {
@@ -364,17 +376,26 @@ async function markPaid() {
     error.value = `Select the ${recipientOwnerLabel.value} paid to.`
     return
   }
-  if (!payment.recipient_account_id) {
+  if (isRecipientAccountRequired.value && !payment.recipient_account_id) {
     error.value = 'Select the recipient account paid to.'
     return
   }
   error.value = ''
   try {
-    await apiPost(`/api/treasury/payables/${selectedPayable.value.id}/payments`, payment)
+    await apiPost(`/api/treasury/payables/${selectedPayable.value.id}/payments`, paymentPayload())
     selectedPayable.value = null
     await loadPayables()
   } catch (err) {
     error.value = err.message
+  }
+}
+
+function paymentPayload() {
+  return {
+    ...payment,
+    recipient_account_id: isRecipientAccountRequired.value ? payment.recipient_account_id : '',
+    recipient_owner_id: selectedRecipientOwner.value?.id || '',
+    recipient_owner_name: selectedRecipientOwner.value?.name || '',
   }
 }
 
@@ -430,6 +451,9 @@ function fillRecipientName() {
   } else if (recipientForm.owner_type === 'Channel Partner') {
     const item = recipientOptions.value.partners.find(row => Number(row.id) === Number(recipientForm.owner_id))
     recipientForm.owner_name = item?.name || ''
+  } else if (recipientForm.owner_type === 'Vendor') {
+    const item = recipientOptions.value.vendors.find(row => Number(row.id) === Number(recipientForm.owner_id))
+    recipientForm.owner_name = item?.name || ''
   }
 }
 
@@ -475,6 +499,7 @@ function ownerOptionsForType(type) {
     Stakeholder: recipientOptions.value.stakeholders,
     'Channel Partner': recipientOptions.value.partners,
     Employee: recipientOptions.value.employees,
+    Vendor: recipientOptions.value.vendors,
   }[type] || []
 
   const options = sourceOptions.map(item => ({

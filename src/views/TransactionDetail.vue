@@ -9,7 +9,6 @@
     </div>
     <div class="action-row" style="display: flex; gap: 12px; align-items: center;">
       <RouterLink v-if="isPosted" class="button btn-animate" to="/finance/transactions?new=1">New Transaction</RouterLink>
-      <RouterLink v-if="transaction && transaction.status !== 'Reversed'" class="button secondary btn-animate" :to="`/finance/transactions/${id}/edit`">Edit</RouterLink>
       <button v-if="transaction && transaction.status !== 'Reversed'" class="button danger btn-animate" type="button" @click="showReverseConfirm = true" style="background: #ef4444; color: white;">Reverse Entry</button>
       <RouterLink class="button secondary" to="/finance/transactions">Back to Ledger</RouterLink>
     </div>
@@ -155,7 +154,7 @@ const detailFields = computed(() => {
     { label: 'IGST Amount', value: money(t.currency, t.igst_amount) },
     { label: 'TDS Percent', value: `${Number(t.tds_percent || 0).toFixed(2)}%` },
     { label: 'TDS Amount', value: money(t.currency, t.tds_amount) },
-    { label: 'Total Amount', value: `${t.type === 'Income' ? '+' : '-'}${money(t.currency, t.total_amount || t.amount)}` },
+    { label: 'Total Amount', value: money(t.currency, transactionTotalAmount(t)) },
     { label: 'Created At', value: t.created_at || '' },
     { label: 'Description', value: t.description || '', long: true }
   ]
@@ -187,9 +186,22 @@ function partyLabel(t) {
 function money(currency, amount) {
   const number = Number(amount || 0)
   return `${currencySymbols.value[currency] || '$'}${number.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
+    minimumFractionDigits: Number.isInteger(number) ? 0 : 2,
     maximumFractionDigits: 2
   })}`
+}
+
+function transactionTotalAmount(t) {
+  const amount = Number(t.amount || 0)
+  const cgst = Number(t.cgst_amount || 0)
+  const igst = Number(t.igst_amount || 0)
+  const tds = Number(t.tds_amount || 0)
+  const computedTotal = Number((amount + cgst + igst - tds).toFixed(2))
+  const storedTotal = Number(t.total_amount || 0)
+
+  if (cgst || igst || tds) return computedTotal
+  if (storedTotal && Math.abs(storedTotal - amount) > 0.01) return storedTotal
+  return amount
 }
 </script>
 

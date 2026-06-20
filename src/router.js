@@ -64,7 +64,6 @@ const routes = [
   { path: '/finance/vendors/:id/edit', name: 'vendor-edit', component: VendorForm, props: true },
   { path: '/finance/transactions', name: 'transaction-ledger', component: TransactionLedger },
   { path: '/finance/transactions/new', name: 'transaction-new', component: TransactionForm },
-  { path: '/finance/transactions/:id/edit', name: 'transaction-edit', component: TransactionForm, props: true },
   { path: '/finance/transactions/:id', name: 'transaction-detail', component: TransactionDetail, props: true },
   { path: '/finance/claims', name: 'expense-claims', component: ExpenseClaims },
   { path: '/claims/approvals', name: 'claim-approvals', component: PendingClaimApprovals },
