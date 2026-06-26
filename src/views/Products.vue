@@ -11,17 +11,36 @@
 
     <p v-if="statusMessage" class="flash success">{{ statusMessage }}</p>
 
-    <section class="metric-grid">
-      <div class="metric-card"><span>Active Products</span><strong>{{ activeProductCount }}</strong></div>
-      <div class="metric-card"><span>Revenue</span><strong>{{ money(summary.revenue) }}</strong></div>
-      <div class="metric-card"><span>Expense</span><strong>{{ money(summary.expense) }}</strong></div>
-      <div class="metric-card"><span>Net Profit</span><strong :class="{ negative: summary.net < 0 }">{{ money(summary.net) }}</strong></div>
+    <section v-if="!selectedProduct" class="product-catalog">
+      <div class="catalog-header">
+        <div>
+          <h2>Product Portfolio</h2>
+          <p class="muted">{{ filteredProducts.length }} product{{ filteredProducts.length === 1 ? '' : 's' }} available</p>
+        </div>
+        <input v-model="search" type="search" placeholder="Search products...">
+      </div>
+      <div class="product-card-grid">
+        <button
+          v-for="product in filteredProducts"
+          :key="product.id || product.product_code"
+          class="product-tile"
+          type="button"
+          @click="selectedProductKey = productKey(product)"
+        >
+          <span class="product-tile-main">
+            <strong>{{ product.product_name || product.name }}</strong>
+            <small>{{ product.product_code || product.code || 'No code' }} · {{ product.product_category || product.category || 'Uncategorized' }}</small>
+          </span>
+          <em :class="statusClass(product.product_status || product.status)">{{ product.product_status || product.status || 'Active' }}</em>
+        </button>
+      </div>
+      <div v-if="filteredProducts.length === 0" class="empty-state">No products found.</div>
     </section>
 
-    <section class="workspace-grid">
+    <section v-else class="workspace-grid">
       <aside class="product-list">
         <div class="list-header">
-          <strong>Product Portfolio</strong>
+          <button class="back-link" type="button" @click="selectedProductKey = ''">All Products</button>
           <input v-model="search" type="search" placeholder="Search products...">
         </div>
         <button
@@ -41,14 +60,17 @@
         <div v-if="filteredProducts.length === 0" class="empty-state">No products found.</div>
       </aside>
 
-      <section v-if="selectedProduct" class="product-dashboard">
+      <section class="product-dashboard">
         <div class="summary-card">
           <div>
-            <p class="eyebrow">Product Summary</p>
             <h2>{{ selectedProduct.product_name || selectedProduct.name }}</h2>
+            <p class="muted small">{{ selectedProduct.product_code || selectedProduct.code || 'No code' }} · {{ selectedProduct.product_category || selectedProduct.category || 'Uncategorized' }}</p>
             <span :class="statusClass(selectedProduct.product_status || selectedProduct.status)">{{ selectedProduct.product_status || selectedProduct.status || 'Active' }}</span>
           </div>
-          <button class="button secondary" type="button" @click="openProductForm(selectedProduct)">Edit</button>
+          <div class="summary-actions">
+            <button class="button secondary" type="button" @click="selectedProductKey = ''">Back</button>
+            <button class="button secondary" type="button" @click="openProductForm(selectedProduct)">Edit</button>
+          </div>
         </div>
 
         <div class="kpi-grid">
@@ -63,7 +85,7 @@
         <div class="detail-grid">
           <div class="record-card">
             <h3>Customer Mapping</h3>
-            <p class="muted small">Customers are derived from product-linked invoices and ledger transactions.</p>
+            <p class="muted small">Active customers include only Approved and DA Signed customers linked through invoices or ledger transactions.</p>
             <table class="record-table">
               <thead><tr><th>Customer</th><th class="right">Revenue</th></tr></thead>
               <tbody>
@@ -87,8 +109,6 @@
           </div>
         </div>
       </section>
-
-      <section v-else class="record-card empty-state">Select a product to view its dashboard.</section>
     </section>
 
     <div v-if="showForm" class="modal-overlay" @click.self="closeProductForm">
@@ -131,6 +151,7 @@ import { apiGet, apiPost, apiPut } from '../api/client'
 const products = ref([])
 const transactions = ref([])
 const invoices = ref([])
+const customers = ref([])
 const search = ref('')
 const selectedProductKey = ref('')
 const showForm = ref(false)
@@ -175,7 +196,8 @@ async function loadData() {
   transactions.value = txData?.transactions || []
   const invoiceData = await safe(() => apiGet('/api/finance/invoices'))
   invoices.value = invoiceData?.invoices || []
-  if (!selectedProductKey.value && products.value.length) selectedProductKey.value = productKey(products.value[0])
+  const customerData = await safe(() => apiGet('/api/customers'))
+  customers.value = customerData?.customers || []
 }
 
 async function syncLocalProductsToBackend(existingProducts = []) {
@@ -269,12 +291,12 @@ function metricsFor(product) {
   const productIncomeTransactions = transactions.value.filter(row => row.type === 'Income' && productMatches(row, product))
   const productExpenseTransactions = transactions.value.filter(row => row.type === 'Expense' && expenseTransactionMatchesProduct(row, product))
   const productInvoices = invoices.value.filter(row => productMatches(row, product))
-  const revenue = productIncomeTransactions.reduce((sum, row) => sum + Number(row.total_amount || row.amount || 0), 0)
-  const expense = productExpenseTransactions.reduce((sum, row) => sum + Number(row.total_amount || row.amount || 0), 0)
+  const revenue = productIncomeTransactions.reduce((sum, row) => sum + transactionBaseAmount(row), 0)
+  const expense = productExpenseTransactions.reduce((sum, row) => sum + transactionBaseAmount(row), 0)
   const invoiceAmount = productInvoices.reduce((sum, row) => sum + Number(row.total_amount || 0), 0)
   const outstanding = productInvoices.reduce((sum, row) => sum + Math.max(0, Number(row.total_amount || 0) - Number(row.amount_paid || 0)), 0)
   const productActivity = [...productIncomeTransactions, ...productExpenseTransactions, ...productInvoices]
-  const customerIds = new Set(productActivity.map(row => row.customer_id || row.customer_name).filter(Boolean))
+  const customerIds = new Set(productActivity.filter(isActiveCustomerActivity).map(row => customerKey(row)).filter(Boolean))
   const projectIds = new Set(productActivity.map(row => row.project_id || row.project_name).filter(Boolean))
   return {
     revenue,
@@ -290,18 +312,43 @@ function metricsFor(product) {
 }
 
 function customersFor(product) {
-  const rows = [...transactions.value, ...invoices.value].filter(row => productMatches(row, product))
+  const rows = [...transactions.value, ...invoices.value].filter(row => productMatches(row, product) && isActiveCustomerActivity(row))
   const map = new Map()
   rows.forEach(row => {
-    const key = row.customer_id || row.customer_name || row.customer_company || 'Unknown'
+    const key = customerKey(row)
     if (!key) return
     const existing = map.get(key) || { id: key, name: row.customer_name || row.customer_company || `Customer #${key}`, revenue: 0 }
     if (row.type === 'Income' || row.invoice_number || row.total_amount) {
-      existing.revenue += Number(row.total_amount || row.amount || 0)
+      existing.revenue += row.type === 'Income' ? transactionBaseAmount(row) : Number(row.total_amount || row.amount || 0)
     }
     map.set(key, existing)
   })
   return Array.from(map.values())
+}
+
+function transactionBaseAmount(row) {
+  return Number(row.amount || row.subtotal || row.taxable_amount || row.total_amount || 0)
+}
+
+function customerKey(row) {
+  return row.customer_id || row.customer_name || row.customer_company || ''
+}
+
+function isActiveCustomerActivity(row) {
+  const customer = customerForActivity(row)
+  const status = String(customer?.status || row.customer_status || row.customer_stage || '').trim().toLowerCase()
+  return status === 'approved' || status === 'da signed'
+}
+
+function customerForActivity(row) {
+  const id = row.customer_id
+  if (id !== undefined && id !== null && id !== '') {
+    const byId = customers.value.find(customer => String(customer.id) === String(id))
+    if (byId) return byId
+  }
+  const name = String(row.customer_name || row.customer_company || '').trim().toLowerCase()
+  if (!name) return null
+  return customers.value.find(customer => String(customer.company_name || customer.name || '').trim().toLowerCase() === name)
 }
 
 function openProductForm(product = null) {
@@ -386,14 +433,28 @@ function statusClass(status) {
 .metric-card span, .kpi-card span { display: block; color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
 .metric-card strong, .kpi-card strong { font-size: 24px; }
 .negative { color: #dc2626; }
+.product-catalog { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow-sm); padding: 20px; }
+.catalog-header { align-items: center; display: flex; gap: 18px; justify-content: space-between; margin-bottom: 18px; }
+.catalog-header h2 { font-size: 20px; margin: 0 0 4px; }
+.catalog-header p { margin: 0; }
+.catalog-header input { max-width: 360px; }
+.product-card-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.product-tile { align-items: flex-start; background: #ffffff; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; display: flex; gap: 16px; justify-content: space-between; min-height: 118px; padding: 18px; text-align: left; transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s; }
+.product-tile:hover { border-color: rgba(37, 99, 235, 0.45); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+.product-tile-main { min-width: 0; }
+.product-tile strong { color: var(--heading); display: block; font-size: 18px; line-height: 1.25; }
+.product-tile small { color: var(--muted); display: block; font-size: 13px; line-height: 1.45; margin-top: 8px; }
 .workspace-grid { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 20px; }
 .product-list { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 12px; align-self: start; }
 .list-header { display: grid; gap: 10px; margin-bottom: 10px; }
-.product-row { width: 100%; border: 1px solid transparent; background: transparent; border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; gap: 10px; text-align: left; cursor: pointer; }
-.product-row.active, .product-row:hover { border-color: var(--primary); background: #fff7ed; }
+.back-link { background: transparent; border: 0; color: var(--primary); cursor: pointer; font: inherit; font-weight: 850; padding: 4px 0; text-align: left; }
+.back-link:hover { text-decoration: underline; }
+.product-row { width: 100%; border: 1px solid transparent; background: transparent; border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; gap: 10px; text-align: left; cursor: pointer; transition: background 0.18s, border-color 0.18s; }
+.product-row.active, .product-row:hover { border-color: rgba(37, 99, 235, 0.48); background: #f8fbff; }
 .product-row small { display: block; color: var(--muted); margin-top: 4px; }
-.summary-card { border: 1px solid var(--line); border-radius: 8px; padding: 20px; background: var(--surface); display: flex; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
-.summary-card h2 { margin: 4px 0 8px; }
+.summary-card { align-items: flex-start; border: 1px solid var(--line); border-radius: 8px; padding: 22px 24px; background: var(--surface); display: flex; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
+.summary-card h2 { font-size: 28px; margin: 0 0 6px; }
+.summary-actions { align-items: center; display: flex; gap: 10px; }
 .detail-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr); gap: 18px; }
 .record-card h3 { margin-top: 0; }
 .analytics-list { display: grid; gap: 12px; }
@@ -404,5 +465,9 @@ function statusClass(status) {
 .status-pill.inactive { background: #f1f5f9; color: #475569; }
 @media (max-width: 900px) {
   .workspace-grid, .detail-grid { grid-template-columns: 1fr; }
+  .catalog-header { align-items: stretch; flex-direction: column; }
+  .catalog-header input { max-width: none; }
+  .summary-card,
+  .summary-actions { align-items: stretch; flex-direction: column; }
 }
 </style>

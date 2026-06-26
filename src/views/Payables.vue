@@ -128,26 +128,34 @@
     </div>
 
     <div v-if="showRecipientAccounts" class="modal-overlay" @click.self="closeRecipientAccounts">
-      <div class="modal-content payable-modal">
+      <div class="modal-content payable-modal recipient-accounts-modal" :class="{ 'is-list': recipientAccountsMode === 'view' }">
         <div class="modal-header">
           <div>
             <p class="eyebrow">Payables</p>
             <h2>{{ recipientAccountsTitle }}</h2>
           </div>
-          <button v-if="recipientAccountsMode" class="button secondary small" type="button" @click="recipientAccountsMode = ''">Options</button>
-          <button class="modal-close" type="button" @click="closeRecipientAccounts">&times;</button>
+          <div class="recipient-modal-actions">
+            <button v-if="recipientAccountsMode" class="button secondary small" type="button" @click="recipientAccountsMode = ''">Options</button>
+            <button class="modal-close" type="button" aria-label="Close recipient accounts" @click="closeRecipientAccounts">&times;</button>
+          </div>
         </div>
         <section v-if="!recipientAccountsMode" class="recipient-account-options">
           <button class="recipient-option-card" type="button" @click="showCreateRecipientAccount">
-            <span>Create Account</span>
-            <strong>Add a new payee bank account or UPI detail.</strong>
+            <span class="recipient-option-icon">+</span>
+            <span>
+              <small>Create Account</small>
+              <strong>Add a bank account or UPI ID</strong>
+            </span>
           </button>
           <button class="recipient-option-card" type="button" @click="showViewRecipientAccounts">
-            <span>View Accounts</span>
-            <strong>Review saved recipient bank accounts.</strong>
+            <span class="recipient-option-icon">#</span>
+            <span>
+              <small>View Accounts</small>
+              <strong>Review saved recipients</strong>
+            </span>
           </button>
         </section>
-        <form v-if="recipientAccountsMode === 'create'" class="form-grid" @submit.prevent="saveRecipientAccount">
+        <form v-if="recipientAccountsMode === 'create'" class="form-grid recipient-account-form" @submit.prevent="saveRecipientAccount">
           <label>Payee Type<select v-model="recipientForm.owner_type" required @change="handleRecipientTypeChange"><option v-for="type in recipientTypes" :key="type" :value="type">{{ type }}</option></select></label>
           <label v-if="recipientForm.owner_type === 'Stakeholder'">Stakeholder<select v-model="recipientForm.owner_id" required @change="fillRecipientName"><option value="">Select stakeholder</option><option v-for="item in recipientOptions.stakeholders" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
           <label v-else-if="recipientForm.owner_type === 'Channel Partner'">Channel Partner<select v-model="recipientForm.owner_id" required @change="fillRecipientName"><option value="">Select channel partner</option><option v-for="item in recipientOptions.partners" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
@@ -168,22 +176,27 @@
         </form>
         <section v-if="recipientAccountsMode === 'view'" class="recipient-list">
           <div class="recipient-list-header">
-            <h3>Saved Accounts</h3>
+            <div>
+              <h3>Saved Accounts</h3>
+              <p class="muted">{{ recipientAccounts.length }} recipient{{ recipientAccounts.length === 1 ? '' : 's' }} available for payments</p>
+            </div>
             <button class="button secondary small" type="button" @click="showCreateRecipientAccount">Create Account</button>
           </div>
-          <table class="record-table">
-            <thead><tr><th>Payee</th><th>Type</th><th>Bank</th><th>Account / UPI</th><th>Status</th></tr></thead>
-            <tbody>
-              <tr v-for="account in recipientAccounts" :key="account.id">
-                <td><strong>{{ account.owner_name }}</strong></td>
-                <td>{{ account.owner_type }}</td>
-                <td>{{ account.bank_name || '-' }}</td>
-                <td>{{ account.account_number || account.upi_id || '-' }}</td>
-                <td><span class="pill" :class="account.status === 'Active' ? 'status-success' : 'status-muted'">{{ account.status }}</span></td>
-              </tr>
-              <tr v-if="recipientAccounts.length === 0"><td colspan="5" class="empty-state">No recipient bank accounts added yet.</td></tr>
-            </tbody>
-          </table>
+          <div class="recipient-table-wrap">
+            <table class="record-table recipient-table">
+              <thead><tr><th>Payee</th><th>Type</th><th>Bank</th><th>Account / UPI</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr v-for="account in recipientAccounts" :key="account.id">
+                  <td><strong>{{ account.owner_name }}</strong></td>
+                  <td>{{ account.owner_type }}</td>
+                  <td>{{ account.bank_name || '-' }}</td>
+                  <td>{{ account.account_number || account.upi_id || '-' }}</td>
+                  <td><span class="pill" :class="account.status === 'Active' ? 'status-success' : 'status-muted'">{{ account.status }}</span></td>
+                </tr>
+                <tr v-if="recipientAccounts.length === 0"><td colspan="5" class="empty-state">No recipient bank accounts added yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
         </section>
       </div>
     </div>
@@ -572,18 +585,30 @@ function ownerKey(type, id, name) {
 .detail-grid div { border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: var(--surface); }
 .detail-grid span { display: block; color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
 .link-button { border: 0; background: transparent; color: var(--primary); padding: 0; font-weight: 800; cursor: pointer; }
-.recipient-account-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 20px; }
-.recipient-option-card { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; box-shadow: var(--shadow-sm); cursor: pointer; display: grid; gap: 8px; min-height: 140px; padding: 20px; text-align: left; }
-.recipient-option-card:hover { border-color: rgba(29, 95, 209, 0.35); background: var(--primary-soft); }
-.recipient-option-card span { color: var(--primary); font-size: 12px; font-weight: 850; text-transform: uppercase; }
-.recipient-option-card strong { color: var(--heading); font-size: 18px; line-height: 1.3; }
-.recipient-list { margin-top: 22px; }
-.recipient-list-header { align-items: center; display: flex; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
-.recipient-list h3 { margin: 0 0 10px; font-size: 16px; }
+.recipient-accounts-modal { max-width: 720px; width: min(720px, calc(100vw - 32px)); }
+.recipient-accounts-modal.is-list { max-width: 980px; width: min(980px, calc(100vw - 32px)); }
+.recipient-modal-actions { align-items: center; display: flex; gap: 10px; }
+.recipient-account-options { display: grid; gap: 12px; padding: 20px 24px 24px; }
+.recipient-option-card { align-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; cursor: pointer; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 14px; min-height: 84px; padding: 16px 18px; text-align: left; transition: background 0.18s, border-color 0.18s, box-shadow 0.18s, transform 0.18s; }
+.recipient-option-card:hover { background: #f8fbff; border-color: rgba(37, 99, 235, 0.38); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+.recipient-option-icon { align-items: center; background: var(--primary-soft); border-radius: 8px; color: var(--primary); display: inline-flex; font-size: 22px; font-weight: 850; height: 44px; justify-content: center; line-height: 1; width: 44px; }
+.recipient-option-card small { color: var(--primary); display: block; font-size: 12px; font-weight: 850; line-height: 1.2; margin-bottom: 4px; text-transform: uppercase; }
+.recipient-option-card strong { color: var(--heading); display: block; font-size: 17px; line-height: 1.25; }
+.recipient-account-form { border: 0; border-radius: 0; box-shadow: none; max-width: none; padding: 24px; }
+.recipient-list { padding: 20px 24px 24px; }
+.recipient-list-header { align-items: center; display: flex; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.recipient-list h3 { margin: 0; font-size: 18px; }
+.recipient-list-header p { margin: 2px 0 0; }
 .recipient-list-header h3 { margin: 0; }
+.recipient-table-wrap { border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; }
+.recipient-table th,
+.recipient-table td { padding: 14px 16px; }
+.recipient-table tbody tr:last-child td { border-bottom: 0; }
 
 @media (max-width: 767px) {
-  .recipient-account-options { grid-template-columns: 1fr; padding: 16px; }
+  .recipient-account-options { padding: 16px; }
   .recipient-list-header { align-items: stretch; flex-direction: column; }
+  .recipient-account-form { padding: 16px; }
+  .recipient-list { padding: 16px; }
 }
 </style>

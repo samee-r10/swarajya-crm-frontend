@@ -74,7 +74,7 @@
       <span v-else class="field-hint">Attach invoices, receipts, payment proof, or supporting files for this entry.</span>
     </label>
     <div v-if="form.attachments.length" class="span-2 attached-documents">
-      <DocumentPreview v-for="doc in form.attachments" :key="doc.public_id || doc.secure_url || doc.name" :document="doc" label="Transaction Document" />
+      <DocumentPreview :documents="form.attachments" label="Transaction Documents" />
     </div>
     <label
       v-for="field in customTransactionFields"

@@ -38,7 +38,7 @@
       </label>
       <div v-if="transaction.attachments?.length" class="span-2 transaction-documents">
         <h2>Supporting Documents</h2>
-        <DocumentPreview v-for="doc in transaction.attachments" :key="doc.public_id || doc.secure_url || doc.name" :document="doc" label="Transaction Document" />
+        <DocumentPreview :documents="transaction.attachments" label="Transaction Documents" />
       </div>
       <div class="span-2">
         <SystemInfo :record="transaction" />

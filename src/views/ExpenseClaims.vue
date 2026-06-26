@@ -65,10 +65,20 @@
         <form class="form-grid modal-form" @submit.prevent="saveClaim">
           <div class="span-2 card-section-title"><h2>Basic Details</h2></div>
           <label>Employee Name<input v-model="form.employee_name" required :readonly="isLocked"></label>
-          <label>Department<input v-model="form.department" :readonly="isLocked"></label>
+          <label>Department
+            <select v-model="form.department" :disabled="isLocked">
+              <option value="">Select Department</option>
+              <option v-for="department in departments" :key="department" :value="department">{{ department }}</option>
+            </select>
+          </label>
           <label>Claim Date<input v-model="form.claim_date" type="date" required :readonly="isLocked"></label>
           <label>Expense Date<input v-model="form.expense_date" type="date" required :readonly="isLocked"></label>
-          <label>Expense Category<input v-model="form.expense_category" required :readonly="isLocked"></label>
+          <label>Expense Category
+            <select v-model="form.expense_category" required :disabled="isLocked">
+              <option value="">Select Expense Category</option>
+              <option v-for="category in expenseCategories" :key="category" :value="category">{{ category }}</option>
+            </select>
+          </label>
           <label>Payment Mode
             <select v-model="form.payment_mode" :disabled="isLocked">
               <option value="">Select Payment Mode</option>
@@ -124,6 +134,8 @@ const search = ref('')
 const statusFilter = ref('')
 const paymentModes = ref([])
 const statuses = ['Draft', 'Submitted', 'Pending Stakeholder Approval', 'Pending Approval Sequence 1', 'Pending Approval Sequence 2', 'Pending Approval Sequence 3', 'Under Review', 'Approved', 'Rejected', 'Posted', 'Settled', 'Cancelled']
+const expenseCategories = ['Business Claim']
+const departments = ['IT', 'BD', 'Development', 'Marketing', 'Legal']
 const form = reactive(defaultForm())
 const currentUser = computed(() => {
   try {

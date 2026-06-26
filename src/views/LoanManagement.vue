@@ -78,7 +78,10 @@
           <label>Status<select v-model="loanForm.status"><option v-for="s in loanStatuses" :key="s">{{ s }}</option></select></label>
           <label class="span-2">Purpose<textarea v-model="loanForm.purpose" rows="2"></textarea></label>
           <label class="span-2">Remarks<textarea v-model="loanForm.remarks" rows="2"></textarea></label>
-          <label class="span-2">Loan Agreement<input type="file" @change="handleAgreement"><a v-if="loanForm.agreement_attachment?.data_url" :href="loanForm.agreement_attachment.data_url" :download="loanForm.agreement_attachment.name">View Agreement</a></label>
+          <label class="span-2">Loan Agreement<input type="file" @change="handleAgreement"></label>
+          <div v-if="loanForm.agreement_attachment" class="span-2">
+            <DocumentPreview :document="loanForm.agreement_attachment" label="Loan Agreement" />
+          </div>
           <p v-if="error" class="span-2 flash warning">{{ error }}</p>
           <div class="span-2 action-row"><button class="button secondary" type="button" @click="showLoanModal = false">Cancel</button><button class="button" type="submit">Save Loan</button></div>
         </form>
@@ -216,6 +219,7 @@ import { apiGet, apiPost, apiPut } from '../api/client'
 import CrmEmptyState from '../components/CrmEmptyState.vue'
 import CrmKpiCard from '../components/CrmKpiCard.vue'
 import CrmPageHeader from '../components/CrmPageHeader.vue'
+import DocumentPreview from '../components/DocumentPreview.vue'
 
 const loans = ref([])
 const stats = ref({})

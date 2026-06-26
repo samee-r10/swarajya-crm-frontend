@@ -138,7 +138,10 @@
           <label>Reference<input v-model="form.reference" :readonly="isLocked"></label>
           <label class="span-2">{{ form.recipient_type === 'Channel Partner' ? 'Channel Partner Account / Payment Details' : 'Stakeholder Account' }}<textarea v-model="form.stakeholder_account" rows="2" :readonly="isLocked"></textarea></label>
           <label class="span-2">Remarks<textarea v-model="form.remarks" rows="2" :readonly="isLocked"></textarea></label>
-          <label class="span-2">Attachment<input v-if="!isLocked" type="file" @change="handleAttachment"><a v-if="form.attachment?.data_url" :href="form.attachment.data_url" :download="form.attachment.name">View Attachment</a></label>
+          <label class="span-2">Attachment<input v-if="!isLocked" type="file" @change="handleAttachment"></label>
+          <div v-if="form.attachment" class="span-2">
+            <DocumentPreview :document="form.attachment" label="Payout Attachment" />
+          </div>
 
           <section v-if="selectedPayout && ['Approved','Pending Payment','Partially Paid'].includes(selectedPayout.status)" class="span-2 payment-box">
             <h3>Payable Created</h3>
@@ -186,6 +189,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { apiGet, apiPost, apiPut } from '../api/client'
+import DocumentPreview from '../components/DocumentPreview.vue'
 
 const route = useRoute()
 const payouts = ref([])

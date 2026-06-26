@@ -1086,16 +1086,16 @@
     </div>
 
     <div v-if="historyModal.visible" class="modal-overlay" @click.self="closeHistoryModal">
-      <div class="modal-content large" @click.stop>
-        <div class="modal-header">
+      <div class="modal-content history-modal" @click.stop>
+        <div class="modal-header history-modal-header">
           <div>
             <p class="eyebrow">{{ historyModal.kind === 'stakeholder' ? 'Company Owner' : 'Channel Partner' }}</p>
             <h2>{{ historyModal.name }} Transactions</h2>
           </div>
           <button class="modal-close" type="button" @click="closeHistoryModal">&times;</button>
         </div>
-        <div class="p-24">
-          <div class="history-summary-grid mb-16">
+        <div class="history-modal-body">
+          <div class="history-summary-grid">
             <div>
               <span>{{ historyModal.kind === 'stakeholder' ? 'Paid to Company' : 'Paid In' }}</span>
               <strong>₹{{ formatCurrency(historyModal.totals.pay_in || 0) }}</strong>
@@ -1111,8 +1111,17 @@
           </div>
           <div v-if="historyModal.loading" class="text-center py-24 text-muted">Loading transactions...</div>
           <div v-else-if="historyModal.error" class="flash warning">{{ historyModal.error }}</div>
-          <div v-else class="table-responsive">
-            <table class="grid-table">
+          <div v-else class="history-table-wrap">
+            <table class="grid-table history-table">
+              <colgroup>
+                <col class="history-col-date">
+                <col class="history-col-type">
+                <col class="history-col-reference">
+                <col class="history-col-transaction">
+                <col class="history-col-description">
+                <col class="history-col-status">
+                <col class="history-col-amount">
+              </colgroup>
               <thead>
                 <tr>
                   <th>Date</th>
@@ -1129,13 +1138,13 @@
                   <td colspan="7" class="text-center py-24 text-muted">No pay-in or payout transactions found.</td>
                 </tr>
                 <tr v-for="entry in historyModal.transactions" :key="`${entry.entry_type}-${entry.id}`">
-                  <td>{{ formatDate(entry.date) }}</td>
-                  <td><span class="type-pill">{{ entry.entry_type }}</span></td>
-                  <td>{{ entry.reference || '-' }}</td>
-                  <td>{{ entry.transaction_id ? `#${entry.transaction_id}` : '-' }}</td>
-                  <td class="text-muted text-xs">{{ entry.description || '-' }}</td>
+                  <td class="history-date">{{ formatDate(entry.date) }}</td>
+                  <td><span class="type-pill history-type-pill">{{ entry.entry_type }}</span></td>
+                  <td class="history-muted-cell">{{ entry.reference || '-' }}</td>
+                  <td class="history-muted-cell">{{ entry.transaction_id ? `#${entry.transaction_id}` : '-' }}</td>
+                  <td class="history-description">{{ entry.description || '-' }}</td>
                   <td><span class="status-pill" :class="String(entry.status || '').toLowerCase()">{{ entry.status || '-' }}</span></td>
-                  <td class="text-right text-semibold" :class="entry.direction === 'in' ? 'text-primary' : 'text-success'">
+                  <td class="history-amount" :class="entry.direction === 'in' ? 'text-primary' : 'text-success'">
                     {{ entry.direction === 'in' ? '+' : '-' }}₹{{ formatCurrency(entry.amount) }}
                   </td>
                 </tr>
@@ -2738,6 +2747,28 @@ function formatTimestamp(val) {
   text-decoration: underline;
 }
 
+.history-modal {
+  max-width: 1080px;
+  overflow: hidden;
+  width: min(1080px, calc(100vw - 48px));
+}
+
+.history-modal-header {
+  padding: 24px 32px;
+}
+
+.history-modal-header h2 {
+  font-size: 26px;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.history-modal-body {
+  display: grid;
+  gap: 18px;
+  padding: 20px 24px 24px;
+}
+
 .history-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2747,8 +2778,8 @@ function formatTimestamp(val) {
 .history-summary-grid > div {
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 14px;
   background: #f8fafc;
+  padding: 16px 18px;
 }
 
 .history-summary-grid span {
@@ -2762,7 +2793,67 @@ function formatTimestamp(val) {
 .history-summary-grid strong {
   display: block;
   margin-top: 6px;
-  font-size: 20px;
+  color: #0f172a;
+  font-size: 24px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.history-table-wrap {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: auto;
+}
+
+.history-table {
+  table-layout: fixed;
+  min-width: 920px;
+}
+
+.history-table th {
+  padding: 13px 16px;
+}
+
+.history-table td {
+  padding: 15px 16px;
+}
+
+.history-col-date { width: 96px; }
+.history-col-type { width: 118px; }
+.history-col-reference { width: 150px; }
+.history-col-transaction { width: 122px; }
+.history-col-description { width: auto; }
+.history-col-status { width: 124px; }
+.history-col-amount { width: 150px; }
+
+.history-date {
+  color: #334155;
+  font-weight: 700;
+}
+
+.history-muted-cell {
+  color: #475569;
+  overflow-wrap: anywhere;
+}
+
+.history-description {
+  color: #334155;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.history-type-pill {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.history-amount {
+  font-weight: 850;
+  text-align: right;
+  white-space: nowrap;
 }
 
 @media (max-width: 1100px) {
@@ -2774,6 +2865,19 @@ function formatTimestamp(val) {
 @media (max-width: 768px) {
   .treasury-container {
     padding: 18px !important;
+  }
+
+  .history-modal {
+    width: calc(100vw - 28px);
+  }
+
+  .history-modal-header,
+  .history-modal-body {
+    padding-inline: 18px;
+  }
+
+  .history-summary-grid {
+    grid-template-columns: 1fr;
   }
 
   .header-section {
