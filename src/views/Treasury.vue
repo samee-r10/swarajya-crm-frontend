@@ -1034,34 +1034,50 @@
 
     <div v-if="showRevenueSettlementConfirmModal" class="modal-overlay confirm-overlay" @click.self="closeRevenueSettlementConfirm">
       <div class="modal-content confirm-modal" @click.stop>
-        <div class="modal-header">
-          <h2>Confirm Settlement</h2>
-          <button class="modal-close" type="button" @click="closeRevenueSettlementConfirm">&times;</button>
-        </div>
-        <div class="p-24">
+        <div class="confirm-modal-header">
           <div class="confirm-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 2v20"/>
               <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
             </svg>
           </div>
-          <p class="confirm-title">Settle this revenue entry?</p>
-          <p class="text-sm text-muted m-0">
-            100% of this entry will move into the company fund and the entry will be locked.
+          <button class="modal-close confirm-close" type="button" @click="closeRevenueSettlementConfirm">&times;</button>
+        </div>
+        <div class="confirm-body">
+          <p class="confirm-kicker">Confirm settlement</p>
+          <h2 class="confirm-title">Settle this revenue entry?</h2>
+          <p class="confirm-copy">
+            The full transaction value will move into the company fund and this revenue entry will be locked.
           </p>
-          <div class="confirm-summary mt-16">
-            <div>
-              <span>Amount</span>
-              <strong>₹{{ formatCurrency(editSplitForm.amount) }}</strong>
+
+          <div class="settlement-amount-card">
+            <span>Settlement amount</span>
+            <strong>₹{{ formatCurrency(editSplitForm.amount) }}</strong>
+          </div>
+
+          <div class="confirm-summary">
+            <div class="confirm-summary-row">
+              <span>Allocation</span>
+              <strong>100% to company fund</strong>
             </div>
-            <div>
-              <span>Bank Account</span>
-              <strong>{{ selectedSettlementBankLabel }}</strong>
+            <div class="confirm-summary-row">
+              <span>Received in</span>
+              <strong class="confirm-bank-label">{{ selectedSettlementBankLabel }}</strong>
+            </div>
+            <div class="confirm-summary-row">
+              <span>Entry status</span>
+              <strong>Locked after settlement</strong>
             </div>
           </div>
-          <div class="form-actions mt-24">
-            <button type="button" class="button secondary" :disabled="isSavingRevenueSettlement" @click="closeRevenueSettlementConfirm">Cancel</button>
-            <button type="button" class="button primary" :disabled="isSavingRevenueSettlement" @click="saveEditSplit">
+
+          <div class="confirm-warning">
+            <span aria-hidden="true">!</span>
+            <p>Review the bank account before confirming. This settlement cannot be edited after it is posted.</p>
+          </div>
+
+          <div class="confirm-actions">
+            <button type="button" class="button secondary confirm-cancel" :disabled="isSavingRevenueSettlement" @click="closeRevenueSettlementConfirm">Cancel</button>
+            <button type="button" class="button primary confirm-submit" :disabled="isSavingRevenueSettlement" @click="saveEditSplit">
               {{ isSavingRevenueSettlement ? 'Settling...' : 'Confirm Settlement' }}
             </button>
           </div>
@@ -2311,55 +2327,211 @@ function formatTimestamp(val) {
 }
 
 .confirm-modal {
-  max-width: 460px;
+  border: 1px solid #e5edf6;
+  border-radius: 12px;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
+  max-width: 520px;
+  overflow: hidden;
+}
+
+.confirm-modal-header {
+  align-items: center;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border-bottom: 1px solid #e5edf6;
+  display: flex;
+  justify-content: space-between;
+  padding: 20px 24px;
 }
 
 .confirm-icon {
   align-items: center;
-  background: #e0f2fe;
-  border-radius: 10px;
-  color: #0284c7;
+  background: #e8f4ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  color: #1d4ed8;
   display: inline-flex;
-  height: 52px;
+  height: 44px;
   justify-content: center;
-  margin-bottom: 16px;
-  width: 52px;
+  width: 44px;
+}
+
+.confirm-close {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #64748b;
+  height: 34px;
+  position: static;
+  width: 34px;
+}
+
+.confirm-body {
+  padding: 24px;
+}
+
+.confirm-kicker {
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  margin: 0 0 8px;
+  text-transform: uppercase;
 }
 
 .confirm-title {
   color: #0f172a;
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 850;
-  margin: 0 0 8px;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.confirm-copy {
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 10px 0 18px;
+}
+
+.settlement-amount-card {
+  background: #0f172a;
+  border-radius: 10px;
+  color: #ffffff;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+  padding: 18px 20px;
+}
+
+.settlement-amount-card span {
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.settlement-amount-card strong {
+  font-size: 24px;
+  font-weight: 850;
+  white-space: nowrap;
 }
 
 .confirm-summary {
-  background: #f8fafc;
+  background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 10px;
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  overflow: hidden;
 }
 
-.confirm-summary div {
+.confirm-summary-row {
   align-items: center;
   display: flex;
-  gap: 12px;
+  gap: 18px;
   justify-content: space-between;
+  padding: 14px 16px;
+}
+
+.confirm-summary-row + .confirm-summary-row {
+  border-top: 1px solid #eef2f7;
 }
 
 .confirm-summary span {
   color: #64748b;
-  font-size: 12px;
+  flex: 0 0 112px;
+  font-size: 11px;
   font-weight: 800;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .confirm-summary strong {
   color: #0f172a;
   font-size: 14px;
+  line-height: 1.4;
   text-align: right;
+}
+
+.confirm-bank-label {
+  max-width: 280px;
+}
+
+.confirm-warning {
+  align-items: flex-start;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  color: #9a3412;
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+}
+
+.confirm-warning span {
+  align-items: center;
+  background: #fed7aa;
+  border-radius: 999px;
+  display: inline-flex;
+  flex: 0 0 20px;
+  font-size: 12px;
+  font-weight: 900;
+  height: 20px;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+.confirm-warning p {
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 22px;
+}
+
+.confirm-actions .button {
+  min-height: 44px;
+  padding-inline: 18px;
+}
+
+.confirm-submit {
+  min-width: 180px;
+}
+
+@media (max-width: 560px) {
+  .confirm-modal {
+    margin: 16px;
+    max-width: calc(100vw - 32px);
+  }
+
+  .settlement-amount-card,
+  .confirm-summary-row,
+  .confirm-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .confirm-summary span {
+    flex-basis: auto;
+  }
+
+  .confirm-summary strong,
+  .confirm-bank-label {
+    max-width: none;
+    text-align: left;
+  }
+
+  .confirm-actions .button {
+    width: 100%;
+  }
 }
 
 .pre-wrap {

@@ -65,7 +65,8 @@ const routes = [
   { path: '/finance/transactions', name: 'transaction-ledger', component: TransactionLedger },
   { path: '/finance/transactions/new', name: 'transaction-new', component: TransactionForm },
   { path: '/finance/transactions/:id', name: 'transaction-detail', component: TransactionDetail, props: true },
-  { path: '/finance/claims', name: 'expense-claims', component: ExpenseClaims },
+  { path: '/claims', name: 'expense-claims', component: ExpenseClaims },
+  { path: '/finance/claims', redirect: '/claims' },
   { path: '/claims/approvals', name: 'claim-approvals', component: PendingClaimApprovals },
   { path: '/finance/accounts', name: 'chart-of-accounts', component: ChartOfAccounts },
   { path: '/finance/invoices', name: 'invoices', component: Invoices },
@@ -135,7 +136,7 @@ router.beforeEach((to) => {
       return { name: 'dashboard' }
     }
   }
-  if (to.path.startsWith('/finance') && user) {
+  if (to.path.startsWith('/finance') && to.path !== '/finance/claims' && user) {
     const isAdmin = user.role_name === 'System Administrator' || user.role_name === 'Admin'
     if (!isAdmin && !(user.has_finance_access === 1 || user.has_finance_access === true)) {
       return { name: 'dashboard' }

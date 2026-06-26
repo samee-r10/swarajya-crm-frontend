@@ -322,7 +322,7 @@ const launcherItems = [
   { label: 'Vault', type: 'Secure Module', to: '/vault' },
   { label: 'Vendors', type: 'Finance', to: '/finance/vendors' },
   { label: 'Transaction Ledger', type: 'Finance', to: '/finance/transactions' },
-  { label: 'Claims', type: 'Finance', to: '/finance/claims' },
+  { label: 'Claims', type: 'Employee Workspace', to: '/claims' },
   { label: 'Claim Approvals', type: 'Approvals', to: '/claims/approvals' },
   { label: 'Chart of Accounts', type: 'Finance', to: '/finance/accounts' },
   { label: 'General Ledger Report', type: 'Finance', to: '/finance/reports/general-ledger' },
@@ -342,9 +342,9 @@ const navItems = [
   { label: 'Customers', to: '/customers', match: ['/customers'], icon: '<svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3ZM8 11c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z" fill="currentColor"/></svg>' },
   { label: 'Opportunities', to: '/opportunities', match: ['/opportunities'], icon: '<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10h-2a8 8 0 1 1-8-8V2Zm1 1v9l6.4 6.4 1.4-1.4-5-5H22A9 9 0 0 0 13 3Z" fill="currentColor"/></svg>' },
   { label: 'Projects', to: '/projects', match: ['/projects'], icon: '<svg viewBox="0 0 24 24"><path d="M10 4h4v3h-4V4ZM4 9h16v11H4V9Zm2 2v7h12v-7H6Zm10-7h2a2 2 0 0 1 2 2v1h-2V6h-2V4ZM6 4h2v2H6v1H4V6a2 2 0 0 1 2-2Z" fill="currentColor"/></svg>' },
+  { label: 'Claims', to: '/claims', match: ['/claims'], exact: true, icon: '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm-1 7V3.5L18.5 9H13Zm-5 4h8v2H8v-2Zm0 4h6v2H8v-2Zm0-8h3v2H8V9Z" fill="currentColor"/></svg>' },
   { label: 'Finance', to: '/finance', match: ['/finance'], requires: 'finance', icon: '<svg viewBox="0 0 24 24"><path d="M3 6h18v12H3V6Zm2 2v8h14V8H5Zm7 7a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-6-5a2 2 0 0 0 2-2H6v2Zm10-2a2 2 0 0 0 2 2V8h-2Zm2 6a2 2 0 0 0-2 2h2v-2ZM6 16h2a2 2 0 0 0-2-2v2Z" fill="currentColor"/></svg>' },
   { label: 'Invoices', to: '/finance/invoices', match: ['/finance/invoices'], requires: 'finance', icon: '<svg viewBox="0 0 24 24"><path d="M7 2h10a2 2 0 0 1 2 2v18l-3-2-2 2-2-2-2 2-2-2-3 2V4a2 2 0 0 1 2-2Zm2 5v2h6V7H9Zm0 4v2h6v-2H9Zm0 4v2h4v-2H9Z" fill="currentColor"/></svg>' },
-  { label: 'Claims', to: '/finance/claims', match: ['/finance/claims'], requires: 'finance', icon: '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm-1 7V3.5L18.5 9H13Zm-5 4h8v2H8v-2Zm0 4h6v2H8v-2Zm0-8h3v2H8V9Z" fill="currentColor"/></svg>' },
   { label: 'Approvals', to: '/claims/approvals', match: ['/claims/approvals'], icon: '<svg viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2Z" fill="currentColor"/></svg>' },
   { label: 'Accounts', to: '/finance/accounts', match: ['/finance/accounts'], requires: 'finance', icon: '<svg viewBox="0 0 24 24"><path d="M4 4h16v4H4V4Zm0 6h7v10H4V10Zm9 0h7v10h-7V10Zm-7 3v2h3v-2H6Zm9 0v2h3v-2h-3Z" fill="currentColor"/></svg>' },
   { label: 'Reports', to: '/finance/reports/general-ledger', match: ['/finance/reports'], requires: 'finance', icon: '<svg viewBox="0 0 24 24"><path d="M5 3h14v18H5V3Zm3 14h2v-6H8v6Zm3 0h2V7h-2v10Zm3 0h2v-4h-2v4Z" fill="currentColor"/></svg>' },
@@ -402,7 +402,6 @@ const breadcrumbLabels = {
   '/finance': 'Finance',
   '/finance/vendors': 'Vendors',
   '/finance/transactions': 'Transactions',
-  '/finance/claims': 'Claims',
   '/finance/accounts': 'Chart of Accounts',
   '/finance/invoices': 'Invoices',
   '/finance/reports': 'Reports',
@@ -423,6 +422,7 @@ const breadcrumbLabels = {
 
 function isNavActive(item) {
   if (item.to === '/') return route.path === '/'
+  if (item.exact) return item.match.includes(route.path)
   return item.match.some((prefix) => route.path.startsWith(prefix))
 }
 

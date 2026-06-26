@@ -2,9 +2,9 @@
   <div class="claims-page">
     <header class="page-header">
       <div>
-        <p class="eyebrow">Finance</p>
+        <p class="eyebrow">Employee Workspace</p>
         <h1>Expense Claims</h1>
-        <p class="muted">Submit, review, post, and settle employee expense claims.</p>
+        <p class="muted">Submit and track employee expense claims without opening financial ledgers.</p>
       </div>
       <button class="button" type="button" @click="openNewClaim">New Claim</button>
     </header>
@@ -90,7 +90,7 @@
             <DocumentPreview
               :document="form.attachment"
               label="Supporting Document"
-              access-note="Visible to finance users who can open claims and assigned claim approvers."
+              access-note="Visible to the claim submitter, assigned claim approvers, and authorized finance users."
             />
           </div>
 
@@ -99,8 +99,8 @@
             <button type="button" class="button secondary" @click="closeModal">Close</button>
             <button v-if="isDraft" type="button" class="button secondary" @click="saveWithStatus('Draft')">Save Draft</button>
             <button v-if="isDraft" type="button" class="button" @click="saveWithStatus('Submitted')">Submit Claim</button>
-            <button v-if="selectedClaim && selectedClaim.status === 'Approved'" type="button" class="button" @click="claimAction('post')">Post to Ledger</button>
-            <button v-if="selectedClaim && selectedClaim.status === 'Posted'" type="button" class="button" @click="claimAction('settle')">Settle</button>
+            <button v-if="canManageClaimFinancialActions && selectedClaim && selectedClaim.status === 'Approved'" type="button" class="button" @click="claimAction('post')">Post to Ledger</button>
+            <button v-if="canManageClaimFinancialActions && selectedClaim && selectedClaim.status === 'Posted'" type="button" class="button" @click="claimAction('settle')">Settle</button>
             <button v-if="isDraft" type="button" class="button secondary" @click="claimAction('cancel')">Cancel Claim</button>
           </div>
         </form>
@@ -125,6 +125,18 @@ const statusFilter = ref('')
 const paymentModes = ref([])
 const statuses = ['Draft', 'Submitted', 'Pending Stakeholder Approval', 'Pending Approval Sequence 1', 'Pending Approval Sequence 2', 'Pending Approval Sequence 3', 'Under Review', 'Approved', 'Rejected', 'Posted', 'Settled', 'Cancelled']
 const form = reactive(defaultForm())
+const currentUser = computed(() => {
+  try {
+    return JSON.parse(window.localStorage.getItem('lms_user') || '{}')
+  } catch {
+    return {}
+  }
+})
+const canManageClaimFinancialActions = computed(() => {
+  const user = currentUser.value
+  const isAdmin = user.role_name === 'System Administrator' || user.role_name === 'Admin'
+  return isAdmin || user.has_finance_access === 1 || user.has_finance_access === true
+})
 
 const gstAmount = computed(() => {
   const amount = Number(form.amount) || 0
@@ -166,10 +178,26 @@ async function loadClaims() {
   loading.value = true
   try {
     const data = await apiGet('/api/finance/expense-claims')
-    claims.value = data.claims || []
+    const allClaims = data.claims || []
+    claims.value = canManageClaimFinancialActions.value ? allClaims : allClaims.filter(isClaimForCurrentUser)
   } finally {
     loading.value = false
   }
+}
+
+function isClaimForCurrentUser(claim) {
+  const user = currentUser.value
+  const userId = String(user.id || '')
+  const userEmail = String(user.email || '').toLowerCase()
+  const userName = String(user.full_name || '').toLowerCase()
+  return [
+    claim.employee_user_id,
+    claim.user_id,
+    claim.employee_id,
+    claim.created_by
+  ].some(value => userId && String(value) === userId)
+    || (userEmail && String(claim.employee_email || claim.email || '').toLowerCase() === userEmail)
+    || (userName && String(claim.employee_name || '').toLowerCase() === userName)
 }
 
 function openNewClaim() {
@@ -228,6 +256,10 @@ async function saveClaim() {
 }
 
 async function claimAction(action) {
+  if (['post', 'settle'].includes(action) && !canManageClaimFinancialActions.value) {
+    error.value = 'Only authorized finance users can post or settle claims.'
+    return
+  }
   if (['post', 'settle', 'reject', 'cancel'].includes(action) && !confirm(`Confirm ${action} action for this claim?`)) return
   error.value = ''
   try {

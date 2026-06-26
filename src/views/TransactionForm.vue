@@ -16,8 +16,8 @@
     <label>Type<select v-model="form.type"><option>Income</option><option>Expense</option></select></label>
     <label>Account<select v-model="form.account_id" required><option value="">Select Account</option><option v-for="account in filteredAccountsForDropdown" :key="account.id" :value="account.id">{{ accountLabel(account) }}</option></select></label>
     <label>Product
-      <select v-model="form.product_id" :required="form.type === 'Income'">
-        <option value="">{{ form.type === 'Income' ? 'Select Product' : 'No Product' }}</option>
+      <select v-model="form.product_id">
+        <option value="">No Product</option>
         <option v-for="product in activeProducts" :key="product.id || product.product_code" :value="product.id || product.product_code">{{ productName(product) }}</option>
       </select>
     </label>
@@ -747,8 +747,8 @@ async function handleTransactionDocuments(event) {
 }
 
 function validateBeforePosting() {
-  if (!form.transaction_date || !form.account_id || !form.amount || (form.type === 'Income' && !form.product_id)) {
-    error.value = `Please fill out all required fields (${form.type === 'Income' ? 'Date, Account, Product, Amount' : 'Date, Account, Amount'}) before previewing.`
+  if (!form.transaction_date || !form.account_id || !form.amount) {
+    error.value = 'Please fill out all required fields (Date, Account, Amount) before previewing.'
     return false
   }
   if (Number(form.amount || 0) <= 0) {
