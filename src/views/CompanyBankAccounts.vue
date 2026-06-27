@@ -45,7 +45,7 @@
             <td>{{ account.account_type || '-' }}</td>
             <td>{{ account.legal_entity || '-' }}</td>
             <td><span :class="statusClass(account.status)">{{ account.status || 'Active' }}</span></td>
-            <td class="right">{{ money(account.current_balance ?? account.balance ?? account.opening_balance, account.currency) }}</td>
+            <td class="right">{{ money(displayBalance(account), account.currency) }}</td>
             <td class="right actions-cell">
               <button class="button secondary small" type="button" @click="openStatement(account)">Statement</button>
               <button class="button small" type="button" @click="checkBalance(account)">Check Balance</button>
@@ -182,6 +182,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { apiGet, apiPost, apiPut } from '../api/client'
+import { getBankBalance, loadSalaryLedgerTransactions } from '../utils/hrStorage'
 
 const bankAccounts = ref([])
 const transactions = ref([])
@@ -193,6 +194,7 @@ const balanceResult = ref(null)
 const selectedStatementAccount = ref(null)
 const statementTransactions = ref([])
 const statementLoading = ref(false)
+const salaryLedgerTransactions = ref([])
 const LOCAL_TREASURY_BANKS_KEY = 'crm_treasury_bank_accounts'
 const form = reactive(defaultAccount())
 
@@ -229,15 +231,18 @@ async function loadData() {
   const safe = async (fn) => {
     try { return await fn() } catch { return null }
   }
+  salaryLedgerTransactions.value = loadSalaryLedgerTransactions()
   const data = await safe(() => apiGet('/api/treasury/bank-accounts'))
   bankAccounts.value = mergeBankAccounts(data?.bank_accounts || data?.accounts || [], loadLocalBankAccounts())
-  stats.value = data?.stats || {
-    available_balance: bankAccounts.value.reduce((sum, account) => sum + Number(account.current_balance ?? account.balance ?? account.opening_balance ?? 0), 0),
-    total_inflow: 0,
-    total_outflow: 0,
-    pending_payables: 0
+  const salaryOutflow = salaryLedgerTransactions.value.reduce((sum, entry) => sum + Number(entry.total_amount || entry.amount || 0), 0)
+  stats.value = {
+    ...(data?.stats || {}),
+    available_balance: bankAccounts.value.reduce((sum, account) => sum + Number(displayBalance(account) ?? 0), 0),
+    total_inflow: data?.stats?.total_inflow || 0,
+    total_outflow: Number(data?.stats?.total_outflow || 0) + salaryOutflow,
+    pending_payables: data?.stats?.pending_payables || 0
   }
-  transactions.value = data?.transactions || data?.statement || []
+  transactions.value = [...(data?.transactions || data?.statement || []), ...salaryLedgerTransactions.value]
 }
 
 function openForm(account = null) {
@@ -282,7 +287,8 @@ async function checkBalance(account) {
 
 async function openStatement(account) {
   selectedStatementAccount.value = account
-  statementTransactions.value = filterTransactionsForAccount(transactions.value, account)
+  salaryLedgerTransactions.value = loadSalaryLedgerTransactions()
+  statementTransactions.value = filterTransactionsForAccount(uniqueTransactions([...transactions.value, ...salaryLedgerTransactions.value]), account)
   statementLoading.value = true
   error.value = ''
   try {
@@ -302,6 +308,17 @@ function closeStatement() {
   selectedStatementAccount.value = null
   statementTransactions.value = []
   statementLoading.value = false
+}
+
+function uniqueTransactions(entries) {
+  const seen = new Set()
+  return (entries || []).filter((entry) => {
+    const key = String(entry.id || entry.reference || entry.transaction_reference || '')
+    if (!key) return true
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 function loadLocalBankAccounts() {
@@ -380,6 +397,10 @@ function transactionDebit(entry, account) {
   }
   const amount = Number(entry.outflow ?? entry.debit ?? entry.withdrawal ?? entry.amount_debit ?? 0)
   return Math.abs(amount) || creditDebitFromSignedAmount(entry, 'debit')
+}
+
+function displayBalance(account) {
+  return getBankBalance(account, salaryLedgerTransactions.value)
 }
 
 function creditDebitFromSignedAmount(entry, side) {

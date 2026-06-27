@@ -41,7 +41,9 @@
             <svg viewBox="0 0 24 24" width="18" height="18" class="btn-icon"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/></svg>
             Edit
           </RouterLink>
-          <span v-else class="locked-note">Approved invoice locked</span>
+          <span v-else class="locked-note" title="Invoice locked" aria-label="Invoice locked">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M17 8h-1V6a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-7-2a2 2 0 0 1 4 0v2h-4V6Zm3 10.73V18h-2v-1.27a2 2 0 1 1 2 0Z" fill="currentColor"/></svg>
+          </span>
         </div>
       </header>
 
@@ -454,7 +456,7 @@
       </div>
 
       <!-- 4. PRINT-ONLY INVOICE (Hidden on screen, shown strictly in @media print) -->
-      <div class="invoice-document print-document-only">
+      <div class="invoice-document print-document-only" style="display: none;">
         <div class="invoice-header">
           <div class="company-brand">
             <img src="/logo.png" alt="Company Logo" class="invoice-logo">
@@ -541,7 +543,7 @@
         </div>
       </div>
 
-      <div class="receipt-document print-receipt-only">
+      <div class="receipt-document print-receipt-only" style="display: none;">
         <div class="receipt-header">
           <div class="company-brand">
             <img src="/logo.png" alt="Company Logo" class="invoice-logo">
@@ -879,7 +881,38 @@ function printStandaloneReceipt() {
 .invoice-container {
   max-width: 1280px;
   margin: 0 auto;
-  padding-bottom: 60px;
+  padding-bottom: 32px;
+}
+
+.invoice-container .page-header {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding: 22px 24px;
+}
+
+.invoice-container .page-header h1 {
+  font-size: clamp(30px, 4vw, 46px);
+  letter-spacing: 0;
+  margin: 0;
+}
+
+.invoice-container .page-header .muted {
+  margin-top: 6px;
+}
+
+.actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 /* PREMIUM SHADOWS & CARDS */
@@ -923,14 +956,17 @@ function printStandaloneReceipt() {
 .locked-note {
   display: inline-flex;
   align-items: center;
-  min-height: 38px;
-  padding: 0 12px;
+  justify-content: center;
+  min-height: 40px;
+  width: 42px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
+  background: #f8fafc;
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
+}
+
+.locked-note svg {
+  color: #64748b;
 }
 
 /* ON-SCREEN LAYOUT styling */
@@ -977,6 +1013,43 @@ function printStandaloneReceipt() {
 .pill-badge.sent {
   background: #dbeafe;
   color: #1e40af;
+}
+
+.record-layout {
+  align-items: start;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 390px);
+}
+
+.main-record-pane,
+.related-pane {
+  display: grid;
+  gap: 16px;
+}
+
+.main-record-pane .record-card,
+.related-pane .panel {
+  padding: 22px;
+}
+
+.main-record-pane > .form-grid {
+  gap: 18px 22px;
+}
+
+.main-record-pane label {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.main-record-pane input[readonly] {
+  background: #f8fafc;
+  border: 1px solid #dbe5f0;
+  border-radius: 8px;
+  color: #0f172a;
+  font-weight: 800;
+  min-height: 42px;
 }
 
 .pill-badge.overdue,
@@ -1888,5 +1961,40 @@ function printStandaloneReceipt() {
 .fade-slide-enter-from, .fade-slide-leave-to {
   opacity: 0;
   transform: translateY(-10px);
+}
+
+@media (max-width: 980px) {
+  .invoice-container .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .record-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .invoice-container .page-header {
+    padding: 18px;
+  }
+
+  .invoice-container .page-header h1 {
+    font-size: 30px;
+  }
+
+  .actions .button {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .locked-note {
+    flex: 0 0 42px;
+  }
 }
 </style>

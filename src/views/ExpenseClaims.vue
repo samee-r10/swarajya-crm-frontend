@@ -16,7 +16,7 @@
     </section>
 
     <section class="filters-bar">
-      <input v-model="search" placeholder="Search claim, employee, category...">
+      <input v-model="search" placeholder="Search claim, employee id, category...">
       <select v-model="statusFilter">
         <option value="">All Statuses</option>
         <option v-for="status in statuses" :key="status" :value="status">{{ status }}</option>
@@ -30,6 +30,7 @@
           <tr>
             <th>Claim #</th>
             <th>Employee</th>
+            <th>Employee ID</th>
             <th>Expense Date</th>
             <th>Category</th>
             <th class="right">Total</th>
@@ -41,13 +42,14 @@
           <tr v-for="claim in filteredClaims" :key="claim.id" @click="selectClaim(claim)">
             <td><strong>{{ claim.claim_number }}</strong></td>
             <td>{{ claim.employee_name || '-' }}<span class="muted block">{{ claim.department || '' }}</span></td>
+            <td>{{ claim.employee_code || claim.employee_id || claim.employee_user_id || '-' }}</td>
             <td>{{ formatDate(claim.expense_date) }}</td>
             <td>{{ claim.expense_category }}</td>
             <td class="right">{{ money(claim.total_claim_amount) }}</td>
             <td><span class="pill" :class="statusClass(claim.status)">{{ claim.status }}</span></td>
             <td class="right"><button class="button secondary small" type="button" @click.stop="selectClaim(claim)">Open</button></td>
           </tr>
-          <tr v-if="filteredClaims.length === 0"><td colspan="7" class="empty-state">No claims found.</td></tr>
+          <tr v-if="filteredClaims.length === 0"><td colspan="8" class="empty-state">No claims found.</td></tr>
         </tbody>
       </table>
     </section>
@@ -65,6 +67,7 @@
         <form class="form-grid modal-form" @submit.prevent="saveClaim">
           <div class="span-2 card-section-title"><h2>Basic Details</h2></div>
           <label>Employee Name<input v-model="form.employee_name" required :readonly="isLocked"></label>
+          <label>Employee ID<input :value="form.employee_code || form.employee_id || form.employee_user_id || '-'" readonly></label>
           <label>Department
             <select v-model="form.department" :disabled="isLocked">
               <option value="">Select Department</option>
@@ -87,8 +90,7 @@
           </label>
 
           <div class="span-2 card-section-title"><h2>Amount & Support</h2></div>
-          <label>Amount<input v-model.number="form.amount" type="number" min="0" step="0.01" required :readonly="isLocked"></label>
-          <label>GST / Tax Percentage<input v-model.number="form.gst_percent" type="number" min="0" step="0.01" :readonly="isLocked"></label>
+          <label>Claim Amount<input v-model.number="form.amount" type="number" min="0" step="0.01" required :readonly="isLocked"></label>
           <label>Total Claim Amount<input :value="totalClaimAmount.toFixed(2)" readonly></label>
           <label class="span-2">Expense Description<textarea v-model="form.expense_description" rows="3" :readonly="isLocked"></textarea></label>
           <label class="span-2">Remarks<textarea v-model="form.remarks" rows="2" :readonly="isLocked"></textarea></label>
@@ -109,7 +111,6 @@
             <button type="button" class="button secondary" @click="closeModal">Close</button>
             <button v-if="isDraft" type="button" class="button secondary" @click="saveWithStatus('Draft')">Save Draft</button>
             <button v-if="isDraft" type="button" class="button" @click="saveWithStatus('Submitted')">Submit Claim</button>
-            <button v-if="canManageClaimFinancialActions && selectedClaim && selectedClaim.status === 'Approved'" type="button" class="button" @click="claimAction('post')">Post to Ledger</button>
             <button v-if="canManageClaimFinancialActions && selectedClaim && selectedClaim.status === 'Posted'" type="button" class="button" @click="claimAction('settle')">Settle</button>
             <button v-if="isDraft" type="button" class="button secondary" @click="claimAction('cancel')">Cancel Claim</button>
           </div>
@@ -123,6 +124,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { apiGet, apiPost, apiPut, apiUploadFile } from '../api/client'
 import DocumentPreview from '../components/DocumentPreview.vue'
+import { DEPARTMENTS } from '../utils/sharedOptions'
 
 const claims = ref([])
 const loading = ref(false)
@@ -135,7 +137,7 @@ const statusFilter = ref('')
 const paymentModes = ref([])
 const statuses = ['Draft', 'Submitted', 'Pending Stakeholder Approval', 'Pending Approval Sequence 1', 'Pending Approval Sequence 2', 'Pending Approval Sequence 3', 'Under Review', 'Approved', 'Rejected', 'Posted', 'Settled', 'Cancelled']
 const expenseCategories = ['Business Claim']
-const departments = ['IT', 'BD', 'Development', 'Marketing', 'Legal']
+const departments = DEPARTMENTS
 const form = reactive(defaultForm())
 const currentUser = computed(() => {
   try {
@@ -150,12 +152,7 @@ const canManageClaimFinancialActions = computed(() => {
   return isAdmin || user.has_finance_access === 1 || user.has_finance_access === true
 })
 
-const gstAmount = computed(() => {
-  const amount = Number(form.amount) || 0
-  const percent = Number(form.gst_percent) || 0
-  return Number((amount * (percent / 100)).toFixed(2))
-})
-const totalClaimAmount = computed(() => (Number(form.amount) || 0) + gstAmount.value)
+const totalClaimAmount = computed(() => Number(form.amount) || 0)
 const isDraft = computed(() => !selectedClaim.value || selectedClaim.value.status === 'Draft')
 const isLocked = computed(() => selectedClaim.value && selectedClaim.value.status !== 'Draft')
 const stats = computed(() => ({
@@ -167,7 +164,7 @@ const filteredClaims = computed(() => {
   const term = search.value.toLowerCase()
   return claims.value.filter(claim => {
     const matchesStatus = !statusFilter.value || claim.status === statusFilter.value
-    const matchesSearch = !term || [claim.claim_number, claim.employee_name, claim.department, claim.expense_category].some(v => (v || '').toLowerCase().includes(term))
+    const matchesSearch = !term || [claim.claim_number, claim.employee_name, claim.employee_code, claim.employee_id, claim.employee_user_id, claim.department, claim.expense_category].some(v => (v || '').toLowerCase().includes(term))
     return matchesStatus && matchesSearch
   })
 })
@@ -178,7 +175,7 @@ onMounted(async () => {
 
 function defaultForm() {
   const today = new Date().toISOString().slice(0, 10)
-  return { employee_name: '', department: '', claim_date: today, expense_date: today, expense_category: '', expense_description: '', amount: 0, gst_percent: 0, gst_amount: 0, total_claim_amount: 0, payment_mode: '', attachment: null, remarks: '', status: 'Draft' }
+  return { employee_name: '', employee_code: '', employee_id: '', employee_user_id: '', user_id: '', employee_email: '', department: '', claim_date: today, expense_date: today, expense_category: '', expense_description: '', amount: 0, gst_percent: 0, gst_amount: 0, total_claim_amount: 0, payment_mode: '', attachment: null, remarks: '', status: 'Draft' }
 }
 
 async function loadOptions() {
@@ -212,9 +209,21 @@ function isClaimForCurrentUser(claim) {
     || (userName && String(claim.employee_name || '').toLowerCase() === userName)
 }
 
+function currentUserClaimIdentity() {
+  const user = currentUser.value
+  const userId = user.id ? String(user.id) : ''
+  return {
+    employee_name: user.full_name || '',
+    employee_user_id: userId,
+    user_id: userId,
+    created_by: userId,
+    employee_email: user.email || ''
+  }
+}
+
 function openNewClaim() {
   selectedClaim.value = null
-  Object.assign(form, defaultForm())
+  Object.assign(form, defaultForm(), currentUserClaimIdentity())
   error.value = ''
   showModal.value = true
 }
@@ -254,7 +263,18 @@ async function saveWithStatus(status) {
 async function saveClaim() {
   error.value = ''
   try {
-    const payload = { ...form, gst_amount: gstAmount.value, total_claim_amount: totalClaimAmount.value }
+    const identity = currentUserClaimIdentity()
+    if (!selectedClaim.value && !identity.employee_user_id) {
+      error.value = 'A signed-in user id is required before submitting a claim.'
+      return
+    }
+    const payload = {
+      ...form,
+      ...(!selectedClaim.value ? identity : {}),
+      gst_percent: 0,
+      gst_amount: 0,
+      total_claim_amount: totalClaimAmount.value
+    }
     if (selectedClaim.value) {
       await apiPut(`/api/finance/expense-claims/${selectedClaim.value.id}`, payload)
     } else {

@@ -99,14 +99,14 @@
           <label>Payment Date<input v-model="payment.payment_date" type="date" required></label>
           <label>Payment Mode<select v-model="payment.payment_mode"><option value="">Select mode</option><option v-for="mode in paymentModes" :key="mode">{{ mode }}</option></select></label>
           <label>Paid From Bank Account<select v-model="payment.bank_account_id" required><option value="">Select account</option><option v-for="account in bankAccounts" :key="account.id" :value="account.id">{{ account.label }}</option></select></label>
-          <label>Paid To Type<select v-model="payment.recipient_owner_type" required @change="handlePaymentRecipientTypeChange"><option v-for="type in recipientTypes" :key="type" :value="type">{{ type }}</option></select></label>
-          <label>Paid To Name
+          <label v-if="!isSalaryPayable">Paid To Type<select v-model="payment.recipient_owner_type" required @change="handlePaymentRecipientTypeChange"><option v-for="type in recipientTypes" :key="type" :value="type">{{ type }}</option></select></label>
+          <label v-if="!isSalaryPayable">Paid To Name
             <select v-model="paymentRecipientOwnerKey" required>
               <option value="">Select {{ recipientOwnerLabel.toLowerCase() }}</option>
               <option v-for="owner in filteredRecipientOwners" :key="owner.key" :value="owner.key">{{ owner.name }}</option>
             </select>
           </label>
-          <label>Paid To Account
+          <label v-if="!isSalaryPayable">Paid To Account
             <select v-model="payment.recipient_account_id" :required="isRecipientAccountRequired" :disabled="!paymentRecipientOwnerKey">
               <option value="">Select recipient account</option>
               <option v-for="account in filteredRecipientAccounts" :key="account.id" :value="account.id">{{ account.label }}</option>
@@ -114,7 +114,8 @@
           </label>
           <label>Payment Transaction ID / Reference<input v-model="payment.reference"></label>
           <label>Remarks<input v-model="payment.remarks"></label>
-          <button class="button secondary span-2" type="button" @click="openRecipientAccountForm">Add Recipient Bank Account</button>
+          <p v-if="isSalaryPayable" class="span-2 muted">Salary payable settlement will deduct the selected company bank account and create a bank statement entry.</p>
+          <button v-if="!isSalaryPayable" class="button secondary span-2" type="button" @click="openRecipientAccountForm">Add Recipient Bank Account</button>
           <p v-if="error" class="span-2 flash warning">{{ error }}</p>
           <div class="span-2 action-row">
             <button class="button secondary" type="button" @click="selectedPayable = null">Cancel</button>
@@ -251,6 +252,7 @@ const filteredRecipientOwners = computed(() => ownerOptionsForType(payment.recip
 const selectedRecipientOwner = computed(() => filteredRecipientOwners.value.find(option => option.key === paymentRecipientOwnerKey.value) || null)
 const isVendorPayment = computed(() => payment.recipient_owner_type === 'Vendor' || paymentRecipientOwnerKey.value.startsWith('Vendor:'))
 const isRecipientAccountRequired = computed(() => !isVendorPayment.value)
+const isSalaryPayable = computed(() => selectedPayable.value?.source_module === 'HR Salary')
 const recipientAccountsTitle = computed(() => {
   if (recipientAccountsMode.value === 'create') return 'Create Recipient Account'
   if (recipientAccountsMode.value === 'view') return 'Saved Recipient Accounts'
@@ -385,11 +387,11 @@ async function markPaid() {
     error.value = 'Select the bank account used for this payable payment.'
     return
   }
-  if (!paymentRecipientOwnerKey.value) {
+  if (!isSalaryPayable.value && !paymentRecipientOwnerKey.value) {
     error.value = `Select the ${recipientOwnerLabel.value} paid to.`
     return
   }
-  if (isRecipientAccountRequired.value && !payment.recipient_account_id) {
+  if (!isSalaryPayable.value && isRecipientAccountRequired.value && !payment.recipient_account_id) {
     error.value = 'Select the recipient account paid to.'
     return
   }
@@ -406,9 +408,12 @@ async function markPaid() {
 function paymentPayload() {
   return {
     ...payment,
-    recipient_account_id: isRecipientAccountRequired.value ? payment.recipient_account_id : '',
+    bank_account_id: payment.bank_account_id,
+    payment_mode: payment.payment_mode,
+    recipient_account_id: !isSalaryPayable.value && isRecipientAccountRequired.value ? payment.recipient_account_id : '',
     recipient_owner_id: selectedRecipientOwner.value?.id || '',
-    recipient_owner_name: selectedRecipientOwner.value?.name || '',
+    recipient_owner_name: isSalaryPayable.value ? (selectedPayable.value?.party_name || 'Salary Payable') : (selectedRecipientOwner.value?.name || ''),
+    recipient_owner_type: isSalaryPayable.value ? 'Employee' : payment.recipient_owner_type,
   }
 }
 

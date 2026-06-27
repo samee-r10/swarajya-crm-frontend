@@ -36,6 +36,9 @@
           <svg viewBox="0 0 24 24" width="18" height="18" style="margin-right: 8px;"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/></svg>
           Export
         </button>
+        <button v-if="canPostSalary" class="button secondary" type="button" @click="openSalaryPaymentModal">
+          Post Salaries
+        </button>
         <button class="button" type="button" @click="showTransactionModal = true">
           <svg viewBox="0 0 24 24" width="18" height="18" style="margin-right: 8px;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/></svg>
           New Transaction
@@ -190,21 +193,87 @@
         </div>
       </div>
     </transition>
+
+    <div v-if="showSalaryPaymentModal" class="modal-overlay" @click.self="showSalaryPaymentModal = false">
+      <div class="modal-content salary-post-modal">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">HR Management</p>
+            <h2>Post Salary to Ledger</h2>
+          </div>
+          <button class="modal-close" type="button" @click="showSalaryPaymentModal = false">&times;</button>
+        </div>
+        <div class="p-24">
+          <div class="form-grid">
+            <label>Salary Month
+              <select v-model="salaryPaymentForm.month">
+                <option v-for="month in months" :key="month">{{ month }}</option>
+              </select>
+            </label>
+            <label>Salary Year<input v-model.number="salaryPaymentForm.year" type="number" min="2000" max="2100"></label>
+            <label>GL Account
+              <select v-model="salaryPaymentForm.account_id">
+                <option value="">Select salary expense account</option>
+                <option v-for="account in salaryGlAccounts" :key="account.id" :value="account.id">{{ account.gl_code }} · {{ account.name }}</option>
+              </select>
+            </label>
+            <label class="span-2">Transaction Reference<input v-model="salaryPaymentForm.reference"></label>
+          </div>
+          <section class="salary-post-summary">
+            <div>
+              <span>Salary Period</span>
+              <strong>{{ salaryPaymentForm.month }} {{ salaryPaymentForm.year }}</strong>
+            </div>
+            <div>
+              <span>Salary Records Included</span>
+              <strong>{{ payableSalaryRecords.length }}</strong>
+            </div>
+            <div>
+              <span>Total Salary Amount</span>
+              <strong>{{ money('INR', selectedSalaryTotal) }}</strong>
+            </div>
+          </section>
+          <p v-if="payableSalaryRecords.length === 0" class="empty-row">No finalized unpaid salary records for this month.</p>
+          <div class="salary-post-total">
+            <span>Total salary to post</span>
+            <strong>{{ money('INR', selectedSalaryTotal) }}</strong>
+          </div>
+          <p v-if="salaryPostError" class="flash warning">{{ salaryPostError }}</p>
+          <div class="form-actions mt-16">
+            <button class="button secondary" type="button" @click="showSalaryPaymentModal = false">Cancel</button>
+            <button class="button" type="button" @click="postSalaryPayment">Post to Ledger</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { apiGet } from '../api/client'
+import { apiGet, apiPost } from '../api/client'
 import TransactionForm from './TransactionForm.vue'
+import {
+  buildSalaryTransaction,
+  hasHrPermission
+} from '../utils/hrStorage'
 
 const router = useRouter()
 const route = useRoute()
 const transactions = ref([])
+const payrollRecords = ref([])
+const salaryTransactions = ref([])
+const accounts = ref([])
 const loading = ref(true)
 const error = ref('')
 const showTransactionModal = ref(false)
+const showSalaryPaymentModal = ref(false)
+const salaryPostError = ref('')
+const canPostSalary = computed(() => hasHrPermission('post_salary_to_ledger'))
+const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const now = new Date()
+const salaryPaymentForm = reactive({ month: months[now.getMonth()], year: now.getFullYear(), account_id: '', reference: '', record_ids: [] })
 
 const viewCurrency = ref('USD')
 const exchangeRates = ref({
@@ -224,6 +293,7 @@ const currencySymbols = reactive({ USD: '$', INR: '₹', EUR: '€', GBP: '£' }
 
 onMounted(async () => {
   await loadTransactions()
+  if (canPostSalary.value) await loadSalaryPostingData()
   await loadExchangeRates()
   await loadCurrencies()
   if (route.query.new === '1') {
@@ -242,11 +312,30 @@ async function loadTransactions() {
   error.value = ''
   try {
     const data = await apiGet('/api/finance/transactions')
-    transactions.value = data.transactions || []
+    const salaryData = canPostSalary.value ? await apiGet('/api/hr/salary-transactions') : { transactions: [] }
+    transactions.value = [...(data.transactions || []), ...(salaryData.transactions || [])]
   } catch (err) {
+    transactions.value = []
     error.value = 'Unable to load transactions. Please check your connection.'
   } finally {
     loading.value = false
+  }
+}
+
+async function loadSalaryPostingData() {
+  try {
+    const [payrollData, salaryData, accountData] = await Promise.all([
+      apiGet('/api/hr/payroll'),
+      apiGet('/api/hr/salary-transactions'),
+      apiGet('/api/hr/salary-ledger-accounts').catch(() => ({ accounts: [] })),
+    ])
+    payrollRecords.value = payrollData.payroll || []
+    salaryTransactions.value = salaryData.transactions || []
+    accounts.value = accountData.accounts || []
+  } catch (err) {
+    payrollRecords.value = []
+    salaryTransactions.value = []
+    salaryPostError.value = err.message || 'Unable to load salary posting data.'
   }
 }
 
@@ -285,6 +374,77 @@ function closeTransactionModal() {
   if (route.query.new === '1') {
     router.replace('/finance/transactions')
   }
+}
+
+const salaryGlAccounts = computed(() => {
+  return accounts.value.filter(account => {
+    const isActive = account.is_active === undefined || account.is_active === 1 || account.is_active === true
+    const showsInExpense = account.show_in_expense === undefined || account.show_in_expense === 1 || account.show_in_expense === true
+    return isActive && showsInExpense
+  })
+})
+const selectedSalaryAccount = computed(() => salaryGlAccounts.value.find(account => String(account.id) === String(salaryPaymentForm.account_id)))
+const payableSalaryRecords = computed(() => {
+  return payrollRecords.value.filter(record => {
+    return record.salary_month === salaryPaymentForm.month &&
+      Number(record.salary_year) === Number(salaryPaymentForm.year) &&
+      record.status === 'Finalized' &&
+      record.payment_status !== 'Paid'
+  })
+})
+const selectedSalaryRecords = computed(() => payableSalaryRecords.value)
+const selectedSalaryTotal = computed(() => selectedSalaryRecords.value.reduce((sum, record) => sum + Number(record.net_payable_salary || 0), 0))
+
+async function openSalaryPaymentModal() {
+  await loadSalaryPostingData()
+  salaryPostError.value = ''
+  const salaryAccount = salaryGlAccounts.value.find(account => /salary/i.test(`${account.name || ''} ${account.gl_code || ''}`))
+  salaryPaymentForm.account_id = salaryPaymentForm.account_id || salaryAccount?.id || salaryGlAccounts.value[0]?.id || ''
+  salaryPaymentForm.record_ids = payableSalaryRecords.value.map(record => record.id)
+  showSalaryPaymentModal.value = true
+}
+
+async function postSalaryPayment() {
+  salaryPostError.value = ''
+  if (!selectedSalaryAccount.value) {
+    salaryPostError.value = 'Select the GL account for salary posting.'
+    return
+  }
+  if (!selectedSalaryRecords.value.length) {
+    salaryPostError.value = 'Select at least one finalized unpaid salary record.'
+    return
+  }
+  const duplicated = selectedSalaryRecords.value.find(record => salaryTransactions.value.some(tx => tx.hr_payroll_record_ids?.includes(record.id)))
+  if (duplicated) {
+    salaryPostError.value = `Duplicate salary posting prevented for ${salaryPaymentForm.month} ${salaryPaymentForm.year}.`
+    return
+  }
+  const tx = buildSalaryTransaction({
+    glAccount: selectedSalaryAccount.value,
+    records: selectedSalaryRecords.value,
+    salaryMonth: salaryPaymentForm.month,
+    salaryYear: salaryPaymentForm.year,
+    reference: salaryPaymentForm.reference,
+    includeEmployeeDetails: false
+  })
+  try {
+    const data = await apiPost('/api/hr/salary-ledger-payments', {
+      transaction: tx,
+      payroll_records: selectedSalaryRecords.value
+    })
+    const savedTransaction = data.transaction || tx
+    const savedPayroll = data.payroll || []
+    salaryTransactions.value = [savedTransaction, ...salaryTransactions.value.filter(record => record.id !== savedTransaction.id)]
+    transactions.value = [savedTransaction, ...transactions.value.filter(record => record.id !== savedTransaction.id)]
+    if (savedPayroll.length) {
+      const byId = new Map(savedPayroll.map(record => [String(record.id), record]))
+      payrollRecords.value = payrollRecords.value.map(record => byId.get(String(record.id)) || record)
+    }
+  } catch (err) {
+    salaryPostError.value = err.message || 'Unable to post salary payment.'
+    return
+  }
+  showSalaryPaymentModal.value = false
 }
 
 function convertAmount(amount, fromCurrency, transactionDateStr) {
@@ -385,7 +545,14 @@ watch(filters, () => {
   currentPage.value = 1
 })
 
+watch(() => [salaryPaymentForm.month, salaryPaymentForm.year], () => {
+  salaryPaymentForm.record_ids = payableSalaryRecords.value.map(record => record.id)
+})
+
 function partyLabel(transaction) {
+  if (transaction.transaction_type === 'Salary Payment' || transaction.transaction_type === 'Salary Payable') {
+    return transaction.party_name || `Salary for ${transaction.salary_month || ''} ${transaction.salary_year || ''}`.trim()
+  }
   let label = transaction.type === 'Income' ? (transaction.customer_name || 'Generic Customer') : (transaction.vendor_name || 'General Vendor')
   if (transaction.project_name) {
     label += ` • Project: ${transaction.project_name}`
@@ -415,6 +582,7 @@ function formatDate(dateStr) {
 }
 
 function goToDetail(id) {
+  if (String(id).startsWith('salary-ledger')) return
   router.push(`/finance/transactions/${id}`)
 }
 
@@ -500,6 +668,66 @@ function roundAmount(value) {
 .header-actions {
   display: flex;
   gap: 12px;
+}
+
+.block {
+  display: block;
+}
+
+.salary-post-modal {
+  max-width: 980px;
+  width: min(980px, calc(100vw - 32px));
+}
+
+.salary-post-summary {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 16px;
+  padding: 16px;
+}
+
+.salary-post-summary div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.salary-post-summary span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.salary-post-summary strong {
+  color: var(--ink);
+  font-size: 18px;
+}
+
+.salary-post-total {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding: 14px 16px;
+}
+
+.salary-post-total span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.salary-post-total strong {
+  font-size: 22px;
 }
 
 /* Summary Bar */

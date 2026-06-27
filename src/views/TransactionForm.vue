@@ -600,11 +600,9 @@ watch(selectedInvoice, (invoice) => {
 watch(() => form.expense_claim_id, (claimId) => {
   const claim = approvedClaims.value.find(item => Number(item.id) === Number(claimId))
   if (!claim) return
-  const claimAmount = Number(claim.amount || 0)
-  const gstAmount = Number(claim.gst_amount || 0)
-  const gstPercent = Number(claim.gst_percent || 0)
+  const claimAmount = Number(claim.total_claim_amount || claim.amount || 0)
   form.amount = claimAmount || ''
-  form.cgst_percent = gstPercent || (claimAmount > 0 && gstAmount > 0 ? Number(((gstAmount / claimAmount) * 100).toFixed(2)) : 0)
+  form.cgst_percent = 0
   form.igst_percent = 0
   form.tds_percent = 0
   form.category = claim.expense_category || 'Employee Claim'
@@ -762,6 +760,14 @@ function validateBeforePosting() {
   if (isEmployeeClaimsAccount.value && !form.expense_claim_id) {
     error.value = 'Please select an approved employee claim for GL 7010 - Employee Claims.'
     return false
+  }
+  if (isEmployeeClaimsAccount.value) {
+    const claim = approvedClaims.value.find(item => Number(item.id) === Number(form.expense_claim_id))
+    const claimTotal = Number(claim?.total_claim_amount || claim?.amount || 0)
+    if (claimTotal > 0 && Math.abs(computedTotal.value - claimTotal) > 0.01) {
+      error.value = `Base amount plus tax must equal the approved claim total (${money(claimTotal)}).`
+      return false
+    }
   }
   if (form.category === 'Loan Disbursement') {
     if (form.type !== 'Income') {

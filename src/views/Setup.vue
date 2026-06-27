@@ -39,6 +39,13 @@
 
           <!-- Read-Only View -->
           <div v-if="!isEditing && company.company_name" class="form-grid record-details" style="gap: 20px;">
+            <div class="span-2 company-logo-row">
+              <span class="detail-label" style="display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--muted); margin-bottom: 8px;">Company Logo</span>
+              <div class="company-logo-preview">
+                <img v-if="company.company_logo_url" :src="company.company_logo_url" alt="Company Logo">
+                <span v-else>No logo uploaded</span>
+              </div>
+            </div>
             <div class="span-2">
               <span class="detail-label" style="display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;">Company Name</span>
               <strong style="font-size: 18px; color: var(--text);">{{ company.company_name }}</strong>
@@ -78,6 +85,20 @@
               </label>
               <label>Tax ID / GST Number
                 <input v-model="companyFormState.tax_id" placeholder="e.g. VAT123456">
+              </label>
+              <label class="span-2">Company Logo
+                <div class="company-logo-uploader">
+                  <div class="company-logo-preview">
+                    <img v-if="companyFormState.company_logo_url" :src="companyFormState.company_logo_url" alt="Company Logo">
+                    <span v-else>No logo selected</span>
+                  </div>
+                  <div class="company-logo-controls">
+                    <input v-model="companyFormState.company_logo_url" placeholder="Logo URL will appear here after upload">
+                    <input type="file" accept="image/*" :disabled="uploadingCompanyLogo" @change="handleCompanyLogoUpload">
+                    <span v-if="uploadingCompanyLogo" class="field-hint">Uploading logo...</span>
+                    <span v-if="companyLogoError" class="field-hint text-danger">{{ companyLogoError }}</span>
+                  </div>
+                </div>
               </label>
             </div>
             <div class="form-actions mt-24">
@@ -506,6 +527,16 @@
                 <input v-model="userForm.has_finance_access" type="checkbox"> Has Finance Access
               </label>
               <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px;">
+                <input v-model="userForm.has_hr_access" type="checkbox"> Has HR Management Access
+              </label>
+              <div v-if="userForm.has_hr_access" class="permission-panel">
+                <p class="muted small">HR Management Permissions</p>
+                <label v-for="permission in HR_PERMISSIONS" :key="permission.key" class="checkbox-label permission-item">
+                  <input v-model="userForm.hr_permissions[permission.key]" type="checkbox">
+                  {{ permission.label }}
+                </label>
+              </div>
+              <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px;">
                 <input v-model="userForm.has_vault_access" type="checkbox"> Has Vault Access
               </label>
               <label v-if="userForm.has_vault_access">Vault Access Code
@@ -629,7 +660,8 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { apiGet, apiPost, apiPut, apiDelete } from '../api/client'
+import { apiDelete, apiGet, apiPost, apiPut, apiUploadFile } from '../api/client'
+import { HR_PERMISSIONS } from '../utils/hrStorage'
 
 const router = useRouter()
 const activeTab = ref('objects')
@@ -641,16 +673,20 @@ const company = reactive({
   company_address: '',
   company_phone: '',
   company_email: '',
-  tax_id: ''
+  tax_id: '',
+  company_logo_url: ''
 })
 const saved = ref(false)
 const isEditing = ref(false)
+const uploadingCompanyLogo = ref(false)
+const companyLogoError = ref('')
 const companyFormState = reactive({
   company_name: '',
   company_address: '',
   company_phone: '',
   company_email: '',
-  tax_id: ''
+  tax_id: '',
+  company_logo_url: ''
 })
 
 const paymentTerms = ref([])
@@ -678,11 +714,50 @@ const newRole = reactive({ id: null, name: '', description: '' })
 
 // User Modal
 const showUserModal = ref(false)
-const userForm = reactive({ id: null, full_name: '', email: '', password: '', role_id: '', is_active: true, has_treasury_access: false, has_finance_access: false, has_vault_access: false, has_vault_access_code: false, vault_access_code: '' })
+const userForm = reactive({ id: null, full_name: '', email: '', password: '', role_id: '', is_active: true, has_treasury_access: false, has_finance_access: false, has_hr_access: false, hr_permissions: defaultHrPermissions(), has_vault_access: false, has_vault_access_code: false, vault_access_code: '' })
 const vaultCodePlaceholder = computed(() => {
   if (!userForm.id) return 'Set access code'
   return userForm.has_vault_access_code ? 'Leave blank to keep existing code' : 'Set access code'
 })
+
+function defaultHrPermissions(enabled = false) {
+  return HR_PERMISSIONS.reduce((permissions, permission) => {
+    permissions[permission.key] = enabled
+    return permissions
+  }, {})
+}
+
+function normalizeHrPermissions(value, fallbackEnabled = false) {
+  let parsed = value
+  if (typeof value === 'string') {
+    try { parsed = JSON.parse(value) } catch { parsed = {} }
+  }
+  return {
+    ...defaultHrPermissions(fallbackEnabled),
+    ...(parsed && typeof parsed === 'object' ? parsed : {})
+  }
+}
+
+function accessFlag(value) {
+  return value ? 1 : 0
+}
+
+function syncStoredUserAccess(updatedUser) {
+  try {
+    const storedUser = JSON.parse(window.localStorage.getItem('lms_user') || 'null')
+    if (!storedUser || Number(storedUser.id) !== Number(updatedUser.id)) return
+    window.localStorage.setItem('lms_user', JSON.stringify({
+      ...storedUser,
+      has_treasury_access: updatedUser.has_treasury_access,
+      has_finance_access: updatedUser.has_finance_access,
+      has_hr_access: updatedUser.has_hr_access,
+      hr_permissions: updatedUser.hr_permissions,
+      has_vault_access: updatedUser.has_vault_access
+    }))
+  } catch (err) {
+    console.error('Failed to sync stored user access', err)
+  }
+}
 
 // Reset Password Modal
 const showResetPasswordModal = ref(false)
@@ -864,11 +939,13 @@ async function saveMasterOption() {
 
 function startEdit() {
   Object.assign(companyFormState, company)
+  companyLogoError.value = ''
   isEditing.value = true
 }
 
 function cancelEdit() {
   isEditing.value = false
+  companyLogoError.value = ''
 }
 
 async function saveCompany() {
@@ -877,6 +954,24 @@ async function saveCompany() {
   saved.value = true
   isEditing.value = false
   setTimeout(() => { saved.value = false }, 3000)
+}
+
+async function handleCompanyLogoUpload(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  companyLogoError.value = ''
+  uploadingCompanyLogo.value = true
+  try {
+    const data = await apiUploadFile('/api/uploads/cloudinary', file, { folder: 'company' })
+    const logoUrl = data.document?.secure_url || data.document?.url || ''
+    if (!logoUrl) throw new Error('Upload finished but no logo URL was returned.')
+    companyFormState.company_logo_url = logoUrl
+  } catch (err) {
+    companyLogoError.value = err.message || 'Unable to upload company logo.'
+  } finally {
+    uploadingCompanyLogo.value = false
+  }
 }
 
 async function saveRole() {
@@ -907,7 +1002,7 @@ async function deleteRole(role) {
 }
 
 function openNewUserModal() {
-  Object.assign(userForm, { id: null, full_name: '', email: '', password: '', role_id: '', is_active: true, has_treasury_access: false, has_finance_access: false, has_vault_access: false, has_vault_access_code: false, vault_access_code: '' })
+  Object.assign(userForm, { id: null, full_name: '', email: '', password: '', role_id: '', is_active: true, has_treasury_access: false, has_finance_access: false, has_hr_access: false, hr_permissions: defaultHrPermissions(), has_vault_access: false, has_vault_access_code: false, vault_access_code: '' })
   showUserModal.value = true
 }
 
@@ -921,6 +1016,8 @@ function openEditUserModal(user) {
     is_active: !!user.is_active,
     has_treasury_access: !!user.has_treasury_access,
     has_finance_access: !!user.has_finance_access,
+    has_hr_access: !!user.has_hr_access || !!normalizeHrPermissions(user.hr_permissions).view_hr_module,
+    hr_permissions: normalizeHrPermissions(user.hr_permissions, !!user.has_hr_access),
     has_vault_access: !!user.has_vault_access,
     has_vault_access_code: !!user.has_vault_access_code,
     vault_access_code: ''
@@ -929,13 +1026,32 @@ function openEditUserModal(user) {
 }
 
 async function saveUser() {
-  const payload = { ...userForm }
+  const hrPermissions = userForm.has_hr_access
+    ? normalizeHrPermissions(userForm.hr_permissions, true)
+    : defaultHrPermissions(false)
+  if (userForm.has_hr_access) hrPermissions.view_hr_module = true
+  const payload = {
+    id: userForm.id,
+    full_name: userForm.full_name,
+    email: userForm.email,
+    password: userForm.password,
+    role_id: userForm.role_id,
+    is_active: accessFlag(userForm.is_active),
+    has_treasury_access: accessFlag(userForm.has_treasury_access),
+    has_finance_access: accessFlag(userForm.has_finance_access),
+    has_hr_access: accessFlag(userForm.has_hr_access),
+    hr_permissions: hrPermissions,
+    has_vault_access: accessFlag(userForm.has_vault_access),
+    has_vault_access_code: userForm.has_vault_access_code,
+    vault_access_code: userForm.vault_access_code
+  }
   if (!userForm.id) {
     await apiPost('/api/setup/users', payload)
   } else {
     delete payload.password
     await apiPut(`/api/setup/users/${userForm.id}`, payload)
   }
+  syncStoredUserAccess(payload)
   showUserModal.value = false
   loadData()
 }
@@ -1298,6 +1414,72 @@ async function saveRates() {
   padding: 16px 24px;
 }
 
+.permission-panel {
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.permission-panel p {
+  margin: 0;
+}
+
+.permission-item {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.company-logo-row {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 16px;
+}
+
+.company-logo-uploader {
+  align-items: stretch;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 180px minmax(0, 1fr);
+}
+
+.company-logo-preview {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  color: var(--muted);
+  display: flex;
+  font-size: 13px;
+  font-weight: 800;
+  justify-content: center;
+  min-height: 88px;
+  padding: 12px;
+}
+
+.company-logo-preview img {
+  max-height: 70px;
+  max-width: 150px;
+  object-fit: contain;
+}
+
+.company-logo-controls {
+  display: grid;
+  gap: 10px;
+}
+
+.field-hint {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.text-danger {
+  color: #dc2626;
+}
+
 @media (max-width: 640px) {
   .bank-form-grid {
     grid-template-columns: 1fr;
@@ -1310,6 +1492,10 @@ async function saveRates() {
   .bank-modal-actions {
     align-items: stretch;
     flex-direction: column-reverse;
+  }
+
+  .company-logo-uploader {
+    grid-template-columns: 1fr;
   }
 }
 </style>

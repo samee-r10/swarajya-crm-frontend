@@ -36,6 +36,8 @@ import LoanManagement from './views/LoanManagement.vue'
 import PendingClaimApprovals from './views/PendingClaimApprovals.vue'
 import StakeholderPayouts from './views/StakeholderPayouts.vue'
 import Payables from './views/Payables.vue'
+import HRManagement from './views/HRManagement.vue'
+import { hasHrPermission, loadHrSettings } from './utils/hrStorage'
 
 
 
@@ -82,6 +84,7 @@ const routes = [
   { path: '/treasury/loans', name: 'loan-management', component: LoanManagement },
   { path: '/treasury/stakeholder-payouts', name: 'stakeholder-payouts', component: StakeholderPayouts },
   { path: '/treasury/stakeholder-payouts/approvals', name: 'stakeholder-payout-approvals', component: StakeholderPayouts },
+  { path: '/hr', name: 'hr-management', component: HRManagement },
   { path: '/vault', name: 'vault', component: Vault },
   { path: '/profile', name: 'profile', component: Profile },
   { path: '/force-change-password', name: 'force-change-password', component: ForceChangePassword }
@@ -139,6 +142,13 @@ router.beforeEach((to) => {
   if (to.path.startsWith('/finance') && to.path !== '/finance/claims' && user) {
     const isAdmin = user.role_name === 'System Administrator' || user.role_name === 'Admin'
     if (!isAdmin && !(user.has_finance_access === 1 || user.has_finance_access === true)) {
+      return { name: 'dashboard' }
+    }
+  }
+  if (to.path.startsWith('/hr') && user) {
+    const isAdmin = user.role_name === 'System Administrator' || user.role_name === 'Admin'
+    const canUseSelfServiceHr = loadHrSettings().self_access_enabled && !!user.id
+    if (!isAdmin && !hasHrPermission('view_hr_module', user) && !canUseSelfServiceHr) {
       return { name: 'dashboard' }
     }
   }

@@ -189,6 +189,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { apiGet, apiPost } from '../api/client'
+import { hasHrPermission, loadHrSettings } from '../utils/hrStorage'
 
 const route = useRoute()
 const router = useRouter()
@@ -293,6 +294,16 @@ const hasFinanceAccess = computed(() => {
     return false
   }
 })
+const hasHrAccess = computed(() => {
+  if (isAdmin.value) return true
+  if (!user.value) return false
+  try {
+    const userData = JSON.parse(user.value)
+    return hasHrPermission('view_hr_module', userData) || (loadHrSettings().self_access_enabled && !!userData.id)
+  } catch {
+    return false
+  }
+})
 const hasVaultAccess = computed(() => {
   if (isAdmin.value) return true
   if (!user.value) return false
@@ -319,6 +330,7 @@ const launcherItems = [
   { label: 'Projects', type: 'Module', to: '/projects' },
   { label: 'Finance', type: 'Module', to: '/finance' },
   { label: 'Treasury', type: 'Module', to: '/treasury' },
+  { label: 'HR Management', type: 'Module', to: '/hr' },
   { label: 'Vault', type: 'Secure Module', to: '/vault' },
   { label: 'Vendors', type: 'Finance', to: '/finance/vendors' },
   { label: 'Transaction Ledger', type: 'Finance', to: '/finance/transactions' },
@@ -332,6 +344,9 @@ const launcherItems = [
   { label: 'Fund Transfers', type: 'Treasury', to: '/treasury/fund-transfers' },
   { label: 'Loan Management', type: 'Treasury', to: '/treasury/loans' },
   { label: 'Stakeholder and CP Payouts', type: 'Treasury', to: '/treasury/stakeholder-payouts' },
+  { label: 'Employee Master', type: 'HR Management', to: '/hr' },
+  { label: 'Payroll', type: 'HR Management', to: '/hr' },
+  { label: 'Salary Slips', type: 'HR Management', to: '/hr' },
   { label: 'Setup', type: 'Admin', to: '/setup' },
   { label: 'Users', type: 'Setup', to: '/setup#users' },
   { label: 'Roles', type: 'Setup', to: '/setup#roles' },
@@ -355,6 +370,7 @@ const navItems = [
   { label: 'Fund Transfers', to: '/treasury/fund-transfers', match: ['/treasury/fund-transfers'], requires: 'treasury', icon: '<svg viewBox="0 0 24 24"><path d="M7 7h10l-3-3 1.4-1.4L21.8 9l-6.4 6.4L14 14l3-3H7V7Zm10 10H7l3 3-1.4 1.4L2.2 15l6.4-6.4L10 10l-3 3h10v4Z" fill="currentColor"/></svg>' },
   { label: 'Loans', to: '/treasury/loans', match: ['/treasury/loans'], requires: 'treasury', icon: '<svg viewBox="0 0 24 24"><path d="M4 4h16v5H4V4Zm0 7h16v9H4v-9Zm3 2v2h5v-2H7Zm0 4v1h10v-1H7Zm9-4v2h2v-2h-2Z" fill="currentColor"/></svg>' },
   { label: 'Stakeholder and CP Payouts', to: '/treasury/stakeholder-payouts', match: ['/treasury/stakeholder-payouts'], requires: 'treasury', icon: '<svg viewBox="0 0 24 24"><path d="M12 2 3 6v2h18V6l-9-4ZM5 10h14v9H5v-9Zm3 2v5h2v-5H8Zm4 0v5h2v-5h-2Z" fill="currentColor"/></svg>' },
+  { label: 'HR Management', to: '/hr', match: ['/hr'], requires: 'hr', icon: '<svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3ZM8 11c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4Zm8.5.25c1.92.72 3.5 1.9 3.5 3.75v2h4v-2c0-2.31-4.16-3.62-7.5-3.75Z" fill="currentColor"/></svg>' },
   { label: 'Vault', to: '/vault', match: ['/vault'], requires: 'vault', icon: '<svg viewBox="0 0 24 24"><path d="M17 8V6a5 5 0 0 0-10 0v2H5v14h14V8h-2ZM9 6a3 3 0 0 1 6 0v2H9V6Zm4 10.73V19h-2v-2.27A2 2 0 1 1 13 16.73Z" fill="currentColor"/></svg>' },
   { label: 'Settings', to: '/setup', match: ['/setup'], requires: 'admin', icon: '<svg viewBox="0 0 24 24"><path d="m19.43 12.98.04-.98-.04-.98 2.11-1.65-2-3.46-2.49 1a7.1 7.1 0 0 0-1.69-.98L15 3h-4l-.36 2.93c-.6.24-1.17.56-1.69.98l-2.49-1-2 3.46 2.11 1.65-.04.98.04.98-2.11 1.65 2 3.46 2.49-1c.52.42 1.09.74 1.69.98L11 21h4l.36-2.93c.6-.24 1.17-.56 1.69-.98l2.49 1 2-3.46-2.11-1.65ZM13 15.5A3.5 3.5 0 1 1 13 8a3.5 3.5 0 0 1 0 7.5Z" fill="currentColor"/></svg>' }
 ]
@@ -374,12 +390,16 @@ const filteredLauncherItems = computed(() => {
   if (!hasFinanceAccess.value) {
     items = items.filter(item => !item.to.startsWith('/finance'))
   }
+  if (!hasHrAccess.value) {
+    items = items.filter(item => !item.to.startsWith('/hr'))
+  }
   return items.filter((item) => `${item.label} ${item.type}`.toLowerCase().includes(term))
 })
 const visibleNavItems = computed(() => navItems.filter((item) => {
   if (item.requires === 'admin' && !isAdmin.value) return false
   if (item.requires === 'finance' && !hasFinanceAccess.value) return false
   if (item.requires === 'treasury' && !hasTreasuryAccess.value) return false
+  if (item.requires === 'hr' && !hasHrAccess.value) return false
   if (item.requires === 'vault' && !hasVaultAccess.value) return false
   return true
 }))
@@ -415,6 +435,7 @@ const breadcrumbLabels = {
   '/treasury/fund-transfers': 'Fund Transfers',
   '/treasury/loans': 'Loans',
   '/treasury/stakeholder-payouts': 'Stakeholder Payouts',
+  '/hr': 'HR Management',
   '/setup': 'Settings',
   '/vault': 'Vault',
   '/profile': 'Profile'
