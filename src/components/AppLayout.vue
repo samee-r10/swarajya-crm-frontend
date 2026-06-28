@@ -448,7 +448,9 @@ function isNavActive(item) {
 }
 
 function titleizeSegment(segment) {
-  if (/^\d+$/.test(segment)) return `#${segment}`
+  if (/^\d+$/.test(segment)) return `#TXN${String(Number(segment)).padStart(3, '0')}`
+  const txMatch = segment.match(/^TXN(\d+)$/i)
+  if (txMatch) return `#TXN${String(Number(txMatch[1])).padStart(3, '0')}`
   return segment
     .split('-')
     .filter(Boolean)

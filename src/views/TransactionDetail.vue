@@ -2,14 +2,14 @@
   <section class="page-header">
     <div>
       <p class="eyebrow">Finance Module</p>
-      <h1>Transaction #{{ id }}</h1>
+      <h1>Transaction #{{ headerTransactionId }}</h1>
       <p v-if="transaction" class="muted">
         {{ transaction.transaction_date }} · {{ transaction.account_name }} · {{ transaction.type }}
       </p>
     </div>
     <div class="action-row" style="display: flex; gap: 12px; align-items: center;">
       <RouterLink v-if="isPosted" class="button btn-animate" to="/finance/transactions?new=1">New Transaction</RouterLink>
-      <button v-if="transaction && transaction.status !== 'Reversed'" class="button danger btn-animate" type="button" @click="showReverseConfirm = true" style="background: #ef4444; color: white;">Reverse Entry</button>
+      <button v-if="transaction && transaction.status !== 'Reversed' && !isSalaryTransaction" class="button danger btn-animate" type="button" @click="showReverseConfirm = true" style="background: #ef4444; color: white;">Reverse Entry</button>
       <RouterLink class="button secondary" to="/finance/transactions">Back to Ledger</RouterLink>
     </div>
   </section>
@@ -92,6 +92,8 @@ const reverseError = ref('')
 // Show success banner if navigated here from form posting
 const showSuccessMsg = ref(route.query.posted === 'true')
 const isPosted = ref(route.query.posted === 'true')
+const isSalaryTransaction = computed(() => transaction.value?.source_module === 'HR Salary' || String(transaction.value?.id || '').startsWith('salary-'))
+const headerTransactionId = computed(() => displayTransactionId(transaction.value || { id: props.id }))
 
 onMounted(async () => {
   try {
@@ -135,11 +137,12 @@ const detailFields = computed(() => {
 
   const t = transaction.value
   const baseFields = [
-    { label: 'Record ID', value: `#${t.id}` },
+    { label: 'Record ID', value: `#${displayTransactionId(t)}` },
     { label: 'Status', value: t.status || 'Completed' },
     { label: 'Transaction Date', value: t.transaction_date },
     { label: 'Type', value: t.type },
     { label: 'Account', value: t.account_name },
+    { label: 'GL Code', value: t.gl_code || '' },
     { label: 'Product', value: t.product_name || t.product_code || '' },
     { label: 'Bank Account', value: t.bank_account_name || '' },
     { label: 'Party', value: partyLabel(t) },
@@ -177,10 +180,25 @@ function formatCustomFieldValue(field, value) {
 }
 
 function partyLabel(t) {
+  if (t.source_module === 'HR Salary' || String(t.id || '').startsWith('salary-')) {
+    return t.party_name || `Salary for ${[t.salary_month, t.salary_year].filter(Boolean).join(' ')}`
+  }
   if (t.type === 'Income') {
     return `Customer: ${t.customer_name || 'Unknown'}`
   }
   return `Vendor: ${t.vendor_name || 'Unknown'}`
+}
+
+function displayTransactionId(transaction) {
+  return formatTransactionId(transaction.display_id || transaction.transaction_number || transaction.id)
+}
+
+function formatTransactionId(value) {
+  const text = String(value || '').trim()
+  const txMatch = text.match(/^TXN(\d+)$/i)
+  if (txMatch) return `TXN${String(Number(txMatch[1])).padStart(3, '0')}`
+  if (/^\d+$/.test(text)) return `TXN${String(Number(text)).padStart(3, '0')}`
+  return text
 }
 
 function money(currency, amount) {

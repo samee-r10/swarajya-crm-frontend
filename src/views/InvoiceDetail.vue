@@ -186,19 +186,21 @@
                 <thead>
                   <tr>
                     <th>Description</th>
+                    <th>HSN/SAC</th>
                     <th class="right">Qty</th>
-                    <th class="right">Unit Price</th>
-                    <th class="right">Tax</th>
-                    <th class="right">Total</th>
+                    <th class="right">Rate</th>
+                    <th>Unit of Measure</th>
+                    <th class="right">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(item, index) in invoice.items" :key="index">
+                  <tr v-for="(item, index) in invoiceItems" :key="index">
                     <td class="desc-cell">{{ item.description }}</td>
+                    <td>{{ item.hsn_sac || '-' }}</td>
                     <td class="right qty-cell">{{ item.qty }}</td>
-                    <td class="right price-cell">{{ Number(item.price).toFixed(2) }}</td>
-                    <td class="right tax-cell">{{ item.tax_percent }}%</td>
-                    <td class="right total-cell"><strong>{{ Number(item.total).toFixed(2) }}</strong></td>
+                    <td class="right price-cell">{{ moneyValue(item.rate) }}</td>
+                    <td>{{ item.unit_of_measure || '-' }}</td>
+                    <td class="right total-cell"><strong>{{ moneyValue(item.amount) }}</strong></td>
                   </tr>
                 </tbody>
               </table>
@@ -249,11 +251,23 @@
             <div class="summary-details">
               <div class="summary-row">
                 <span>Subtotal</span>
-                <strong>{{ Number(invoice.subtotal).toFixed(2) }}</strong>
+                <strong>{{ moneyValue(gstSummary.subtotal) }}</strong>
               </div>
               <div class="summary-row">
-                <span>Tax Total</span>
-                <strong>{{ Number(invoice.tax_amount).toFixed(2) }}</strong>
+                <span>CGST {{ moneyValue(gstSummary.cgst_percent) }}%</span>
+                <strong>{{ moneyValue(gstSummary.cgst_amount) }}</strong>
+              </div>
+              <div class="summary-row">
+                <span>SGST {{ moneyValue(gstSummary.sgst_percent) }}%</span>
+                <strong>{{ moneyValue(gstSummary.sgst_amount) }}</strong>
+              </div>
+              <div class="summary-row">
+                <span>IGST {{ moneyValue(gstSummary.igst_percent) }}%</span>
+                <strong>{{ moneyValue(gstSummary.igst_amount) }}</strong>
+              </div>
+              <div v-if="gstSummary.legacy_tax_amount" class="summary-row">
+                <span>Tax Amount</span>
+                <strong>{{ moneyValue(gstSummary.legacy_tax_amount) }}</strong>
               </div>
               <div class="summary-row">
                 <span>Amount Paid</span>
@@ -338,19 +352,21 @@
                 <thead>
                   <tr>
                     <th>Description</th>
+                    <th>HSN/SAC</th>
                     <th class="right">Qty</th>
-                    <th class="right">Unit Price</th>
-                    <th class="right">Tax</th>
+                    <th class="right">Rate</th>
+                    <th>Unit of Measure</th>
                     <th class="right">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(item, index) in invoice.items" :key="index">
+                  <tr v-for="(item, index) in invoiceItems" :key="index">
                     <td>{{ item.description }}</td>
+                    <td>{{ item.hsn_sac || '-' }}</td>
                     <td class="right">{{ item.qty }}</td>
-                    <td class="right">{{ Number(item.price).toFixed(2) }}</td>
-                    <td class="right">{{ item.tax_percent }}%</td>
-                    <td class="right"><strong>{{ Number(item.total).toFixed(2) }}</strong></td>
+                    <td class="right">{{ moneyValue(item.rate) }}</td>
+                    <td>{{ item.unit_of_measure || '-' }}</td>
+                    <td class="right"><strong>{{ moneyValue(item.amount) }}</strong></td>
                   </tr>
                 </tbody>
               </table>
@@ -369,12 +385,16 @@
                   </div>
                 </div>
                 <div class="totals-table">
-                  <div class="total-row"><span>Subtotal</span><span>{{ Number(invoice.subtotal).toFixed(2) }}</span></div>
-                  <div class="total-row"><span>Tax Total</span><span>{{ Number(invoice.tax_amount).toFixed(2) }}</span></div>
+                  <div class="total-row"><span>Subtotal</span><span>{{ moneyValue(gstSummary.subtotal) }}</span></div>
+                  <div class="total-row"><span>CGST {{ moneyValue(gstSummary.cgst_percent) }}%</span><span>{{ moneyValue(gstSummary.cgst_amount) }}</span></div>
+                  <div class="total-row"><span>SGST {{ moneyValue(gstSummary.sgst_percent) }}%</span><span>{{ moneyValue(gstSummary.sgst_amount) }}</span></div>
+                  <div class="total-row"><span>IGST {{ moneyValue(gstSummary.igst_percent) }}%</span><span>{{ moneyValue(gstSummary.igst_amount) }}</span></div>
+                  <div v-if="gstSummary.legacy_tax_amount" class="total-row"><span>Tax Amount</span><span>{{ moneyValue(gstSummary.legacy_tax_amount) }}</span></div>
                   <div class="total-row grand-total">
                     <span>Total Amount</span>
-                    <span>{{ invoice.currency }} {{ Number(invoice.total_amount).toFixed(2) }}</span>
+                    <span>{{ invoice.currency }} {{ moneyValue(gstSummary.total_amount) }}</span>
                   </div>
+                  <div class="amount-words">{{ amountInWords }}</div>
                 </div>
               </div>
 
@@ -498,19 +518,21 @@
           <thead>
             <tr>
               <th>Description</th>
+              <th>HSN/SAC</th>
               <th class="right">Qty</th>
-              <th class="right">Unit Price</th>
-              <th class="right">Tax</th>
+              <th class="right">Rate</th>
+              <th>Unit of Measure</th>
               <th class="right">Amount</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(item, index) in invoice.items" :key="index">
+            <tr v-for="(item, index) in invoiceItems" :key="index">
               <td>{{ item.description }}</td>
+              <td>{{ item.hsn_sac || '-' }}</td>
               <td class="right">{{ item.qty }}</td>
-              <td class="right">{{ Number(item.price).toFixed(2) }}</td>
-              <td class="right">{{ item.tax_percent }}%</td>
-              <td class="right"><strong>{{ Number(item.total).toFixed(2) }}</strong></td>
+              <td class="right">{{ moneyValue(item.rate) }}</td>
+              <td>{{ item.unit_of_measure || '-' }}</td>
+              <td class="right"><strong>{{ moneyValue(item.amount) }}</strong></td>
             </tr>
           </tbody>
         </table>
@@ -529,12 +551,16 @@
             </div>
           </div>
           <div class="totals-table">
-            <div class="total-row"><span>Subtotal</span><span>{{ Number(invoice.subtotal).toFixed(2) }}</span></div>
-            <div class="total-row"><span>Tax Total</span><span>{{ Number(invoice.tax_amount).toFixed(2) }}</span></div>
+            <div class="total-row"><span>Subtotal</span><span>{{ moneyValue(gstSummary.subtotal) }}</span></div>
+            <div class="total-row"><span>CGST {{ moneyValue(gstSummary.cgst_percent) }}%</span><span>{{ moneyValue(gstSummary.cgst_amount) }}</span></div>
+            <div class="total-row"><span>SGST {{ moneyValue(gstSummary.sgst_percent) }}%</span><span>{{ moneyValue(gstSummary.sgst_amount) }}</span></div>
+            <div class="total-row"><span>IGST {{ moneyValue(gstSummary.igst_percent) }}%</span><span>{{ moneyValue(gstSummary.igst_amount) }}</span></div>
+            <div v-if="gstSummary.legacy_tax_amount" class="total-row"><span>Tax Amount</span><span>{{ moneyValue(gstSummary.legacy_tax_amount) }}</span></div>
             <div class="total-row grand-total">
               <span>Total Amount</span>
-              <span>{{ invoice.currency }} {{ Number(invoice.total_amount).toFixed(2) }}</span>
+              <span>{{ invoice.currency }} {{ moneyValue(gstSummary.total_amount) }}</span>
             </div>
+            <div class="amount-words">{{ amountInWords }}</div>
           </div>
         </div>
 
@@ -655,6 +681,36 @@ const invoiceDocumentTitle = computed(() => isTaxInvoice.value ? 'TAX INVOICE' :
 const receiptNumber = computed(() => invoice.value ? `${invoice.value.invoice_number}-RCPT` : '')
 const receiptDate = computed(() => new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }))
 const receiptPaymentMode = computed(() => invoice.value?.payment_details ? 'Bank Transfer' : 'Not specified')
+const invoiceItems = computed(() => (invoice.value?.items || []).map(normalizeInvoiceItem))
+const gstSummary = computed(() => {
+  const inv = invoice.value || {}
+  const subtotal = roundMoney(invoiceItems.value.reduce((sum, item) => sum + item.amount, 0))
+  const cgstPercent = Number(inv.cgst_percent || 0)
+  const sgstPercent = Number(inv.sgst_percent || 0)
+  const igstPercent = Number(inv.igst_percent || 0)
+  const hasGstFields = ['cgst_percent', 'sgst_percent', 'igst_percent', 'cgst_amount', 'sgst_amount', 'igst_amount'].some((field) => inv[field] !== undefined && inv[field] !== null)
+  const legacyTaxAmount = Number(inv.legacy_tax_amount || (!hasGstFields ? inv.tax_amount || 0 : 0))
+  const cgstAmount = roundMoney(subtotal * cgstPercent / 100)
+  const sgstAmount = roundMoney(subtotal * sgstPercent / 100)
+  const igstAmount = roundMoney(subtotal * igstPercent / 100)
+  const totalTax = roundMoney(cgstAmount + sgstAmount + igstAmount + legacyTaxAmount)
+  return {
+    subtotal,
+    cgst_percent: cgstPercent,
+    cgst_amount: cgstAmount,
+    sgst_percent: sgstPercent,
+    sgst_amount: sgstAmount,
+    igst_percent: igstPercent,
+    igst_amount: igstAmount,
+    legacy_tax_amount: legacyTaxAmount,
+    tax_amount: totalTax,
+    total_amount: roundMoney(subtotal + totalTax)
+  }
+})
+const amountInWords = computed(() => {
+  if (!invoice.value) return ''
+  return `Amount in words: ${amountToWords(gstSummary.value.total_amount, invoice.value.currency || '')}`
+})
 
 function validateTempAmount() {
   if (invoice.value && tempAmountPaid.value > invoice.value.total_amount) {
@@ -715,9 +771,9 @@ async function markStatusComplete() {
     
     // Refresh the loaded invoice
     const data = await apiGet(`/api/finance/invoices/${props.id}`)
-    invoice.value = data.invoice
-    selectedStatus.value = data.invoice.status
-    tempAmountPaid.value = data.invoice.amount_paid || 0
+    invoice.value = normalizeInvoice(data.invoice)
+    selectedStatus.value = invoice.value.status
+    tempAmountPaid.value = invoice.value.amount_paid || 0
     if (canGenerateReceipt.value) {
       showReceiptPrompt.value = true
     }
@@ -732,7 +788,7 @@ async function markStatusComplete() {
 onMounted(async () => {
   try {
     const data = await apiGet(`/api/finance/invoices/${props.id}`)
-    invoice.value = data.invoice
+    invoice.value = normalizeInvoice(data.invoice)
   } catch (err) {
     console.error('Failed to load invoice', err)
     error.value = err.message || 'Could not load invoice details.'
@@ -742,6 +798,97 @@ onMounted(async () => {
 function formatDate(dateStr) {
   if (!dateStr) return '--'
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+}
+
+function normalizeInvoice(rawInvoice) {
+  if (!rawInvoice) return rawInvoice
+  const items = (rawInvoice.items || []).map(normalizeInvoiceItem)
+  const subtotal = roundMoney(items.reduce((sum, item) => sum + item.amount, 0))
+  const cgstPercent = Number(rawInvoice.cgst_percent || 0)
+  const sgstPercent = Number(rawInvoice.sgst_percent || 0)
+  const igstPercent = Number(rawInvoice.igst_percent || 0)
+  const hasGstFields = ['cgst_percent', 'sgst_percent', 'igst_percent', 'cgst_amount', 'sgst_amount', 'igst_amount'].some((field) => rawInvoice[field] !== undefined && rawInvoice[field] !== null)
+  const legacyTaxAmount = Number(rawInvoice.legacy_tax_amount || (!hasGstFields ? rawInvoice.tax_amount || 0 : 0))
+  const cgstAmount = roundMoney(subtotal * cgstPercent / 100)
+  const sgstAmount = roundMoney(subtotal * sgstPercent / 100)
+  const igstAmount = roundMoney(subtotal * igstPercent / 100)
+  const taxAmount = roundMoney(cgstAmount + sgstAmount + igstAmount + legacyTaxAmount)
+
+  return {
+    ...rawInvoice,
+    items,
+    subtotal,
+    cgst_percent: cgstPercent,
+    cgst_amount: cgstAmount,
+    sgst_percent: sgstPercent,
+    sgst_amount: sgstAmount,
+    igst_percent: igstPercent,
+    igst_amount: igstAmount,
+    legacy_tax_amount: legacyTaxAmount,
+    tax_amount: taxAmount,
+    total_amount: roundMoney(subtotal + taxAmount)
+  }
+}
+
+function normalizeInvoiceItem(item = {}) {
+  const qty = Number(item.qty || 0)
+  const rate = Number(item.rate ?? item.price ?? 0)
+  const amount = roundMoney(qty * rate)
+  return {
+    ...item,
+    description: item.description || '',
+    hsn_sac: item.hsn_sac || item.hsn || item.sac || '',
+    qty,
+    rate,
+    price: rate,
+    unit_of_measure: item.unit_of_measure || item.uom || '',
+    amount,
+    total: amount
+  }
+}
+
+function roundMoney(value) {
+  return Number((Number(value || 0)).toFixed(2))
+}
+
+function moneyValue(value) {
+  return Number(value || 0).toFixed(2)
+}
+
+function amountToWords(value, currency) {
+  const amount = Math.abs(Number(value || 0))
+  const whole = Math.floor(amount)
+  const decimal = Math.round((amount - whole) * 100)
+  const wholeWords = numberToWords(whole)
+  const decimalWords = decimal ? ` and ${numberToWords(decimal)} paise` : ''
+  const prefix = Number(value || 0) < 0 ? 'minus ' : ''
+  return `${prefix}${wholeWords} ${currency}${decimalWords} only`.replace(/\s+/g, ' ').trim()
+}
+
+function numberToWords(num) {
+  const ones = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen']
+  const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety']
+  const units = [
+    [10000000, 'crore'],
+    [100000, 'lakh'],
+    [1000, 'thousand'],
+    [100, 'hundred']
+  ]
+  if (num === 0) return 'zero'
+  if (num < 20) return ones[num]
+  if (num < 100) return `${tens[Math.floor(num / 10)]}${num % 10 ? ` ${ones[num % 10]}` : ''}`
+  const parts = []
+  let remainder = num
+  for (const [value, label] of units) {
+    if (remainder >= value) {
+      parts.push(`${numberToWords(Math.floor(remainder / value))} ${label}`)
+      remainder %= value
+    }
+  }
+  if (remainder) {
+    parts.push(numberToWords(remainder))
+  }
+  return parts.join(' ')
 }
 
 function clearReceiptPrintMode() {
@@ -1301,16 +1448,16 @@ function printStandaloneReceipt() {
 }
 
 /* TABLE COLUMN WIDTHS & ALIGNMENTS */
-.line-items th:nth-child(1), .items-view-table th:nth-child(1) { width: 50%; }
-.line-items th:nth-child(2), .items-view-table th:nth-child(2) { width: 10%; text-align: right !important; }
-.line-items th:nth-child(3), .items-view-table th:nth-child(3) { width: 15%; text-align: right !important; }
-.line-items th:nth-child(4), .items-view-table th:nth-child(4) { width: 10%; text-align: right !important; }
-.line-items th:nth-child(5), .items-view-table th:nth-child(5) { width: 15%; text-align: right !important; }
+.line-items th:nth-child(1), .items-view-table th:nth-child(1) { width: 34%; }
+.line-items th:nth-child(2), .items-view-table th:nth-child(2) { width: 12%; }
+.line-items th:nth-child(3), .items-view-table th:nth-child(3) { width: 8%; text-align: right !important; }
+.line-items th:nth-child(4), .items-view-table th:nth-child(4) { width: 14%; text-align: right !important; }
+.line-items th:nth-child(5), .items-view-table th:nth-child(5) { width: 14%; }
+.line-items th:nth-child(6), .items-view-table th:nth-child(6) { width: 18%; text-align: right !important; }
 
-.line-items td:nth-child(2), .items-view-table td:nth-child(2) { text-align: right !important; }
 .line-items td:nth-child(3), .items-view-table td:nth-child(3) { text-align: right !important; }
 .line-items td:nth-child(4), .items-view-table td:nth-child(4) { text-align: right !important; }
-.line-items td:nth-child(5), .items-view-table td:nth-child(5) { text-align: right !important; }
+.line-items td:nth-child(6), .items-view-table td:nth-child(6) { text-align: right !important; }
 
 /* LOADING & ANIMATION */
 .loading-state {
@@ -1634,9 +1781,19 @@ function printStandaloneReceipt() {
   .notes-section { flex: 1; padding-right: 40px; }
   .notes-content { font-size: 13px; color: #444; white-space: pre-wrap; line-height: 1.6; }
   
-  .totals-table { width: 250px; }
+  .totals-table { width: 280px; }
   .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
   .grand-total { border-top: 2px solid var(--primary); margin-top: 8px; padding-top: 16px; font-weight: 900; font-size: 20px; color: var(--primary); }
+  .amount-words {
+    border-top: 1px dashed var(--line);
+    color: #475569;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.5;
+    margin-top: 12px;
+    padding-top: 12px;
+    text-transform: capitalize;
+  }
   
   .system-generated-note {
     margin-top: 50px;
@@ -1733,9 +1890,19 @@ function printStandaloneReceipt() {
   margin: 4px 0;
 }
 
-.totals-table { width: 250px; }
+.totals-table { width: 280px; }
 .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
 .grand-total { border-top: 2px solid var(--primary); margin-top: 8px; padding-top: 16px; font-weight: 900; font-size: 20px; color: var(--primary); }
+.amount-words {
+  border-top: 1px dashed var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+  margin-top: 12px;
+  padding-top: 12px;
+  text-transform: capitalize;
+}
 
 .system-generated-note {
   margin-top: 50px;

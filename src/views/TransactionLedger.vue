@@ -118,7 +118,7 @@
         </thead>
         <tbody>
           <tr v-for="transaction in paginatedTransactions" :key="transaction.id" @click="goToDetail(transaction.id)">
-            <td class="id-col">#{{ transaction.id }}</td>
+            <td class="id-col">#{{ displayTransactionId(transaction) }}</td>
             <td class="date-col">{{ formatDate(transaction.transaction_date) }}</td>
             <td>
               <span v-if="transaction.status === 'Reversed'" class="pill" style="background: #fef2f2; color: #dc2626; border: 1px solid #fee2e2; font-weight: 800;">
@@ -515,7 +515,7 @@ function comparePostingOrder(a, b) {
   if (dateDiff !== 0) return dateDiff
   const timeDiff = postedAtValue(a) - postedAtValue(b)
   if (timeDiff !== 0) return timeDiff
-  return (Number(a.id) || 0) - (Number(b.id) || 0)
+  return transactionIdNumber(a) - transactionIdNumber(b)
 }
 
 function postingDateValue(transaction) {
@@ -528,6 +528,24 @@ function postedAtValue(transaction) {
   const postedAt = transaction.created_at || transaction.updated_at
   const parsed = postedAt ? new Date(postedAt).getTime() : 0
   return Number.isNaN(parsed) ? 0 : parsed
+}
+
+function displayTransactionId(transaction) {
+  return formatTransactionId(transaction.display_id || transaction.transaction_number || transaction.id)
+}
+
+function formatTransactionId(value) {
+  const text = String(value || '').trim()
+  const txMatch = text.match(/^TXN(\d+)$/i)
+  if (txMatch) return `TXN${String(Number(txMatch[1])).padStart(3, '0')}`
+  if (/^\d+$/.test(text)) return `TXN${String(Number(text)).padStart(3, '0')}`
+  return text
+}
+
+function transactionIdNumber(transaction) {
+  const text = displayTransactionId(transaction)
+  const match = text.match(/^TXN(\d+)$/i)
+  return match ? Number(match[1]) : 0
 }
 
 const currentPage = ref(1)
@@ -582,7 +600,6 @@ function formatDate(dateStr) {
 }
 
 function goToDetail(id) {
-  if (String(id).startsWith('salary-ledger')) return
   router.push(`/finance/transactions/${id}`)
 }
 
@@ -594,7 +611,7 @@ function exportData() {
     const tdsAmount = convertAmount(transaction.tds_amount, transaction.currency, transaction.transaction_date)
     const totalAmount = convertAmount(transaction.total_amount || transaction.amount, transaction.currency, transaction.transaction_date)
     return {
-      'Transaction ID': transaction.id,
+      'Transaction ID': displayTransactionId(transaction),
       'Posting Date': transaction.transaction_date || transaction.date || '',
       'Posted At': transaction.created_at || '',
       'Type': transaction.type || '',

@@ -124,7 +124,7 @@
                 <td class="right"><strong>{{ money(statementOpeningBalance, selectedStatementAccount.currency) }}</strong></td>
               </tr>
               <tr v-for="entry in statementRows" :key="entry.id || `${entry.reference}-${entry.date}-${entry.balance}`">
-                <td class="statement-date">{{ formatDate(entry.date || entry.transaction_date) }}</td>
+                <td class="statement-date">{{ formatStatementDate(entry) }}</td>
                 <td class="statement-ref">{{ entry.reference || entry.transaction_reference || '-' }}</td>
                 <td class="statement-desc">
                   <strong>{{ entry.transaction_type || entry.type || 'Transaction' }}</strong>
@@ -204,7 +204,7 @@ const statementOpeningBalance = computed(() => Number(selectedStatementAccount.v
 const statementRows = computed(() => {
   let balance = statementOpeningBalance.value
   return [...statementTransactions.value]
-    .sort((a, b) => new Date(a.date || a.transaction_date || 0) - new Date(b.date || b.transaction_date || 0))
+    .sort(compareStatementEntries)
     .map((entry) => {
       const credit = transactionCredit(entry, selectedStatementAccount.value)
       const debit = transactionDebit(entry, selectedStatementAccount.value)
@@ -414,12 +414,56 @@ function creditDebitFromSignedAmount(entry, side) {
   return 0
 }
 
+function compareStatementEntries(a, b) {
+  const dateDiff = statementSortTime(a) - statementSortTime(b)
+  if (dateDiff) return dateDiff
+  const createdDiff = safeTime(a.created_at) - safeTime(b.created_at)
+  if (createdDiff) return createdDiff
+  return String(a.id || a.reference || '').localeCompare(String(b.id || b.reference || ''))
+}
+
+function statementSortTime(entry) {
+  const transactionValue = entry.date || entry.transaction_date
+  if (isDateOnly(transactionValue)) {
+    return safeTime(combineDateWithActionTime(transactionValue, entry.created_at))
+  }
+  return safeTime(transactionValue)
+}
+
+function safeTime(value) {
+  const timestamp = value ? new Date(value).getTime() : 0
+  return Number.isFinite(timestamp) ? timestamp : 0
+}
+
+function isDateOnly(value) {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+}
+
 function money(value, currency = 'INR') {
   return `${currency || 'INR'} ${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleDateString() : '-'
+}
+
+function formatStatementDate(entry) {
+  const value = entry.date || entry.transaction_date
+  if (!value) return '-'
+  const displayValue = isDateOnly(value) ? combineDateWithActionTime(value, entry.created_at) : value
+  return formatTimestamp(displayValue)
+}
+
+function combineDateWithActionTime(dateValue, actionTimeValue) {
+  if (!actionTimeValue) return `${dateValue}T00:00:00`
+  const actionDate = new Date(actionTimeValue)
+  if (!Number.isFinite(actionDate.getTime())) return `${dateValue}T00:00:00`
+  const time = [
+    String(actionDate.getHours()).padStart(2, '0'),
+    String(actionDate.getMinutes()).padStart(2, '0'),
+    String(actionDate.getSeconds()).padStart(2, '0')
+  ].join(':')
+  return `${dateValue}T${time}`
 }
 
 function formatTimestamp(value) {

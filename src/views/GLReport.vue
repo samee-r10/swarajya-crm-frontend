@@ -102,10 +102,17 @@
         <thead>
           <tr>
             <th style="width:50px">#</th>
-            <th style="width:120px">Date</th>
+            <th style="width:170px">Posting DateTime</th>
             <th style="width:100px">Ref ID</th>
+            <th style="width:110px">GL Account No.</th>
+            <th style="width:180px">GL Account Name</th>
             <th>Description / Party</th>
-            <th style="width:110px">Account</th>
+            <th style="width:150px">Created By</th>
+            <th style="width:150px">Vendor</th>
+            <th style="width:150px">Customer</th>
+            <th style="width:150px">Product</th>
+            <th style="width:150px">Project</th>
+            <th style="width:100px">Status</th>
             <th class="right" style="width:130px">Debit (Out)</th>
             <th class="right" style="width:130px">Credit (In)</th>
             <th class="right" style="width:140px">Running Balance</th>
@@ -114,7 +121,7 @@
         <tbody>
           <!-- Opening Balance Row -->
           <tr class="opening-row">
-            <td colspan="5"><strong>Opening Balance</strong> — Brought Forward</td>
+            <td colspan="11"><strong>Opening Balance</strong> — Brought Forward</td>
             <td class="right">—</td>
             <td class="right">—</td>
             <td class="right mono" :class="report.opening_balance >= 0 ? 'positive' : 'negative'">
@@ -123,16 +130,19 @@
           </tr>
 
           <!-- Journal Entries -->
-          <tr v-for="(entry, idx) in report.entries" :key="entry.id" :class="entry.type === 'Income' ? 'credit-row' : 'debit-row'">
+          <tr v-for="(entry, idx) in report.entries" :key="entry.id" :class="rowClass(entry)">
             <td class="muted-sm">{{ idx + 1 }}</td>
-            <td class="date-cell">{{ formatDate(entry.transaction_date) }}</td>
+            <td class="date-cell">{{ formatDateTime(entry.created_at || entry.transaction_date) }}</td>
             <td class="ref-cell">
-              <span class="ref-badge">TXN-{{ entry.id }}</span>
+              <span class="ref-badge">{{ entryRefLabel(entry) }}</span>
             </td>
+            <td class="account-cell mono">{{ entry.gl_account_number || entry.gl_code || '—' }}</td>
+            <td class="account-cell">{{ entry.gl_account_name || entry.account_name || '—' }}</td>
             <td>
               <div class="entry-desc">
                 <strong>{{ entry.category || 'General' }}</strong>
                 <span class="party">{{ entry.type === 'Income' ? (entry.customer_name || 'Customer') : (entry.vendor_name || 'Vendor') }}</span>
+                <span class="party">Accounting date: {{ formatDate(entry.transaction_date) }}</span>
                 <p v-if="entry.description" class="desc-text">{{ entry.description }}</p>
                 <div v-if="entry.cgst_amount || entry.igst_amount || entry.tds_amount" class="tax-tags">
                   <span v-if="entry.cgst_amount">CGST {{ money(convertAmt(entry.cgst_amount, entry.currency, entry.transaction_date)) }}</span>
@@ -141,7 +151,12 @@
                 </div>
               </div>
             </td>
-            <td class="account-cell">{{ entry.account_name }}</td>
+            <td class="text-cell">{{ entry.created_by_name || entry.created_by_email || '—' }}</td>
+            <td class="text-cell">{{ entry.vendor_name || '—' }}</td>
+            <td class="text-cell">{{ entry.customer_name || '—' }}</td>
+            <td class="text-cell">{{ productLabel(entry) }}</td>
+            <td class="text-cell">{{ entry.project_name || '—' }}</td>
+            <td><span class="status-badge" :class="{ reversed: entry.status === 'Reversed' }">{{ entry.status || 'Completed' }}</span></td>
             <td class="right mono debit-amount">
               <span v-if="entry.debit">- {{ money(convertAmt(entry.debit, entry.currency, entry.transaction_date)) }}</span>
               <span v-else class="muted">—</span>
@@ -157,7 +172,7 @@
 
           <!-- Closing Balance Row -->
           <tr class="closing-row">
-            <td colspan="5"><strong>Closing Balance</strong> — Carried Forward</td>
+            <td colspan="11"><strong>Closing Balance</strong> — Carried Forward</td>
             <td class="right mono negative"><strong>- {{ money(convertSummary(report.total_debits)) }}</strong></td>
             <td class="right mono positive"><strong>+ {{ money(convertSummary(report.total_credits)) }}</strong></td>
             <td class="right mono" :class="report.closing_balance >= 0 ? 'positive' : 'negative'">
@@ -271,6 +286,46 @@ function convertSummary(amount) {
 function formatDate(d) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: '2-digit' })
+}
+
+function formatDateTime(d) {
+  if (!d) return '—'
+  return new Date(d).toLocaleString('en-IN', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+function productLabel(entry) {
+  if (entry.product_code && entry.product_name) return `${entry.product_code} · ${entry.product_name}`
+  return entry.product_name || entry.product_code || '—'
+}
+
+function rowClass(entry) {
+  if (entry.status === 'Reversed') return 'reversed-row'
+  return entry.type === 'Income' ? 'credit-row' : 'debit-row'
+}
+
+function entryRefLabel(entry) {
+  if (entry.source_module === 'HR Salary' || String(entry.transaction_type || '').includes('Salary')) {
+    return displayTransactionId(entry)
+  }
+  return entry.reference || entry.transaction_reference || displayTransactionId(entry)
+}
+
+function displayTransactionId(entry) {
+  return formatTransactionId(entry.display_id || entry.transaction_number || entry.id)
+}
+
+function formatTransactionId(value) {
+  const text = String(value || '').trim()
+  const txMatch = text.match(/^TXN(\d+)$/i)
+  if (txMatch) return `TXN${String(Number(txMatch[1])).padStart(3, '0')}`
+  if (/^\d+$/.test(text)) return `TXN${String(Number(text)).padStart(3, '0')}`
+  return text
 }
 
 function printReport() {
@@ -429,12 +484,13 @@ function printReport() {
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 14px;
-  overflow: hidden;
+  overflow-x: auto;
   box-shadow: 0 4px 20px -4px rgba(0,0,0,0.07);
 }
 
 .gl-table {
   width: 100%;
+  min-width: 1900px;
   border-collapse: collapse;
 }
 
@@ -462,6 +518,8 @@ function printReport() {
 /* Row Types */
 .credit-row { background: #f0fdf4; }
 .debit-row  { background: #fff7f7; }
+.reversed-row { background: #f8fafc; color: #64748b; }
+.reversed-row td { text-decoration-color: rgba(100, 116, 139, 0.45); }
 
 .opening-row td,
 .closing-row td {
@@ -512,7 +570,26 @@ function printReport() {
 
 .date-cell { font-size: 13px; white-space: nowrap; }
 .account-cell { font-size: 12px; color: var(--muted); }
+.text-cell { font-size: 12px; color: #334155; min-width: 130px; }
 .muted-sm { font-size: 12px; color: var(--muted); text-align: center; }
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status-badge.reversed {
+  background: #fee2e2;
+  color: #991b1b;
+}
 
 .right { text-align: right; }
 .mono { font-family: 'JetBrains Mono', monospace; }

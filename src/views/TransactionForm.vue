@@ -1,5 +1,5 @@
 <template>
-  <section class="page-header"><div><p class="eyebrow">Finance</p><h1>{{ isEditing ? `Edit Transaction #${props.id}` : 'New Transaction' }}</h1></div></section>
+  <section class="page-header"><div><p class="eyebrow">Finance</p><h1>{{ isEditing ? `Edit Transaction #${displayTransactionId(props.id)}` : 'New Transaction' }}</h1></div></section>
   <form class="form-grid record-card" @submit.prevent="openPreview">
     <label>
       Posting Date
@@ -256,6 +256,14 @@ const LOCAL_PRODUCTS_KEY = 'crm_products_fallback'
 const showPreviewModal = ref(false)
 const isPosting = ref(false)
 const currencySymbolsMap = { USD: '$', INR: '₹', EUR: '€', GBP: '£' }
+
+function displayTransactionId(value) {
+  const text = String(value || '').trim()
+  const txMatch = text.match(/^TXN(\d+)$/i)
+  if (txMatch) return `TXN${String(Number(txMatch[1])).padStart(3, '0')}`
+  if (/^\d+$/.test(text)) return `TXN${String(Number(text)).padStart(3, '0')}`
+  return text
+}
 
 function offsetDate(days) {
   const date = new Date()

@@ -74,31 +74,38 @@
         <table class="items-table">
           <thead>
             <tr>
-              <th style="width: 50%;">Description</th>
+              <th>Description</th>
+              <th>HSN/SAC</th>
               <th>Qty</th>
-              <th>Price</th>
-              <th>Tax %</th>
-              <th class="right">Total</th>
+              <th>Rate</th>
+              <th>Unit of Measure</th>
+              <th class="right">Amount</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(item, index) in form.items" :key="index">
               <td><input v-model="item.description" placeholder="Service or product description" required></td>
-              <td><input v-model.number="item.qty" type="number" min="1" @input="updateItemTotal(index)"></td>
-              <td><input v-model.number="item.price" type="number" step="0.01" @input="updateItemTotal(index)"></td>
-              <td><input v-model.number="item.tax_percent" type="number" step="0.1" @input="updateItemTotal(index)"></td>
-              <td class="right"><strong>{{ (item.total || 0).toFixed(2) }}</strong></td>
+              <td><input v-model="item.hsn_sac" placeholder="9983"></td>
+              <td><input v-model.number="item.qty" type="number" min="0" step="0.01" @input="updateItemTotal(index)"></td>
+              <td><input v-model.number="item.rate" type="number" min="0" step="0.01" @input="updateItemTotal(index)"></td>
+              <td><input v-model="item.unit_of_measure" placeholder="Nos, Hrs, Kg"></td>
+              <td class="right"><strong>{{ moneyValue(item.amount) }}</strong></td>
               <td><button type="button" class="icon-button delete" @click="removeItem(index)">&times;</button></td>
             </tr>
           </tbody>
         </table>
         <button type="button" class="button secondary add-item" @click="addItem">+ Add Item</button>
 
-        <div class="totals-section">
-          <div class="total-row"><span>Subtotal</span><span>{{ form.subtotal.toFixed(2) }}</span></div>
-          <div class="total-row"><span>Tax Amount</span><span>{{ form.tax_amount.toFixed(2) }}</span></div>
-          <div class="total-row grand-total"><span>Grand Total</span><span>{{ form.currency }} {{ form.total_amount.toFixed(2) }}</span></div>
+        <div class="gst-summary">
+          <div class="gst-row"><span>Subtotal</span><strong>{{ moneyValue(form.subtotal) }}</strong></div>
+          <label class="gst-row input-row"><span>CGST %</span><input v-model.number="form.cgst_percent" type="number" min="0" step="0.01" @input="calculateTotals"></label>
+          <div class="gst-row"><span>CGST Amount</span><strong>{{ moneyValue(form.cgst_amount) }}</strong></div>
+          <label class="gst-row input-row"><span>SGST %</span><input v-model.number="form.sgst_percent" type="number" min="0" step="0.01" @input="calculateTotals"></label>
+          <div class="gst-row"><span>SGST Amount</span><strong>{{ moneyValue(form.sgst_amount) }}</strong></div>
+          <label class="gst-row input-row"><span>IGST %</span><input v-model.number="form.igst_percent" type="number" min="0" step="0.01" @input="calculateTotals"></label>
+          <div class="gst-row"><span>IGST Amount</span><strong>{{ moneyValue(form.igst_amount) }}</strong></div>
+          <div class="gst-row grand-total"><span>Total Amount</span><strong>{{ form.currency }} {{ moneyValue(form.total_amount) }}</strong></div>
         </div>
       </div>
 
@@ -163,9 +170,15 @@ const form = reactive({
   notes: '',
   bank_account_id: '',
   items: [
-    { description: '', qty: 1, price: 0, tax_percent: 0, total: 0 }
+    { description: '', hsn_sac: '', qty: 1, rate: 0, unit_of_measure: '', amount: 0 }
   ],
   subtotal: 0,
+  cgst_percent: 0,
+  cgst_amount: 0,
+  sgst_percent: 0,
+  sgst_amount: 0,
+  igst_percent: 0,
+  igst_amount: 0,
   tax_amount: 0,
   total_amount: 0,
   amount_paid: 0
@@ -258,14 +271,13 @@ onMounted(async () => {
       router.replace(`/finance/invoices/${props.id}`)
       return
     }
-    Object.assign(form, data.invoice)
-    // Recalculate just in case
+    Object.assign(form, normalizeInvoiceForForm(data.invoice))
     calculateTotals()
   }
 })
 
 function addItem() {
-  form.items.push({ description: '', qty: 1, price: 0, tax_percent: 0, total: 0 })
+  form.items.push({ description: '', hsn_sac: '', qty: 1, rate: 0, unit_of_measure: '', amount: 0 })
 }
 
 function removeItem(index) {
@@ -277,27 +289,66 @@ function removeItem(index) {
 
 function updateItemTotal(index) {
   const item = form.items[index]
-  const base = (item.qty || 0) * (item.price || 0)
-  item.total = base + (base * (item.tax_percent || 0) / 100)
+  item.amount = roundMoney(Number(item.qty || 0) * Number(item.rate || 0))
+  item.total = item.amount
+  item.price = item.rate
   calculateTotals()
 }
 
 function calculateTotals() {
-  let sub = 0
-  let tax = 0
-  form.items.forEach(item => {
-    const base = (item.qty || 0) * (item.price || 0)
-    sub += base
-    tax += (base * (item.tax_percent || 0) / 100)
+  form.items.forEach((item, index) => {
+    const rate = Number(item.rate ?? item.price ?? 0)
+    item.rate = rate
+    item.price = rate
+    item.amount = roundMoney(Number(item.qty || 0) * rate)
+    item.total = item.amount
   })
-  form.subtotal = sub
-  form.tax_amount = tax
-  form.total_amount = sub + tax
+  form.subtotal = roundMoney(form.items.reduce((sum, item) => sum + Number(item.amount || 0), 0))
+  form.cgst_amount = roundMoney(form.subtotal * Number(form.cgst_percent || 0) / 100)
+  form.sgst_amount = roundMoney(form.subtotal * Number(form.sgst_percent || 0) / 100)
+  form.igst_amount = roundMoney(form.subtotal * Number(form.igst_percent || 0) / 100)
+  form.tax_amount = roundMoney(form.cgst_amount + form.sgst_amount + form.igst_amount)
+  form.total_amount = roundMoney(form.subtotal + form.tax_amount)
+}
+
+function normalizeInvoiceForForm(invoice = {}) {
+  return {
+    ...invoice,
+    cgst_percent: Number(invoice.cgst_percent || 0),
+    sgst_percent: Number(invoice.sgst_percent || 0),
+    igst_percent: Number(invoice.igst_percent || 0),
+    items: (invoice.items?.length ? invoice.items : form.items).map(normalizeItem)
+  }
+}
+
+function normalizeItem(item = {}) {
+  const rate = Number(item.rate ?? item.price ?? 0)
+  const qty = Number(item.qty || 0)
+  const amount = roundMoney(qty * rate)
+  return {
+    description: item.description || '',
+    hsn_sac: item.hsn_sac || item.hsn || item.sac || '',
+    qty,
+    rate,
+    price: rate,
+    unit_of_measure: item.unit_of_measure || item.uom || item.unit || '',
+    amount,
+    total: amount
+  }
+}
+
+function roundMoney(value) {
+  return Math.round((Number(value) || 0) * 100) / 100
+}
+
+function moneyValue(value) {
+  return Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 async function save() {
   error.value = ''
   try {
+    calculateTotals()
     if (isProductInvoice.value && (!form.customer_id || !form.product_id || !form.project_id)) {
       error.value = 'Customer, Product, and Project are required for Product Invoice.'
       return
@@ -428,6 +479,7 @@ function projectMatchesSelectedProduct(project) {
 
 .items-table {
   width: 100%;
+  min-width: 980px;
   border-collapse: collapse;
 }
 
@@ -446,6 +498,10 @@ function projectMatchesSelectedProduct(project) {
 .items-table input {
   width: 100%;
   padding: 8px;
+}
+
+.items-card {
+  overflow-x: auto;
 }
 
 .right { text-align: right; }
@@ -468,17 +524,35 @@ function projectMatchesSelectedProduct(project) {
   margin-top: 16px;
 }
 
-.totals-section {
+.gst-summary {
   margin-top: 32px;
-  width: 300px;
+  width: min(420px, 100%);
   margin-left: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px 18px;
+  background: #f8fafc;
 }
 
-.total-row {
+.gst-row {
   display: flex;
+  align-items: center;
   justify-content: space-between;
+  gap: 16px;
   padding: 8px 0;
   font-size: 14px;
+}
+
+.gst-row.input-row {
+  color: inherit;
+  font-weight: inherit;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.gst-row.input-row input {
+  max-width: 110px;
+  text-align: right;
 }
 
 .grand-total {
@@ -488,6 +562,12 @@ function projectMatchesSelectedProduct(project) {
   font-weight: 800;
   font-size: 18px;
   color: var(--primary);
+}
+
+@media (max-width: 720px) {
+  .gst-summary {
+    margin-left: 0;
+  }
 }
 
 .action-row {
