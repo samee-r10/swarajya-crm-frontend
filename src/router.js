@@ -37,6 +37,7 @@ import PendingClaimApprovals from './views/PendingClaimApprovals.vue'
 import StakeholderPayouts from './views/StakeholderPayouts.vue'
 import Payables from './views/Payables.vue'
 import HRManagement from './views/HRManagement.vue'
+import Organisations from './views/Organisations.vue'
 import { hasHrPermission, loadHrSettings } from './utils/hrStorage'
 
 
@@ -58,6 +59,7 @@ const routes = [
   { path: '/projects/:id', name: 'project-detail', component: ProjectDetail, props: true },
   { path: '/projects/:id/edit', name: 'project-edit', component: ProjectForm, props: true },
   { path: '/setup', name: 'setup', component: Setup },
+  { path: '/setup/organisations', name: 'organisations', component: Organisations },
   { path: '/setup/objects/:apiName', name: 'object-detail', component: ObjectDetail, props: true },
   { path: '/finance', name: 'finance-dashboard', component: FinanceDashboard },
   { path: '/finance/vendors', name: 'vendors', component: Vendors },
@@ -129,24 +131,27 @@ router.beforeEach((to) => {
   }
 
   if (to.path.startsWith('/setup') && user) {
-    if (user.role_name !== 'System Administrator' && user.role_name !== 'Admin') {
+    if (to.path.startsWith('/setup/organisations') && user.role_name !== 'Super Admin' && user.is_super_admin !== true) {
+      return { name: 'dashboard' }
+    }
+    if (user.role_name !== 'System Administrator' && user.role_name !== 'Admin' && user.role_name !== 'Super Admin') {
       return { name: 'dashboard' }
     }
   }
   if (to.path.startsWith('/treasury') && user) {
-    const isAdmin = user.role_name === 'System Administrator' || user.role_name === 'Admin'
+    const isAdmin = user.role_name === 'System Administrator' || user.role_name === 'Admin' || user.role_name === 'Super Admin'
     if (!isAdmin && !(user.has_treasury_access === 1 || user.has_treasury_access === true)) {
       return { name: 'dashboard' }
     }
   }
   if (to.path.startsWith('/finance') && to.path !== '/finance/claims' && user) {
-    const isAdmin = user.role_name === 'System Administrator' || user.role_name === 'Admin'
+    const isAdmin = user.role_name === 'System Administrator' || user.role_name === 'Admin' || user.role_name === 'Super Admin'
     if (!isAdmin && !(user.has_finance_access === 1 || user.has_finance_access === true)) {
       return { name: 'dashboard' }
     }
   }
   if (to.path.startsWith('/hr') && user) {
-    const isAdmin = user.role_name === 'System Administrator' || user.role_name === 'Admin'
+    const isAdmin = user.role_name === 'System Administrator' || user.role_name === 'Admin' || user.role_name === 'Super Admin'
     const canUseSelfServiceHr = loadHrSettings().self_access_enabled && !!user.id
     if (!isAdmin && !hasHrPermission('view_hr_module', user) && !canUseSelfServiceHr) {
       return { name: 'dashboard' }

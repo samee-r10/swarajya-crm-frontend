@@ -52,7 +52,7 @@
         </details>
       </div>
       <RouterLink class="brand" to="/">
-        <img src="/logo.png" alt="Company Logo" class="brand-logo" />
+        <img :src="organisationLogo" :alt="`${organisationName} Logo`" class="brand-logo" />
       </RouterLink>
     </div>
     <div ref="globalSearchRef" class="global-search">
@@ -133,7 +133,7 @@
       <div class="sidebar-head">
         <div>
           <span class="sidebar-kicker">CRM Workspace</span>
-          <strong>Swarajya</strong>
+          <strong>{{ organisationShortName }}</strong>
         </div>
         <button class="icon-button mobile-sidebar-close" type="button" aria-label="Close navigation" @click="mobileNavOpen = false">
           <svg viewBox="0 0 24 24" width="18" height="18"><path d="m6.4 5 12.6 12.6-1.4 1.4L5 6.4 6.4 5Zm12.6 1.4L6.4 19 5 17.6 17.6 5 19 6.4Z" fill="currentColor"/></svg>
@@ -216,16 +216,25 @@ function handleOutsideClick(e) {
   }
 }
 
+function refreshUserBranding() {
+  user.value = window.localStorage.getItem('lms_user')
+  applyOrganisationBranding()
+}
+
 onMounted(() => {
   document.addEventListener('click', handleOutsideClick, true)
   window.addEventListener('app-loading-start', startAppLoader)
   window.addEventListener('app-loading-stop', stopAppLoader)
+  window.addEventListener('organisation-branding-updated', refreshUserBranding)
+  applyOrganisationBranding()
+  loadCurrentProfile()
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleOutsideClick, true)
   window.removeEventListener('app-loading-start', startAppLoader)
   window.removeEventListener('app-loading-stop', stopAppLoader)
+  window.removeEventListener('organisation-branding-updated', refreshUserBranding)
   if (searchTimer) clearTimeout(searchTimer)
   if (loaderDelayTimer) clearTimeout(loaderDelayTimer)
   if (routeLoaderTimer) clearTimeout(routeLoaderTimer)
@@ -234,6 +243,7 @@ onUnmounted(() => {
 const user = ref(window.localStorage.getItem('lms_user'))
 watch(() => route.path, () => {
   user.value = window.localStorage.getItem('lms_user')
+  applyOrganisationBranding()
   // Auto-close the launcher whenever navigation occurs
   if (launcherRef.value) launcherRef.value.removeAttribute('open')
   mobileNavOpen.value = false
@@ -249,6 +259,24 @@ const userName = computed(() => {
     return ''
   }
 })
+const currentUserData = computed(() => {
+  if (!user.value) return null
+  try {
+    return JSON.parse(user.value)
+  } catch {
+    return null
+  }
+})
+const organisation = computed(() => currentUserData.value?.organisation || {})
+const organisationName = computed(() => organisation.value.organisationName || 'CRM')
+const organisationShortName = computed(() => {
+  const name = organisationName.value
+  if (!name || name === 'CRM') return 'CRM'
+  return name.split(/\s+/).slice(0, 2).join(' ')
+})
+const organisationLogo = computed(() => organisation.value.logo || '/logo.png')
+const organisationThemeColor = computed(() => organisation.value.themeColor || '#f97316')
+watch(organisationThemeColor, applyOrganisationBranding)
 const userId = computed(() => {
   if (!user.value) return ''
   try {
@@ -273,7 +301,8 @@ const userProfile = computed(() => {
     return 'No profile'
   }
 })
-const isAdmin = computed(() => userProfile.value === 'System Administrator' || userProfile.value === 'Admin')
+const isAdmin = computed(() => userProfile.value === 'System Administrator' || userProfile.value === 'Admin' || userProfile.value === 'Super Admin')
+const isSuperAdmin = computed(() => userProfile.value === 'Super Admin' || currentUserData.value?.is_super_admin === true)
 const hasTreasuryAccess = computed(() => {
   if (isAdmin.value) return true
   if (!user.value) return false
@@ -348,6 +377,7 @@ const launcherItems = [
   { label: 'Payroll', type: 'HR Management', to: '/hr' },
   { label: 'Salary Slips', type: 'HR Management', to: '/hr' },
   { label: 'Setup', type: 'Admin', to: '/setup' },
+  { label: 'Organisations', type: 'Super Admin', to: '/setup/organisations', requires: 'super-admin' },
   { label: 'Users', type: 'Setup', to: '/setup#users' },
   { label: 'Roles', type: 'Setup', to: '/setup#roles' },
   { label: 'Object Manager', type: 'Setup', to: '/setup#objects' }
@@ -372,6 +402,7 @@ const navItems = [
   { label: 'Stakeholder and CP Payouts', to: '/treasury/stakeholder-payouts', match: ['/treasury/stakeholder-payouts'], requires: 'treasury', icon: '<svg viewBox="0 0 24 24"><path d="M12 2 3 6v2h18V6l-9-4ZM5 10h14v9H5v-9Zm3 2v5h2v-5H8Zm4 0v5h2v-5h-2Z" fill="currentColor"/></svg>' },
   { label: 'HR Management', to: '/hr', match: ['/hr'], requires: 'hr', icon: '<svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3ZM8 11c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4Zm8.5.25c1.92.72 3.5 1.9 3.5 3.75v2h4v-2c0-2.31-4.16-3.62-7.5-3.75Z" fill="currentColor"/></svg>' },
   { label: 'Vault', to: '/vault', match: ['/vault'], requires: 'vault', icon: '<svg viewBox="0 0 24 24"><path d="M17 8V6a5 5 0 0 0-10 0v2H5v14h14V8h-2ZM9 6a3 3 0 0 1 6 0v2H9V6Zm4 10.73V19h-2v-2.27A2 2 0 1 1 13 16.73Z" fill="currentColor"/></svg>' },
+  { label: 'Organisations', to: '/setup/organisations', match: ['/setup/organisations'], requires: 'super-admin', icon: '<svg viewBox="0 0 24 24"><path d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z" fill="currentColor"/></svg>' },
   { label: 'Settings', to: '/setup', match: ['/setup'], requires: 'admin', icon: '<svg viewBox="0 0 24 24"><path d="m19.43 12.98.04-.98-.04-.98 2.11-1.65-2-3.46-2.49 1a7.1 7.1 0 0 0-1.69-.98L15 3h-4l-.36 2.93c-.6.24-1.17.56-1.69.98l-2.49-1-2 3.46 2.11 1.65-.04.98.04.98-2.11 1.65 2 3.46 2.49-1c.52.42 1.09.74 1.69.98L11 21h4l.36-2.93c.6-.24 1.17-.56 1.69-.98l2.49 1 2-3.46-2.11-1.65ZM13 15.5A3.5 3.5 0 1 1 13 8a3.5 3.5 0 0 1 0 7.5Z" fill="currentColor"/></svg>' }
 ]
 
@@ -383,6 +414,9 @@ const filteredLauncherItems = computed(() => {
   let items = launcherItems
   if (!isAdmin.value) {
     items = items.filter(item => !item.to.startsWith('/setup'))
+  }
+  if (!isSuperAdmin.value) {
+    items = items.filter(item => item.requires !== 'super-admin')
   }
   if (!hasTreasuryAccess.value) {
     items = items.filter(item => !item.to.startsWith('/treasury'))
@@ -397,6 +431,7 @@ const filteredLauncherItems = computed(() => {
 })
 const visibleNavItems = computed(() => navItems.filter((item) => {
   if (item.requires === 'admin' && !isAdmin.value) return false
+  if (item.requires === 'super-admin' && !isSuperAdmin.value) return false
   if (item.requires === 'finance' && !hasFinanceAccess.value) return false
   if (item.requires === 'treasury' && !hasTreasuryAccess.value) return false
   if (item.requires === 'hr' && !hasHrAccess.value) return false
@@ -527,6 +562,32 @@ function showRouteLoader() {
       isAppLoading.value = false
     }
   }, 260)
+}
+
+function applyOrganisationBranding() {
+  document.documentElement.style.setProperty('--primary', organisationThemeColor.value)
+  document.title = organisation.value.dashboardTitle || `${organisationName.value} CRM`
+  const favicon = organisation.value.favicon || organisationLogo.value
+  let faviconEl = document.querySelector('link[rel="icon"]')
+  if (!faviconEl) {
+    faviconEl = document.createElement('link')
+    faviconEl.rel = 'icon'
+    document.head.appendChild(faviconEl)
+  }
+  faviconEl.href = favicon
+}
+
+async function loadCurrentProfile() {
+  if (!window.localStorage.getItem('lms_user')) return
+  try {
+    const profile = await apiGet('/api/profile')
+    if (profile.user) {
+      window.localStorage.setItem('lms_user', JSON.stringify(profile.user))
+      refreshUserBranding()
+    }
+  } catch (err) {
+    // The API client handles unauthorized redirects.
+  }
 }
 
 function goBack() {

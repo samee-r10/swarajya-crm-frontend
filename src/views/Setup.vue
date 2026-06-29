@@ -951,6 +951,11 @@ function cancelEdit() {
 async function saveCompany() {
   await apiPost('/api/settings/company', companyFormState)
   Object.assign(company, companyFormState)
+  const profile = await apiGet('/api/profile')
+  if (profile.user) {
+    window.localStorage.setItem('lms_user', JSON.stringify(profile.user))
+    window.dispatchEvent(new CustomEvent('organisation-branding-updated'))
+  }
   saved.value = true
   isEditing.value = false
   setTimeout(() => { saved.value = false }, 3000)
