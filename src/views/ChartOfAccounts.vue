@@ -32,14 +32,17 @@
           </tr>
         </thead>
         <tbody>
-          <template v-for="account in filteredAccounts" :key="account.id">
+          <template v-for="account in filteredAccounts" :key="account.merge_key">
             <tr>
               <td>
                 <button class="gl-link mono" type="button" @click="toggleTransactions(account)">
                   {{ account.gl_code || '-' }}
                 </button>
               </td>
-              <td><strong>{{ account.name }}</strong></td>
+              <td>
+                <strong>{{ account.name }}</strong>
+                <span v-if="account.duplicate_count > 1" class="pill merged-pill">{{ account.duplicate_count }} merged</span>
+              </td>
               <td><span class="pill">{{ account.type }}</span></td>
               <td><span class="pill" :class="account.is_active ? 'status-on' : 'status-off'">{{ account.is_active ? 'Active' : 'Blocked' }}</span></td>
               <td>
@@ -50,10 +53,10 @@
                 </div>
               </td>
               <td class="actions-cell">
-                <button class="button secondary small" type="button" @click="openAccountModal(account)">Edit</button>
+                <button class="button secondary small" type="button" @click="openAccountModal(account.primaryAccount || account)">Edit</button>
               </td>
             </tr>
-            <tr v-if="selectedAccountId === account.id" class="transactions-row">
+            <tr v-if="selectedAccountKey === account.merge_key" class="transactions-row">
               <td colspan="6">
                 <div class="transactions-panel">
                   <div class="transactions-header">
@@ -167,7 +170,7 @@ const error = ref('')
 const formError = ref('')
 const search = ref('')
 const showModal = ref(false)
-const selectedAccountId = ref(null)
+const selectedAccountKey = ref(null)
 const accountTransactions = ref([])
 const transactionsLoading = ref(false)
 const transactionsError = ref('')
@@ -181,15 +184,55 @@ const accountForm = reactive({
   show_in_expense: false
 })
 
+const mergedAccounts = computed(() => {
+  const grouped = new Map()
+
+  accounts.value.forEach((account) => {
+    const normalizedGlCode = String(account.gl_code || '').trim().toUpperCase()
+    const mergeKey = normalizedGlCode ? `gl:${normalizedGlCode}` : `account:${account.id}`
+    const existing = grouped.get(mergeKey)
+
+    if (!existing) {
+      grouped.set(mergeKey, {
+        ...account,
+        merge_key: mergeKey,
+        account_ids: [account.id],
+        sourceAccounts: [account],
+        primaryAccount: account,
+        duplicate_count: 1,
+        is_active: account.is_active !== 0 && account.is_active !== false,
+        show_in_income: account.show_in_income === 1 || account.show_in_income === true,
+        show_in_expense: account.show_in_expense === 1 || account.show_in_expense === true
+      })
+      return
+    }
+
+    existing.account_ids.push(account.id)
+    existing.sourceAccounts.push(account)
+    existing.duplicate_count += 1
+    existing.name = uniqueText(existing.sourceAccounts.map((item) => item.name)).join(' / ')
+    existing.type = uniqueText(existing.sourceAccounts.map((item) => item.type)).join(' / ')
+    existing.is_active = existing.sourceAccounts.some((item) => item.is_active !== 0 && item.is_active !== false)
+    existing.show_in_income = existing.sourceAccounts.some((item) => item.show_in_income === 1 || item.show_in_income === true)
+    existing.show_in_expense = existing.sourceAccounts.some((item) => item.show_in_expense === 1 || item.show_in_expense === true)
+  })
+
+  return Array.from(grouped.values())
+})
+
 const filteredAccounts = computed(() => {
   const term = search.value.trim().toLowerCase()
-  if (!term) return accounts.value
-  return accounts.value.filter((account) => {
+  if (!term) return mergedAccounts.value
+  return mergedAccounts.value.filter((account) => {
     const state = account.is_active ? 'active' : 'blocked'
     const visibility = `${account.show_in_income ? 'income' : ''} ${account.show_in_expense ? 'expense' : ''}`
     return `${account.gl_code || ''} ${account.name || ''} ${account.type || ''} ${state} ${visibility}`.toLowerCase().includes(term)
   })
 })
+
+function uniqueText(values) {
+  return Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean)))
+}
 
 async function loadAccounts() {
   loading.value = true
@@ -206,20 +249,27 @@ async function loadAccounts() {
 }
 
 async function toggleTransactions(account) {
-  if (selectedAccountId.value === account.id) {
-    selectedAccountId.value = null
+  if (selectedAccountKey.value === account.merge_key) {
+    selectedAccountKey.value = null
     accountTransactions.value = []
     transactionsError.value = ''
     return
   }
 
-  selectedAccountId.value = account.id
+  selectedAccountKey.value = account.merge_key
   accountTransactions.value = []
   transactionsError.value = ''
   transactionsLoading.value = true
   try {
-    const data = await apiGet(`/api/finance/accounts/${account.id}/transactions`)
-    accountTransactions.value = data.transactions || []
+    const accountIds = account.account_ids?.length ? account.account_ids : [account.id]
+    const responses = await Promise.all(accountIds.map((id) => apiGet(`/api/finance/accounts/${id}/transactions`)))
+    const byId = new Map()
+    responses.flatMap((data) => data.transactions || []).forEach((transaction) => {
+      byId.set(transaction.id, transaction)
+    })
+    accountTransactions.value = Array.from(byId.values()).sort((a, b) => {
+      return new Date(b.transaction_date || b.created_at || 0) - new Date(a.transaction_date || a.created_at || 0)
+    })
   } catch (err) {
     transactionsError.value = err.message || 'Unable to load transactions.'
   } finally {
@@ -296,6 +346,7 @@ async function saveAccount() {
     }
     closeAccountModal()
     await loadAccounts()
+    if (selectedAccountKey.value) selectedAccountKey.value = null
   } catch (err) {
     formError.value = err.message || 'Unable to save account.'
   } finally {
@@ -389,6 +440,13 @@ onMounted(loadAccounts)
   border-color: #bfdbfe;
   background: #eff6ff;
   color: #1d4ed8;
+}
+
+.merged-pill {
+  margin-left: 8px;
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
 }
 
 .shown-in {
