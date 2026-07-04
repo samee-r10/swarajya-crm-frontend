@@ -132,7 +132,7 @@
           <!-- Journal Entries -->
           <tr v-for="(entry, idx) in report.entries" :key="entry.id" :class="rowClass(entry)">
             <td class="muted-sm">{{ idx + 1 }}</td>
-            <td class="date-cell">{{ formatDateTime(entry.created_at || entry.transaction_date) }}</td>
+            <td class="date-cell">{{ formatDateTime(entry.transaction_date || entry.date || entry.created_at) }}</td>
             <td class="ref-cell">
               <span class="ref-badge">{{ entryRefLabel(entry) }}</span>
             </td>
