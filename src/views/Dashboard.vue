@@ -4,7 +4,7 @@
     <CrmPageHeader
       eyebrow="Performance Overview"
       :title="`Welcome back, ${userName}`"
-      description="Track sales momentum, delivery work, reminders, and revenue focus from one command center."
+      description="Track sales momentum, delivery work, approvals, and revenue focus from one command center."
     >
       <template #actions>
         <RouterLink class="button" to="/customers/new">
@@ -30,9 +30,9 @@
           <span>Revenue</span>
           <strong>Invoices</strong>
         </RouterLink>
-        <RouterLink to="/claims/approvals" class="quick-action">
+        <RouterLink to="/approvals" class="quick-action">
           <span>Approvals</span>
-          <strong>Pending claims</strong>
+          <strong>Pending approvals</strong>
         </RouterLink>
         <RouterLink to="/treasury/payables" class="quick-action">
           <span>Treasury</span>
@@ -96,132 +96,38 @@
           </div>
         </article>
 
-        <article class="panel summary-panel">
+        <RouterLink class="panel summary-panel approval-summary-card" to="/approvals">
           <div class="panel-header">
             <div>
               <h2>Pending Approvals</h2>
-              <p class="muted">Mobile-ready action queues for stakeholders and finance users.</p>
+              <p class="muted">Approvals assigned to you right now.</p>
             </div>
+            <strong class="approval-total">{{ pendingApprovals.total }}</strong>
           </div>
-          <div class="approval-links">
-            <RouterLink to="/claims/approvals">Claim approvals</RouterLink>
-            <RouterLink to="/treasury/stakeholder-payouts/approvals">Payout approvals</RouterLink>
-            <RouterLink to="/treasury/payables">Payable settlements</RouterLink>
+          <div class="approval-breakdown">
+            <div><span>Claims</span><strong>{{ pendingApprovals.breakdown.claims }}</strong></div>
+            <div><span>Stakeholder Payouts</span><strong>{{ pendingApprovals.breakdown.stakeholder_payouts }}</strong></div>
+            <div><span>CP Payments</span><strong>{{ pendingApprovals.breakdown.cp_payments }}</strong></div>
           </div>
-        </article>
-
-        <article class="panel summary-panel">
-          <div class="panel-header">
-            <div>
-              <h2>Recent Activities</h2>
-              <p class="muted">A compact view of customer, opportunity, and project movement.</p>
-            </div>
-          </div>
-          <div class="activity-feed">
-            <div><span></span><strong>{{ data.recent_opportunities.length }}</strong> recent opportunity updates</div>
-            <div><span></span><strong>{{ data.upcoming_projects.length }}</strong> project milestones to track</div>
-            <div><span></span><strong>{{ data.metrics.customers }}</strong> customer records available</div>
-          </div>
-        </article>
+        </RouterLink>
       </section>
 
-      <!-- Main Dashboard Grid -->
-      <div class="dashboard-grid">
-        <!-- Recent Opportunities -->
-        <div class="panel">
-          <div class="panel-header">
-            <div>
-              <h2>Recent Opportunities</h2>
-              <p class="muted">The latest deals added to your pipeline.</p>
-            </div>
-            <RouterLink to="/opportunities" class="button-link">View All</RouterLink>
-          </div>
-          <div class="list">
-            <RouterLink 
-              v-for="opp in data.recent_opportunities" 
-              :key="opp.id" 
-              class="dashboard-item" 
-              :to="`/opportunities/${opp.id}`"
-            >
-              <div class="item-content">
-                <strong>{{ opp.title }}</strong>
-                <span class="muted">{{ opp.company_name }}</span>
-              </div>
-              <div class="item-meta">
-                <span class="pill stage">{{ opp.stage }}</span>
-              </div>
-            </RouterLink>
-            <CrmEmptyState v-if="!data.recent_opportunities.length" title="No recent opportunities" description="New deals will appear here as your team adds them." />
-          </div>
-        </div>
-
-        <!-- Upcoming Projects -->
-        <div class="panel">
-          <div class="panel-header">
-            <div>
-              <h2>Upcoming Projects</h2>
-              <p class="muted">Delivery milestones in the next 30 days.</p>
-            </div>
-            <RouterLink to="/projects" class="button-link">View All</RouterLink>
-          </div>
-          <div class="list">
-            <RouterLink 
-              v-for="project in data.upcoming_projects" 
-              :key="project.id" 
-              class="dashboard-item" 
-              :to="`/projects/${project.id}`"
-            >
-              <div class="item-content">
-                <strong>{{ project.project_name }}</strong>
-                <span class="muted">{{ project.company_name }}</span>
-              </div>
-              <div class="item-meta">
-                <span class="date">{{ formatDate(project.delivery_timeline) }}</span>
-              </div>
-            </RouterLink>
-            <CrmEmptyState v-if="!data.upcoming_projects.length" title="No upcoming projects" description="Delivery milestones will appear here when project dates are available." />
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-header">
-            <div>
-              <h2>Follow-up Reminders</h2>
-              <p class="muted">Suggested focus items based on active records.</p>
-            </div>
-          </div>
-          <div class="reminder-list">
-            <div class="reminder-item">
-              <span class="reminder-dot urgent"></span>
-              <div><strong>{{ data.metrics.open_opportunities }} opportunities need movement</strong><span class="muted">Review stage, next step, and owner notes.</span></div>
-            </div>
-            <div class="reminder-item">
-              <span class="reminder-dot"></span>
-              <div><strong>{{ data.upcoming_projects.length }} upcoming project milestones</strong><span class="muted">Confirm timelines before client follow-ups.</span></div>
-            </div>
-            <div class="reminder-item">
-              <span class="reminder-dot success"></span>
-              <div><strong>Keep customer records complete</strong><span class="muted">Validate contact details and billing addresses.</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
     </template>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { apiGet } from '../api/client'
-import CrmEmptyState from '../components/CrmEmptyState.vue'
 import CrmKpiCard from '../components/CrmKpiCard.vue'
 import CrmPageHeader from '../components/CrmPageHeader.vue'
 
 const loading = ref(true)
+let refreshTimer = null
 const data = reactive({
   metrics: { customers: 0, open_opportunities: 0, active_projects: 0, pipeline_values: [] },
-  recent_opportunities: [],
-  upcoming_projects: []
+  opportunities_by_stage: [],
+  pending_approvals: { total: 0, breakdown: { claims: 0, stakeholder_payouts: 0, cp_payments: 0 } }
 })
 
 const userName = computed(() => {
@@ -243,13 +149,17 @@ const primaryPipeline = computed(() => {
   if (!first) return 'No value yet'
   return `${first.currency} ${Number(first.total || 0).toLocaleString()}`
 })
+const pendingApprovals = computed(() => ({
+  total: Number(data.pending_approvals?.total || 0),
+  breakdown: {
+    claims: Number(data.pending_approvals?.breakdown?.claims || 0),
+    stakeholder_payouts: Number(data.pending_approvals?.breakdown?.stakeholder_payouts || 0),
+    cp_payments: Number(data.pending_approvals?.breakdown?.cp_payments || 0)
+  }
+}))
+
 const stageSummary = computed(() => {
-  const counts = data.recent_opportunities.reduce((acc, opp) => {
-    const stage = opp.stage || 'Unqualified'
-    acc[stage] = (acc[stage] || 0) + 1
-    return acc
-  }, {})
-  const entries = Object.entries(counts)
+  const entries = (data.opportunities_by_stage || []).map((item) => [item.stage || 'Unqualified', Number(item.count || 0)])
   if (!entries.length) {
     return [
       { name: 'Discussion', count: 0, percent: 12 },
@@ -261,7 +171,16 @@ const stageSummary = computed(() => {
   return entries.map(([name, count]) => ({ name, count, percent: Math.max(12, Math.round((count / max) * 100)) }))
 })
 
-onMounted(async () => {
+onMounted(() => {
+  loadDashboard()
+  refreshTimer = window.setInterval(loadDashboard, 30000)
+})
+
+onUnmounted(() => {
+  if (refreshTimer) window.clearInterval(refreshTimer)
+})
+
+async function loadDashboard() {
   try {
     const dashboardData = await apiGet('/api/dashboard')
     Object.assign(data, dashboardData)
@@ -270,13 +189,8 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-})
-
-function formatDate(dateStr) {
-  if (!dateStr) return 'No date'
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
+
 </script>
 
 <style scoped>
@@ -393,15 +307,9 @@ function formatDate(dateStr) {
   color: #16a34a;
 }
 
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-}
-
 .executive-summary-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
   gap: 18px;
   margin-bottom: 18px;
 }
@@ -410,9 +318,24 @@ function formatDate(dateStr) {
   min-height: 210px;
 }
 
+.approval-summary-card {
+  color: inherit;
+  text-decoration: none;
+}
+
+.approval-summary-card:hover {
+  border-color: rgba(29, 95, 209, 0.28);
+  box-shadow: var(--shadow);
+}
+
+.approval-total {
+  color: var(--primary);
+  font-size: 42px;
+  line-height: 1;
+}
+
 .summary-stack,
-.approval-links,
-.activity-feed {
+.approval-breakdown {
   display: grid;
   gap: 10px;
 }
@@ -427,7 +350,7 @@ function formatDate(dateStr) {
 }
 
 .summary-row span,
-.activity-feed div {
+.approval-breakdown span {
   color: var(--muted);
 }
 
@@ -435,32 +358,16 @@ function formatDate(dateStr) {
   color: var(--heading);
 }
 
-.approval-links a {
+.approval-breakdown div {
+  align-items: center;
   border: 1px solid var(--line);
   border-radius: 8px;
-  color: var(--primary);
-  font-weight: 850;
+  display: flex;
+  justify-content: space-between;
   padding: 12px;
 }
 
-.approval-links a:hover {
-  background: var(--primary-soft);
-}
-
-.activity-feed div {
-  align-items: center;
-  display: flex;
-  gap: 10px;
-}
-
-.activity-feed span {
-  background: var(--accent);
-  border-radius: 999px;
-  height: 8px;
-  width: 8px;
-}
-
-.activity-feed strong {
+.approval-breakdown strong {
   color: var(--heading);
 }
 
@@ -560,42 +467,6 @@ function formatDate(dateStr) {
   height: 100%;
 }
 
-.reminder-list {
-  display: grid;
-  gap: 14px;
-}
-
-.reminder-item {
-  align-items: flex-start;
-  display: flex;
-  gap: 12px;
-}
-
-.reminder-item strong,
-.reminder-item span {
-  display: block;
-}
-
-.reminder-dot {
-  background: var(--primary);
-  border-radius: 999px;
-  box-shadow: 0 0 0 5px var(--primary-soft);
-  flex: 0 0 9px;
-  height: 9px;
-  margin-top: 7px;
-  width: 9px;
-}
-
-.reminder-dot.urgent {
-  background: #d97706;
-  box-shadow: 0 0 0 5px var(--warning-bg);
-}
-
-.reminder-dot.success {
-  background: #16a34a;
-  box-shadow: 0 0 0 5px var(--success-bg);
-}
-
 .loading-state {
   display: flex;
   flex-direction: column;
@@ -624,9 +495,6 @@ function formatDate(dateStr) {
   .quick-action-strip,
   .executive-summary-grid {
     grid-template-columns: repeat(2, 1fr);
-  }
-  .dashboard-grid {
-    grid-template-columns: 1fr;
   }
 }
 

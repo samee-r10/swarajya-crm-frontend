@@ -36,6 +36,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { API_BASE } from '../api/client'
 import DocumentViewer from './DocumentViewer.vue'
 
 const props = defineProps({
@@ -59,15 +60,43 @@ function openViewer(index) {
 }
 
 function documentKey(doc, index) {
-  return doc?.public_id || doc?.secure_url || doc?.url || doc?.data_url || doc?.name || index
+  return doc?.public_id || doc?.preview_url || doc?.secure_url || doc?.url || doc?.data_url || doc?.name || index
 }
 
 function documentUrl(doc) {
-  return doc?.secure_url || doc?.url || doc?.data_url || doc?.href || ''
+  if (!doc) return ''
+  if (doc.preview_url) return normalizeDocumentUrl(doc.preview_url)
+  const rawUrl = doc.secure_url || doc.url || doc.data_url || doc.href || ''
+  if (shouldProxyDocument(doc, rawUrl)) return normalizeDocumentUrl(documentPreviewUrl(doc, rawUrl))
+  return normalizeDocumentUrl(rawUrl)
 }
 
 function documentName(doc) {
   return doc?.name || doc?.original_filename || doc?.filename || doc?.public_id || 'Uploaded document'
+}
+
+function normalizeDocumentUrl(url) {
+  if (!url) return ''
+  if (url.startsWith('/api/') && API_BASE) return `${API_BASE}${url}`
+  return url
+}
+
+function shouldProxyDocument(doc, rawUrl) {
+  if (!rawUrl || rawUrl.startsWith('data:')) return false
+  const type = String(doc?.type || doc?.mime_type || '').toLowerCase()
+  const name = documentName(doc).toLowerCase()
+  const path = rawUrl.split('?')[0].toLowerCase()
+  const isPdf = type.includes('pdf') || name.endsWith('.pdf') || path.endsWith('.pdf')
+  return isPdf && rawUrl.includes('cloudinary.com')
+}
+
+function documentPreviewUrl(doc, rawUrl) {
+  const params = new URLSearchParams({ url: rawUrl })
+  const name = documentName(doc)
+  if (name) params.set('name', name)
+  const type = doc?.type || doc?.mime_type
+  if (type) params.set('type', type)
+  return `/api/uploads/preview?${params.toString()}`
 }
 
 function fileType(doc) {

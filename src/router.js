@@ -34,6 +34,7 @@ import ChartOfAccounts from './views/ChartOfAccounts.vue'
 import ExpenseClaims from './views/ExpenseClaims.vue'
 import LoanManagement from './views/LoanManagement.vue'
 import PendingClaimApprovals from './views/PendingClaimApprovals.vue'
+import ApprovalCenter from './views/ApprovalCenter.vue'
 import StakeholderPayouts from './views/StakeholderPayouts.vue'
 import Payables from './views/Payables.vue'
 import HRManagement from './views/HRManagement.vue'
@@ -69,6 +70,7 @@ const routes = [
   { path: '/finance/transactions/:id', name: 'transaction-detail', component: TransactionDetail, props: true },
   { path: '/claims', name: 'expense-claims', component: ExpenseClaims },
   { path: '/finance/claims', redirect: '/claims' },
+  { path: '/approvals', name: 'approval-center', component: ApprovalCenter },
   { path: '/claims/approvals', name: 'claim-approvals', component: PendingClaimApprovals },
   { path: '/finance/accounts', name: 'chart-of-accounts', component: ChartOfAccounts },
   { path: '/finance/invoices', name: 'invoices', component: Invoices },
