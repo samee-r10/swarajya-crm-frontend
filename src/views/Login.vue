@@ -35,29 +35,6 @@
           </div>
         </div>
 
-        <div class="feature-pills">
-          <span>
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/>
-            </svg>
-            Secure
-          </span>
-          <span>
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="m13 2-9 13h8l-1 7 9-13h-8l1-7Z"/>
-            </svg>
-            Fast
-          </span>
-          <span>
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M2 12h20"/>
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z"/>
-            </svg>
-            Unified
-          </span>
-        </div>
-
         <p class="copyright">&copy; 2026 Swarajya CRM. All rights reserved.</p>
       </div>
     </section>
@@ -334,26 +311,6 @@ async function submit() {
   font-weight: 500;
   line-height: 1.5;
   margin: 0;
-}
-
-.feature-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  margin-top: 56px;
-}
-
-.feature-pills span {
-  align-items: center;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(203, 213, 225, 0.9);
-  border-radius: 999px;
-  color: #334155;
-  display: inline-flex;
-  font-size: 15px;
-  font-weight: 700;
-  gap: 9px;
-  padding: 11px 18px;
 }
 
 .copyright {
