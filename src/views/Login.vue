@@ -11,6 +11,30 @@
           <p>A focused CRM workspace for opportunities, projects, finance, and treasury operations.</p>
         </div>
 
+        <div class="meeting-notice">
+          <div class="notice-header">
+            <span class="notice-badge">
+              <span class="pulse-dot"></span>
+              Announcement
+            </span>
+          </div>
+          <div class="notice-body">
+            <div class="notice-icon-box">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+                <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/>
+              </svg>
+            </div>
+            <div class="notice-content">
+              <h3>Upcoming Board Meeting</h3>
+              <p>Next Saturday, 25 July 2026, from 12:00 PM onwards.</p>
+            </div>
+          </div>
+        </div>
+
         <div class="feature-pills">
           <span>
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
@@ -197,6 +221,119 @@ async function submit() {
   line-height: 1.65;
   margin: 36px 0 0;
   max-width: 620px;
+}
+
+.meeting-notice {
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 18px;
+  box-shadow: 
+    0 4px 30px rgba(0, 0, 0, 0.03), 
+    inset 0 1px 1px rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  margin-top: 36px;
+  max-width: 620px;
+  padding: 24px;
+  position: relative;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.meeting-notice:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 10px 40px rgba(79, 70, 229, 0.06), 
+    inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  border-color: rgba(79, 70, 229, 0.2);
+}
+
+.notice-header {
+  margin-bottom: 12px;
+}
+
+.notice-badge {
+  align-items: center;
+  background: rgba(79, 70, 229, 0.08);
+  border: 1px solid rgba(79, 70, 229, 0.15);
+  border-radius: 999px;
+  color: #4f46e5;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 6px;
+  letter-spacing: 0.5px;
+  padding: 5px 12px;
+  text-transform: uppercase;
+}
+
+.pulse-dot {
+  background-color: #4f46e5;
+  border-radius: 50%;
+  display: inline-block;
+  height: 6px;
+  width: 6px;
+  position: relative;
+}
+
+.pulse-dot::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: inherit;
+  animation: pulse-ring 1.2s cubic-bezier(0.215, 0.610, 0.355, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+.notice-body {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+}
+
+.notice-icon-box {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 12px;
+  color: #4f46e5;
+  display: flex;
+  height: 48px;
+  justify-content: center;
+  width: 48px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.notice-content {
+  flex: 1;
+}
+
+.notice-content h3 {
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 750;
+  margin: 0 0 6px;
+}
+
+.notice-content p {
+  color: #475569;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  margin: 0;
 }
 
 .feature-pills {
