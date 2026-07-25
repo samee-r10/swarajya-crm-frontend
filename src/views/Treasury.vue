@@ -12,6 +12,8 @@
         <strong>₹{{ formatCurrency(dashboardData.reserve_available) }}</strong>
       </div>
       <div class="hero-actions">
+        <button class="button secondary" type="button" @click="activeTab = 'expense_log'">Expense Log</button>
+        <RouterLink class="button secondary" to="/treasury/payables">Payables</RouterLink>
         <RouterLink class="button secondary" to="/treasury/products">Products</RouterLink>
         <RouterLink class="button secondary" to="/treasury/bank-accounts">Bank Accounts</RouterLink>
         <RouterLink class="button secondary" to="/treasury/fund-transfers">Fund Transfer</RouterLink>
@@ -26,7 +28,7 @@
           :key="tab.id"
           class="tab-btn"
           :class="{ active: activeTab === tab.id }"
-          @click="activeTab = tab.id"
+          @click="switchTab(tab.id)"
         >
           <span class="tab-icon" v-html="tab.icon"></span>
           {{ tab.label }}
@@ -624,6 +626,169 @@
       </div>
     </div>
 
+    <!-- Expense Log Tab -->
+    <div v-if="activeTab === 'expense_log'" class="expense-tab card p-0">
+      <div class="card-header p-24 border-bottom flex-between" style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h3 class="m-0">Expense Log</h3>
+          <small class="text-muted">Outgoing expense transactions recorded from Transaction Ledger awaiting payable creation</small>
+        </div>
+        <button class="button secondary text-sm" type="button" @click="loadExpenseData">Refresh Log</button>
+      </div>
+
+      <!-- Feedback alerts -->
+      <div v-if="expenseSuccessMessage" class="alert alert-success m-24 mb-0" style="margin: 16px 24px 0; padding: 12px 16px; background: #dcfce7; color: #166534; border-radius: 6px; font-size: 13px;">
+        {{ expenseSuccessMessage }}
+      </div>
+      <div v-if="expenseErrorMessage" class="alert alert-danger m-24 mb-0" style="margin: 16px 24px 0; padding: 12px 16px; background: #fee2e2; color: #991b1b; border-radius: 6px; font-size: 13px;">
+        {{ expenseErrorMessage }}
+      </div>
+
+      <div class="revenue-log-summary p-24 border-bottom">
+        <div class="revenue-summary-grid">
+          <div class="revenue-summary-card settled">
+            <span class="revenue-summary-label">Total Expenses</span>
+            <strong class="revenue-summary-value">₹{{ formatCurrency(expenseSummaryStats.totalAmount) }}</strong>
+            <small class="text-muted">{{ expenseSummaryStats.totalCount }} total expense records</small>
+          </div>
+          <div class="revenue-summary-card pending">
+            <span class="revenue-summary-label">Awaiting Payable</span>
+            <strong class="revenue-summary-value text-warning">₹{{ formatCurrency(expenseSummaryStats.awaitingPayableAmount) }}</strong>
+            <small class="text-muted">{{ expenseSummaryStats.awaitingPayableCount }} ready to move to payables</small>
+          </div>
+          <div class="revenue-summary-card amount-settled">
+            <span class="revenue-summary-label">Payables Created</span>
+            <strong class="revenue-summary-value text-primary">₹{{ formatCurrency(expenseSummaryStats.payableCreatedAmount) }}</strong>
+            <small class="text-muted">{{ expenseSummaryStats.payableCreatedCount }} in payables workflow</small>
+          </div>
+          <div class="revenue-summary-card amount-pending">
+            <span class="revenue-summary-label">Settled / Paid</span>
+            <strong class="revenue-summary-value text-success">₹{{ formatCurrency(expenseSummaryStats.paidAmount) }}</strong>
+            <small class="text-muted">{{ expenseSummaryStats.paidCount }} fully paid out</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="revenue-filter-bar p-20 border-bottom" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <div class="revenue-search-wrap" style="flex: 1; min-width: 240px;">
+          <svg class="revenue-search-icon" viewBox="0 0 24 24" width="18" height="18">
+            <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/>
+          </svg>
+          <input
+            v-model="expenseSearch"
+            type="search"
+            placeholder="Search expense #, vendor, employee, description, tx ID..."
+          >
+        </div>
+        <select v-model="expensePayableStatusFilter" class="form-control text-sm" style="width: 170px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px;">
+          <option value="all">All Payable Status</option>
+          <option value="Not Created">Not Created</option>
+          <option value="Payable Created">Payable Created</option>
+        </select>
+        <select v-model="expensePaymentStatusFilter" class="form-control text-sm" style="width: 160px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px;">
+          <option value="all">All Payment Status</option>
+          <option value="Pending">Pending</option>
+          <option value="Paid">Paid</option>
+          <option value="Partially Paid">Partially Paid</option>
+        </select>
+        <span class="text-muted text-sm ml-auto">
+          Showing {{ filteredExpenseEntries.length }} of {{ expenseEntries.length }} records
+        </span>
+      </div>
+
+      <div class="table-responsive">
+        <table class="grid-table">
+          <thead>
+            <tr>
+              <th>Expense #</th>
+              <th>Date</th>
+              <th>Category</th>
+              <th>Vendor / Recipient</th>
+              <th>Tx ID</th>
+              <th>Amount</th>
+              <th>Payment Status</th>
+              <th>Payable Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="filteredExpenseEntries.length === 0">
+              <td colspan="9" class="text-center py-24 text-muted">{{ expenseEntries.length === 0 ? 'No expense transactions recorded yet.' : 'No expenses match your search.' }}</td>
+            </tr>
+            <tr v-for="entry in paginatedExpenseEntries" :key="entry.id">
+              <td>
+                <span class="badge" style="font-family: monospace; font-weight: bold; background-color: #fef3c7; color: #b45309; padding: 4px 8px; border-radius: 4px;">
+                  {{ entry.expense_number || ('EXP-' + entry.id) }}
+                </span>
+              </td>
+              <td>{{ formatDate(entry.expense_date) }}</td>
+              <td>
+                <div class="project-info">
+                  <strong>{{ entry.expense_category || 'General Expense' }}</strong>
+                  <small class="text-muted text-truncate" style="max-width: 180px; display: block;">{{ entry.description || '-' }}</small>
+                </div>
+              </td>
+              <td><strong>{{ entry.vendor_name || entry.employee_name || 'General Outgoing' }}</strong></td>
+              <td>
+                <span v-if="entry.transaction_id" class="badge" style="font-family: monospace; background-color: #f3f4f6; color: #4b5563; padding: 2px 6px; border-radius: 4px;">
+                  #{{ entry.transaction_id }}
+                </span>
+                <span v-else class="text-muted">-</span>
+              </td>
+              <td class="text-semibold text-danger">₹{{ formatCurrency(entry.total_amount || entry.amount) }}</td>
+              <td>
+                <span class="status-pill text-xs" :class="entry.payment_status === 'Paid' ? 'active' : 'inactive'">
+                  {{ entry.payment_status || 'Pending' }}
+                </span>
+              </td>
+              <td>
+                <span class="status-pill text-xs" :class="entry.payable_status === 'Payable Created' ? 'active' : 'warning'">
+                  {{ entry.payable_status || 'Not Created' }}
+                </span>
+              </td>
+              <td>
+                <button
+                  v-if="(entry.payable_status || 'Not Created') === 'Not Created'"
+                  class="button primary text-xs"
+                  :disabled="isCreatingPayableId === entry.id"
+                  @click="moveExpenseToPayable(entry)"
+                >
+                  {{ isCreatingPayableId === entry.id ? 'Moving...' : 'Move to Payables' }}
+                </button>
+                <button
+                  v-else
+                  class="button secondary text-xs"
+                  @click="goToPayables"
+                >
+                  View Payable
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div v-if="expenseTotalPages > 1" class="pagination-bar" style="border-top: 1px solid var(--line); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; background: #ffffff;">
+        <button 
+          class="pagination-btn" 
+          type="button"
+          :disabled="expensePage === 1" 
+          @click="expensePage--"
+        >
+          Previous
+        </button>
+        <span class="pagination-info">Page {{ expensePage }} of {{ expenseTotalPages }} ({{ filteredExpenseEntries.length }} records)</span>
+        <button 
+          class="pagination-btn" 
+          type="button"
+          :disabled="expensePage === expenseTotalPages" 
+          @click="expensePage++"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+
     <!-- Stakeholders Tab -->
     <div v-if="activeTab === 'stakeholders'" class="stakeholders-tab card p-0">
       <div class="card-header p-24 border-bottom d-flex justify-between align-center">
@@ -1171,11 +1336,21 @@ const tabs = [
   { id: 'dashboard', label: 'Dashboard', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>' },
   { id: 'payment_dashboard', label: 'Payment Dashboard', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>' },
   { id: 'revenue', label: 'Revenue Log', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>' },
+  { id: 'expense_log', label: 'Expense Log', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-5-5ZM8 18H6v-2h2v2Zm0-4H6v-2h2v2Zm0-4H6V8h2v2Zm8 8h-6v-2h6v2Zm0-4h-6v-2h6v2Zm0-4h-6V8h6v2Z"/></svg>' },
+  { id: 'payables', label: 'Payables', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' },
   { id: 'stakeholders', label: 'Company Owners', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
   { id: 'partners', label: 'Channel Partners', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
   { id: 'ledger', label: 'Payout Ledger', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>' },
   { id: 'logs', label: 'Audit Logs', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' }
 ]
+
+function switchTab(id) {
+  if (id === 'payables') {
+    router.push('/treasury/payables')
+    return
+  }
+  activeTab.value = id
+}
 
 // Data states
 const dashboardData = ref({
@@ -1191,6 +1366,19 @@ const dashboardData = ref({
 })
 const revenueEntries = ref([])
 const revenueSearch = ref('')
+
+// Expense Log states
+const expenseEntries = ref([])
+const expenseSearch = ref('')
+const expenseCategoryFilter = ref('all')
+const expensePayableStatusFilter = ref('all')
+const expensePaymentStatusFilter = ref('all')
+const expensePage = ref(1)
+const expensePageSize = ref(15)
+const isCreatingPayableId = ref(null)
+const expenseSuccessMessage = ref('')
+const expenseErrorMessage = ref('')
+
 const stakeholders = ref([])
 const users = ref([])
 const partners = ref([])
@@ -1436,6 +1624,113 @@ watch(revenueSearch, () => {
   revenuePage.value = 1
 })
 
+watch(expenseSearch, () => {
+  expensePage.value = 1
+})
+watch(expenseCategoryFilter, () => {
+  expensePage.value = 1
+})
+watch(expensePayableStatusFilter, () => {
+  expensePage.value = 1
+})
+watch(expensePaymentStatusFilter, () => {
+  expensePage.value = 1
+})
+
+const filteredExpenseEntries = computed(() => {
+  let list = expenseEntries.value || []
+
+  if (expenseCategoryFilter.value !== 'all') {
+    list = list.filter(e => e.expense_category === expenseCategoryFilter.value)
+  }
+  if (expensePayableStatusFilter.value !== 'all') {
+    list = list.filter(e => (e.payable_status || 'Not Created') === expensePayableStatusFilter.value)
+  }
+  if (expensePaymentStatusFilter.value !== 'all') {
+    list = list.filter(e => (e.payment_status || 'Pending') === expensePaymentStatusFilter.value)
+  }
+
+  const query = expenseSearch.value.trim().toLowerCase()
+  if (query) {
+    list = list.filter(e => {
+      const expNum = String(e.expense_number || '').toLowerCase()
+      const vendor = String(e.vendor_name || '').toLowerCase()
+      const emp = String(e.employee_name || '').toLowerCase()
+      const desc = String(e.description || '').toLowerCase()
+      const txnId = String(e.transaction_id || '').toLowerCase()
+      const cat = String(e.expense_category || '').toLowerCase()
+      return expNum.includes(query) || vendor.includes(query) || emp.includes(query) || desc.includes(query) || txnId.includes(query) || cat.includes(query)
+    })
+  }
+
+  return list
+})
+
+const expenseTotalPages = computed(() => Math.ceil(filteredExpenseEntries.value.length / expensePageSize.value) || 1)
+
+const paginatedExpenseEntries = computed(() => {
+  const start = (expensePage.value - 1) * expensePageSize.value
+  return filteredExpenseEntries.value.slice(start, start + expensePageSize.value)
+})
+
+const expenseSummaryStats = computed(() => {
+  const all = expenseEntries.value || []
+  const totalCount = all.length
+  const totalAmount = all.reduce((sum, e) => sum + Number(e.total_amount || e.amount || 0), 0)
+
+  const awaitingPayable = all.filter(e => (e.payable_status || 'Not Created') === 'Not Created')
+  const awaitingPayableCount = awaitingPayable.length
+  const awaitingPayableAmount = awaitingPayable.reduce((sum, e) => sum + Number(e.total_amount || e.amount || 0), 0)
+
+  const payableCreated = all.filter(e => e.payable_status === 'Payable Created')
+  const payableCreatedCount = payableCreated.length
+  const payableCreatedAmount = payableCreated.reduce((sum, e) => sum + Number(e.total_amount || e.amount || 0), 0)
+
+  const paid = all.filter(e => e.payment_status === 'Paid')
+  const paidCount = paid.length
+  const paidAmount = paid.reduce((sum, e) => sum + Number(e.total_amount || e.amount || 0), 0)
+
+  return {
+    totalCount,
+    totalAmount,
+    awaitingPayableCount,
+    awaitingPayableAmount,
+    payableCreatedCount,
+    payableCreatedAmount,
+    paidCount,
+    paidAmount
+  }
+})
+
+async function loadExpenseData() {
+  try {
+    const exps = await apiGet('/api/treasury/expense-log')
+    if (exps?.expenses) expenseEntries.value = exps.expenses
+  } catch (e) {
+    console.warn('Treasury: expense log load failed', e.message)
+  }
+}
+
+async function moveExpenseToPayable(expense) {
+  if (!expense || !expense.id) return
+  isCreatingPayableId.value = expense.id
+  expenseSuccessMessage.value = ''
+  expenseErrorMessage.value = ''
+  try {
+    const res = await apiPost(`/api/treasury/expense-log/${expense.id}/create-payable`, {})
+    if (res && res.success) {
+      expenseSuccessMessage.value = `Payable ${res.payable_number} successfully created for Expense ${expense.expense_number || '#' + expense.id}.`
+      await loadExpenseData()
+    } else {
+      expenseErrorMessage.value = res?.error || 'Failed to create payable.'
+    }
+  } catch (err) {
+    expenseErrorMessage.value = err.message || 'Error moving expense to payables.'
+  } finally {
+    isCreatingPayableId.value = null
+  }
+}
+
 // Actions
 onMounted(() => {
   loadAllData()
@@ -1451,6 +1746,9 @@ async function loadAllData() {
 
   const revs = await safe(() => apiGet('/api/treasury/revenue'), 'revenue')
   if (revs?.revenue) revenueEntries.value = revs.revenue
+
+  const exps = await safe(() => apiGet('/api/treasury/expense-log'), 'expense-log')
+  if (exps?.expenses) expenseEntries.value = exps.expenses
 
   const stks = await safe(() => apiGet('/api/treasury/stakeholders'), 'stakeholders')
   if (stks?.stakeholders) stakeholders.value = stks.stakeholders

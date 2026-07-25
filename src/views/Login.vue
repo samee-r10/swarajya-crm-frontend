@@ -11,7 +11,7 @@
           <p>A focused CRM workspace for opportunities, projects, finance, and treasury operations.</p>
         </div>
 
-        <div class="meeting-notice">
+        <!-- <div class="meeting-notice">
           <div class="notice-header">
             <span class="notice-badge">
               <span class="pulse-dot"></span>
@@ -33,7 +33,7 @@
               <p>Next Saturday, 25 July 2026, from 12:00 PM onwards.</p>
             </div>
           </div>
-        </div>
+        </div> -->
 
         <p class="copyright">&copy; 2026 Swarajya CRM. All rights reserved.</p>
       </div>
