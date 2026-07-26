@@ -393,7 +393,7 @@ async function addSchedule() {
 async function markSchedulePaid(schedule) {
   const transactionId = scheduleTxn[schedule.id]
   if (!transactionId) {
-    alert('Select a repayment transaction before marking paid.')
+    swal('Select a repayment transaction before marking paid.')
     return
   }
   await apiPut(`/api/treasury/loan-schedules/${schedule.id}/status`, { status: 'Paid', transaction_id: transactionId })

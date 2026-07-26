@@ -299,7 +299,7 @@ async function loadEntries() {
     categories.value = data.categories || []
     categoryCounts.value = data.category_counts || {}
   } catch (err) {
-    alert(err.message || 'Failed to load vault entries')
+    swal(err.message || 'Failed to load vault entries')
   } finally {
     loading.value = false
   }
@@ -422,7 +422,7 @@ async function saveEntry() {
     closeForm()
     await loadEntries()
   } catch (err) {
-    alert(err.message || 'Failed to save credential')
+    swal(err.message || 'Failed to save credential')
   } finally {
     saving.value = false
   }
@@ -433,7 +433,7 @@ async function revealPassword(entry) {
     const data = await apiGet(`/api/vault/${entry.id}?reveal=1`)
     revealed.value = data.entry
   } catch (err) {
-    alert(err.message || 'Failed to reveal credential')
+    swal(err.message || 'Failed to reveal credential')
   }
 }
 
@@ -443,7 +443,7 @@ async function removeEntry(entry) {
     await apiDelete(`/api/vault/${entry.id}`)
     await loadEntries()
   } catch (err) {
-    alert(err.message || 'Failed to delete credential')
+    swal(err.message || 'Failed to delete credential')
   }
 }
 
@@ -451,7 +451,7 @@ async function copyText(text) {
   try {
     await navigator.clipboard.writeText(text)
   } catch {
-    alert('Could not copy to clipboard')
+    swal('Could not copy to clipboard')
   }
 }
 

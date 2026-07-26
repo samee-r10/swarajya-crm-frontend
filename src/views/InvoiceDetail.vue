@@ -938,7 +938,7 @@ function printStandaloneReceipt() {
   const company = inv.company_info || {}
   const printWindow = window.open('', '_blank', 'width=900,height=1100')
   if (!printWindow) {
-    alert('Please allow pop-ups to print the receipt.')
+    swal('Please allow pop-ups to print the receipt.')
     return
   }
   printWindow.document.write(`

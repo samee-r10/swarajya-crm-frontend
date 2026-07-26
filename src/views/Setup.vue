@@ -996,7 +996,7 @@ async function deleteRole(role) {
       await apiDelete(`/api/setup/roles/${role.id}`)
       loadData()
     } catch (e) {
-      alert(e.message)
+      swal(e.message)
     }
   }
 }

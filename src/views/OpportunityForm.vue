@@ -188,7 +188,7 @@ async function save() {
       }
     }
   } catch (err) {
-    alert(err.message || 'Failed to save')
+    swal(err.message || 'Failed to save')
   }
 }
 </script>

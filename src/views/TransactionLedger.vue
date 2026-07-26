@@ -275,7 +275,7 @@ const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 const now = new Date()
 const salaryPaymentForm = reactive({ month: months[now.getMonth()], year: now.getFullYear(), account_id: '', reference: '', record_ids: [] })
 
-const viewCurrency = ref('USD')
+const viewCurrency = ref('INR')
 const exchangeRates = ref({
   INR: {
     default: 95.0,
@@ -637,7 +637,7 @@ function exportData() {
   })
 
   if (rows.length === 0) {
-    alert('No transaction records available to export.')
+    swal('No transaction records available to export.')
     return
   }
 

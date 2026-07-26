@@ -187,7 +187,7 @@ import { onMounted, ref } from 'vue'
 import { apiGet } from '../api/client'
 
 const metrics = ref(null)
-const viewCurrency = ref('USD')
+const viewCurrency = ref('INR')
 const fixedAssets = ref([])
 const fixedAssetsSummary = ref({ total_cost: 0, total_current_value: 0 })
 const assetsLoaded = ref(false)

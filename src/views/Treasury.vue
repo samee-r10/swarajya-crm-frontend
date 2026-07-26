@@ -1779,7 +1779,7 @@ async function settleStakeholder(stakeholder) {
     await apiPost(`/api/treasury/stakeholders/${stakeholder.id}/settle`)
     await loadAllData()
   } catch (err) {
-    alert(err.message || "Failed to settle stakeholder payouts")
+    swal(err.message || "Failed to settle stakeholder payouts")
   }
 }
 
@@ -1791,7 +1791,7 @@ async function settlePartner(partner) {
     await apiPost(`/api/treasury/partners/${partner.id}/settle`)
     await loadAllData()
   } catch (err) {
-    alert(err.message || "Failed to settle partner payouts")
+    swal(err.message || "Failed to settle partner payouts")
   }
 }
 
@@ -1832,7 +1832,7 @@ function openEditSplitModal(entry) {
     return
   }
   if (isRevenueSettled(entry)) {
-    alert('This revenue entry is already settled and cannot be edited.')
+    swal('This revenue entry is already settled and cannot be edited.')
     return
   }
   editSplitForm.revenue_id = entry.id
@@ -1872,7 +1872,7 @@ async function saveEditSplit() {
     showEditSplitModal.value = false
     await loadAllData()
   } catch (err) {
-    alert(err.message || "Failed to settle revenue entry")
+    swal(err.message || "Failed to settle revenue entry")
   } finally {
     isSavingRevenueSettlement.value = false
   }
@@ -1917,7 +1917,7 @@ async function saveStakeholder() {
     showStakeholderModal.value = false
     loadAllData()
   } catch (err) {
-    alert(err.message || "Failed to save stakeholder")
+    swal(err.message || "Failed to save stakeholder")
   }
 }
 
@@ -1952,7 +1952,7 @@ async function savePartner() {
     showPartnerModal.value = false
     loadAllData()
   } catch (err) {
-    alert(err.message || "Failed to save channel partner")
+    swal(err.message || "Failed to save channel partner")
   }
 }
 
@@ -1962,7 +1962,7 @@ async function togglePayoutStatus(payout) {
     await apiPut(`/api/treasury/payouts/${payout.id}/status`, { status: nextStatus })
     loadAllData()
   } catch (err) {
-    alert(err.message || "Failed to update payout status")
+    swal(err.message || "Failed to update payout status")
   }
 }
 

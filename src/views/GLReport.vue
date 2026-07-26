@@ -17,9 +17,13 @@
             <button type="button" class="toggle-btn" :class="{ active: viewCurrency === 'INR' }" @click="viewCurrency = 'INR'">INR</button>
           </div>
         </div>
+        <button class="button secondary" @click="exportCSV">
+          <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right:6px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/></svg>
+          Export CSV
+        </button>
         <button class="button secondary" @click="printReport">
           <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right:6px"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z" fill="currentColor"/></svg>
-          Export / Print
+          Print
         </button>
       </div>
     </header>
@@ -194,7 +198,7 @@ import { apiGet } from '../api/client'
 const loading = ref(false)
 const report = ref(null)
 const accounts = ref([])
-const viewCurrency = ref('USD')
+const viewCurrency = ref('INR')
 const currencySymbols = reactive({ USD: '$', INR: '₹', EUR: '€', GBP: '£' })
 const exchangeRates = ref({ INR: { default: 95.0, monthly: {} } })
 
@@ -330,6 +334,49 @@ function formatTransactionId(value) {
 
 function printReport() {
   window.print()
+}
+
+function exportCSV() {
+  if (!report.value || !report.value.entries) return
+  
+  const headers = [
+    'Date', 'Ref ID', 'GL Account No', 'GL Account Name', 'Category', 'Description', 
+    'Vendor', 'Customer', 'Product', 'Project', 'Status', 'Debit', 'Credit', 'Running Balance'
+  ]
+  
+  const escapeCSV = (str) => {
+    const text = String(str || '').replace(/"/g, '""')
+    return `"${text}"`
+  }
+  
+  const rows = report.value.entries.map(entry => {
+    return [
+      formatDate(entry.transaction_date || entry.date || entry.created_at),
+      entryRefLabel(entry),
+      entry.gl_account_number || entry.gl_code || '',
+      entry.gl_account_name || entry.account_name || '',
+      entry.category || 'General',
+      entry.description || '',
+      entry.vendor_name || '',
+      entry.customer_name || '',
+      productLabel(entry),
+      entry.project_name || '',
+      entry.status || 'Completed',
+      entry.debit ? convertAmt(entry.debit, entry.currency, entry.transaction_date).toFixed(2) : '',
+      entry.credit ? convertAmt(entry.credit, entry.currency, entry.transaction_date).toFixed(2) : '',
+      convertSummary(entry.running_balance).toFixed(2)
+    ].map(escapeCSV).join(',')
+  })
+  
+  const csvContent = [headers.join(','), ...rows].join('\n')
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.setAttribute('href', url)
+  link.setAttribute('download', `GL_Report_${filters.start_date || 'All'}_to_${filters.end_date || 'All'}.csv`)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 </script>
 

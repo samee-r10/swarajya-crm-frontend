@@ -320,7 +320,7 @@ async function saveField() {
     await fetchObjectData() // Reload
   } catch (err) {
     console.error("Failed to save custom field:", err)
-    alert(err.error || "Failed to save field. Please verify parameters.")
+    swal(err.error || "Failed to save field. Please verify parameters.")
   } finally {
     savingField.value = false
   }
@@ -328,7 +328,7 @@ async function saveField() {
 
 async function deleteField(field) {
   if (field.is_native) {
-    alert("Standard native fields cannot be deleted.")
+    swal("Standard native fields cannot be deleted.")
     return
   }
   
@@ -341,7 +341,7 @@ async function deleteField(field) {
     await fetchObjectData() // Reload
   } catch (err) {
     console.error("Failed to delete custom field:", err)
-    alert("Failed to delete field.")
+    swal("Failed to delete field.")
   }
 }
 </script>

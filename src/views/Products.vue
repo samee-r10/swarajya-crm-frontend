@@ -349,7 +349,14 @@ function productInitials(product) {
 function productMatches(record, product) {
   const keys = [record.product_id, record.product_code, record.product_name, record.product]
   const productKeys = [product.id, product.product_id, product.product_code, product.code, product.product_name, product.name]
-  return keys.some(key => key !== undefined && key !== null && productKeys.some(value => String(value || '') === String(key)))
+  return keys.some(key => {
+    if (key === undefined || key === null || String(key).trim() === '') return false
+    const keyStr = String(key).trim().toLowerCase()
+    return productKeys.some(value => {
+      if (value === undefined || value === null || String(value).trim() === '') return false
+      return String(value).trim().toLowerCase() === keyStr
+    })
+  })
 }
 
 function expenseTransactionMatchesProduct(record, product) {
@@ -357,7 +364,11 @@ function expenseTransactionMatchesProduct(record, product) {
   const productKeys = [product.id, product.product_id, product.product_code, product.code]
   return keys.some(key => {
     if (key === undefined || key === null || String(key).trim() === '') return false
-    return productKeys.some(value => value !== undefined && value !== null && String(value) === String(key))
+    const keyStr = String(key).trim().toLowerCase()
+    return productKeys.some(value => {
+      if (value === undefined || value === null || String(value).trim() === '') return false
+      return String(value).trim().toLowerCase() === keyStr
+    })
   })
 }
 
