@@ -125,7 +125,7 @@
         <tbody>
           <!-- Opening Balance Row -->
           <tr class="opening-row">
-            <td colspan="11"><strong>Opening Balance</strong> — Brought Forward</td>
+            <td colspan="12"><strong>Opening Balance</strong> — Brought Forward</td>
             <td class="right">—</td>
             <td class="right">—</td>
             <td class="right mono" :class="report.opening_balance >= 0 ? 'positive' : 'negative'">
@@ -176,7 +176,7 @@
 
           <!-- Closing Balance Row -->
           <tr class="closing-row">
-            <td colspan="11"><strong>Closing Balance</strong> — Carried Forward</td>
+            <td colspan="12"><strong>Closing Balance</strong> — Carried Forward</td>
             <td class="right mono negative"><strong>- {{ money(convertSummary(report.total_debits)) }}</strong></td>
             <td class="right mono positive"><strong>+ {{ money(convertSummary(report.total_credits)) }}</strong></td>
             <td class="right mono" :class="report.closing_balance >= 0 ? 'positive' : 'negative'">

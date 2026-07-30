@@ -121,24 +121,7 @@
         </div>
 
         <div class="detail-grid">
-          <div class="record-card">
-            <div class="card-heading">
-              <div>
-                <h3>Customer Mapping</h3>
-                <p class="muted small">Approved and DA Signed customers linked through invoices or ledger transactions.</p>
-              </div>
-            </div>
-            <table class="record-table">
-              <thead><tr><th>Customer</th><th class="right">Revenue</th></tr></thead>
-              <tbody>
-                <tr v-for="customer in selectedCustomers" :key="customer.id || customer.name">
-                  <td>{{ customer.name }}</td>
-                  <td class="right">{{ money(customer.revenue) }}</td>
-                </tr>
-                <tr v-if="selectedCustomers.length === 0"><td colspan="2" class="empty-row">No customer activity yet.</td></tr>
-              </tbody>
-            </table>
-          </div>
+
 
           <div class="record-card">
             <div class="card-heading">
@@ -324,7 +307,6 @@ const summary = computed(() => products.value.reduce((totals, product) => {
 }, { revenue: 0, expense: 0, net: 0 }))
 
 const selectedMetrics = computed(() => selectedProduct.value ? metricsFor(selectedProduct.value) : emptyMetrics())
-const selectedCustomers = computed(() => selectedProduct.value ? customersFor(selectedProduct.value) : [])
 
 const analyticsRows = computed(() => {
   const metrics = selectedMetrics.value
@@ -398,21 +380,6 @@ function metricsFor(product) {
     monthlyExpense: expense,
     projectCount: projectIds.size
   }
-}
-
-function customersFor(product) {
-  const rows = [...transactions.value, ...invoices.value].filter(row => productMatches(row, product) && isActiveCustomerActivity(row))
-  const map = new Map()
-  rows.forEach(row => {
-    const key = customerKey(row)
-    if (!key) return
-    const existing = map.get(key) || { id: key, name: row.customer_name || row.customer_company || `Customer #${key}`, revenue: 0 }
-    if (row.type === 'Income' || row.invoice_number || row.total_amount) {
-      existing.revenue += row.type === 'Income' ? transactionBaseAmount(row) : Number(row.total_amount || row.amount || 0)
-    }
-    map.set(key, existing)
-  })
-  return Array.from(map.values())
 }
 
 function transactionBaseAmount(row) {
