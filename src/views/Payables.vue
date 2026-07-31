@@ -99,14 +99,14 @@
           <label>Payment Date<input v-model="payment.payment_date" type="date" required></label>
           <label>Payment Mode<select v-model="payment.payment_mode"><option value="">Select mode</option><option v-for="mode in paymentModes" :key="mode">{{ mode }}</option></select></label>
           <label>Paid From Bank Account<select v-model="payment.bank_account_id" required><option value="">Select account</option><option v-for="account in bankAccounts" :key="account.id" :value="account.id">{{ account.label }}</option></select></label>
-          <label v-if="!isSalaryPayable">Paid To Type<select v-model="payment.recipient_owner_type" required @change="handlePaymentRecipientTypeChange"><option v-for="type in recipientTypes" :key="type" :value="type">{{ type }}</option></select></label>
-          <label v-if="!isSalaryPayable && !isOtherPayment">Paid To Name
+          <label v-if="!isSalaryPayable && payment.payment_mode !== 'UPI'">Paid To Type<select v-model="payment.recipient_owner_type" required @change="handlePaymentRecipientTypeChange"><option v-for="type in recipientTypes" :key="type" :value="type">{{ type }}</option></select></label>
+          <label v-if="!isSalaryPayable && !isOtherPayment && payment.payment_mode !== 'UPI'">Paid To Name
             <select v-model="paymentRecipientOwnerKey" required>
               <option value="">Select {{ recipientOwnerLabel.toLowerCase() }}</option>
               <option v-for="owner in filteredRecipientOwners" :key="owner.key" :value="owner.key">{{ owner.name }}</option>
             </select>
           </label>
-          <label v-if="!isSalaryPayable && !isOtherPayment">Paid To Account
+          <label v-if="!isSalaryPayable && !isOtherPayment && payment.payment_mode !== 'UPI'">Paid To Account
             <select v-model="payment.recipient_account_id" :required="isRecipientAccountRequired" :disabled="!paymentRecipientOwnerKey">
               <option value="">Select recipient account</option>
               <option v-for="account in filteredRecipientAccounts" :key="account.id" :value="account.id">{{ account.label }}</option>
@@ -115,7 +115,7 @@
           <label>Payment Transaction ID / Reference<input v-model="payment.reference"></label>
           <label>Remarks<input v-model="payment.remarks"></label>
           <p v-if="isSalaryPayable" class="span-2 muted">Salary payable settlement will deduct the selected company bank account and create a bank statement entry.</p>
-          <button v-if="!isSalaryPayable && !isOtherPayment" class="button secondary span-2" type="button" @click="openRecipientAccountForm">Add Recipient Bank Account</button>
+          <button v-if="!isSalaryPayable && !isOtherPayment && payment.payment_mode !== 'UPI'" class="button secondary span-2" type="button" @click="openRecipientAccountForm">Add Recipient Bank Account</button>
           <p v-if="error" class="span-2 flash warning">{{ error }}</p>
           <div class="span-2 action-row">
             <button class="button secondary" type="button" @click="selectedPayable = null">Cancel</button>
@@ -389,11 +389,11 @@ async function markPaid() {
     error.value = 'Select the bank account used for this payable payment.'
     return
   }
-  if (!isSalaryPayable.value && !isOtherPayment.value && !paymentRecipientOwnerKey.value) {
+  if (!isSalaryPayable.value && !isOtherPayment.value && payment.payment_mode !== 'UPI' && !paymentRecipientOwnerKey.value) {
     error.value = `Select the ${recipientOwnerLabel.value} paid to.`
     return
   }
-  if (!isSalaryPayable.value && !isOtherPayment.value && isRecipientAccountRequired.value && !payment.recipient_account_id) {
+  if (!isSalaryPayable.value && !isOtherPayment.value && payment.payment_mode !== 'UPI' && isRecipientAccountRequired.value && !payment.recipient_account_id) {
     error.value = 'Select the recipient account paid to.'
     return
   }
@@ -412,10 +412,10 @@ function paymentPayload() {
     ...payment,
     bank_account_id: payment.bank_account_id,
     payment_mode: payment.payment_mode,
-    recipient_account_id: !isSalaryPayable.value && !isOtherPayment.value && isRecipientAccountRequired.value ? payment.recipient_account_id : '',
-    recipient_owner_id: isOtherPayment.value ? '' : (selectedRecipientOwner.value?.id || ''),
-    recipient_owner_name: isSalaryPayable.value ? (selectedPayable.value?.party_name || 'Salary Payable') : (isOtherPayment.value ? 'Other' : (selectedRecipientOwner.value?.name || '')),
-    recipient_owner_type: isSalaryPayable.value ? 'Employee' : payment.recipient_owner_type,
+    recipient_account_id: !isSalaryPayable.value && !isOtherPayment.value && payment.payment_mode !== 'UPI' && isRecipientAccountRequired.value ? payment.recipient_account_id : '',
+    recipient_owner_id: (isOtherPayment.value || payment.payment_mode === 'UPI') ? '' : (selectedRecipientOwner.value?.id || ''),
+    recipient_owner_name: isSalaryPayable.value ? (selectedPayable.value?.party_name || 'Salary Payable') : (isOtherPayment.value || payment.payment_mode === 'UPI') ? 'Other' : (selectedRecipientOwner.value?.name || ''),
+    recipient_owner_type: isSalaryPayable.value ? 'Employee' : payment.payment_mode === 'UPI' ? 'Other' : payment.recipient_owner_type,
   }
 }
 
