@@ -93,7 +93,9 @@
           <label>Claim Amount<input v-model.number="form.amount" type="number" min="0" step="0.01" required :readonly="isLocked"></label>
           <label>Total Claim Amount<input :value="totalClaimAmount.toFixed(2)" readonly></label>
           <label class="span-2">Expense Description<textarea v-model="form.expense_description" rows="3" :readonly="isLocked"></textarea></label>
-          <label class="span-2">Remarks<textarea v-model="form.remarks" rows="2" :readonly="isLocked"></textarea></label>
+          <label class="span-2">Remarks
+            <textarea v-model="approvalRemarks" rows="2" :placeholder="pendingApproval ? 'Add approval or rejection remarks...' : ''" :readonly="!pendingApproval && isLocked"></textarea>
+          </label>
           <label class="span-2">Supporting Document
             <input v-if="!isLocked" type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" :disabled="uploadingAttachment" @change="handleAttachment">
             <span v-if="uploadingAttachment" class="field-hint">Uploading document...</span>
@@ -113,6 +115,10 @@
             <button v-if="isDraft" type="button" class="button" @click="saveWithStatus('Submitted')">Submit Claim</button>
             <button v-if="canManageClaimFinancialActions && selectedClaim && selectedClaim.status === 'Posted'" type="button" class="button" @click="claimAction('settle')">Settle</button>
             <button v-if="isDraft" type="button" class="button secondary" @click="claimAction('cancel')">Cancel Claim</button>
+            <template v-if="pendingApproval">
+              <button type="button" class="button secondary danger-text" @click="approvalDecide('reject')">Reject</button>
+              <button type="button" class="button" @click="approvalDecide('approve')">Approve</button>
+            </template>
           </div>
         </form>
       </div>
@@ -127,6 +133,7 @@ import DocumentPreview from '../components/DocumentPreview.vue'
 import { DEPARTMENTS } from '../utils/sharedOptions'
 
 const claims = ref([])
+const myPendingApprovals = ref([])
 const loading = ref(false)
 const showModal = ref(false)
 const selectedClaim = ref(null)
@@ -134,6 +141,7 @@ const error = ref('')
 const uploadingAttachment = ref(false)
 const search = ref('')
 const statusFilter = ref('')
+const approvalRemarks = ref('')
 const paymentModes = ref([])
 const statuses = ['Draft', 'Submitted', 'Pending Stakeholder Approval', 'Pending Approval Sequence 1', 'Pending Approval Sequence 2', 'Pending Approval Sequence 3', 'Under Review', 'Approved', 'Rejected', 'Posted', 'Settled', 'Cancelled']
 const expenseCategories = ['Business Claim']
@@ -155,6 +163,10 @@ const canManageClaimFinancialActions = computed(() => {
 const totalClaimAmount = computed(() => Number(form.amount) || 0)
 const isDraft = computed(() => !selectedClaim.value || selectedClaim.value.status === 'Draft')
 const isLocked = computed(() => selectedClaim.value && selectedClaim.value.status !== 'Draft')
+const pendingApproval = computed(() => {
+  if (!selectedClaim.value) return null
+  return myPendingApprovals.value.find(a => a.claim_id === selectedClaim.value.id) || null
+})
 const stats = computed(() => ({
   pending: claims.value.filter(c => ['Submitted', 'Under Review', 'Approved'].includes(c.status) || String(c.status || '').startsWith('Pending')).length,
   posted: claims.value.filter(c => c.status === 'Posted').length,
@@ -170,7 +182,7 @@ const filteredClaims = computed(() => {
 })
 
 onMounted(async () => {
-  await Promise.all([loadClaims(), loadOptions()])
+  await Promise.all([loadClaims(), loadOptions(), loadMyPendingApprovals()])
 })
 
 function defaultForm() {
@@ -232,11 +244,35 @@ function selectClaim(claim) {
   selectedClaim.value = claim
   Object.assign(form, defaultForm(), claim)
   error.value = ''
+  approvalRemarks.value = ''
   showModal.value = true
 }
 
 function closeModal() {
   showModal.value = false
+  approvalRemarks.value = ''
+}
+
+async function loadMyPendingApprovals() {
+  try {
+    const data = await apiGet('/api/claim-approvals/pending')
+    myPendingApprovals.value = (data.approvals || []).map(a => ({ ...a, claim_id: a.claim_id || a.claim?.id }))
+  } catch {
+    myPendingApprovals.value = []
+  }
+}
+
+async function approvalDecide(action) {
+  if (action === 'reject' && !confirm('Reject this claim?')) return
+  error.value = ''
+  try {
+    const approval = pendingApproval.value
+    await apiPost(`/api/claim-approvals/${approval.id}/action`, { action, remarks: approvalRemarks.value })
+    showModal.value = false
+    await Promise.all([loadClaims(), loadMyPendingApprovals()])
+  } catch (err) {
+    error.value = err.message
+  }
 }
 
 async function handleAttachment(event) {

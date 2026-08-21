@@ -35,7 +35,6 @@
             :title="currentName"
             :style="pdfTransform"
             loading="lazy"
-            referrerpolicy="no-referrer"
           ></iframe>
 
           <div v-else-if="isImage" class="viewer-image-wrap">
