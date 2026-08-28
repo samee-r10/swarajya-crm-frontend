@@ -151,7 +151,7 @@
               <td class="right actions-cell payroll-actions">
                 <button v-if="canEditPayroll(record)" class="button secondary small" type="button" @click="openPayrollForm(record)">Edit</button>
                 <button v-if="canApprovePayroll && record.status !== 'Finalized'" class="button small" type="button" @click="finalizePayroll(record)">Finalize</button>
-                  <button v-if="canPostSalary && record.status === 'Finalized' && record.payment_status !== 'Paid' && !record.ledger_transaction_id && !record.salary_payable_id" class="button small" type="button" @click="openSalaryPoster([record.id])">Post</button>
+                <button v-if="(canCreatePayroll || canApprovePayroll || canPostSalary) && record.status === 'Finalized' && record.payment_status !== 'Paid' && !record.salary_payable_id" class="button small" type="button" @click="openSalaryPoster([record.id])">Create Payable</button>
                 <button v-if="canDeletePayroll(record)" class="button secondary danger small" type="button" @click="deletePayrollRecord(record)">Delete</button>
               </td>
             </tr>
@@ -161,7 +161,7 @@
         </div>
         <div class="action-row">
           <button v-if="canApprovePayroll && monthPayroll.some(r => r.status !== 'Finalized')" class="button secondary" type="button" @click="finalizeVisiblePayroll">Finalize Salary Sheet</button>
-          <button v-if="canPostSalary && finalizedUnpaid.length" class="button" type="button" @click="openSalaryPoster(finalizedUnpaid.map(r => r.id))">Post Selected Month Salaries</button>
+          <button v-if="(canCreatePayroll || canApprovePayroll || canPostSalary) && finalizedUnpaid.length" class="button" type="button" @click="openSalaryPoster(finalizedUnpaid.map(r => r.id))">Create Salary Payable</button>
         </div>
       </div>
 
@@ -628,7 +628,7 @@ const filteredWorkers = computed(() => {
 })
 const effectiveCompanyLogo = computed(() => settings.company_logo_url || '')
 const monthPayroll = computed(() => payroll.value.filter(record => record.salary_month === payrollFilters.month && Number(record.salary_year) === Number(payrollFilters.year)))
-const finalizedUnpaid = computed(() => monthPayroll.value.filter(record => record.status === 'Finalized' && record.payment_status !== 'Paid' && !record.ledger_transaction_id && !record.salary_payable_id))
+const finalizedUnpaid = computed(() => monthPayroll.value.filter(record => record.status === 'Finalized' && record.payment_status !== 'Paid' && !record.salary_payable_id))
 const salaryTransactionsForMonth = computed(() => salaryTransactions.value.filter(tx => tx.salary_month === payrollFilters.month && Number(tx.salary_year) === Number(payrollFilters.year)))
 const selectedWorkerBank = computed(() => {
   if (!selectedWorker.value) return null
@@ -650,7 +650,7 @@ const selectedWorkerBank = computed(() => {
 const selectedWorkerSalaryStructure = computed(() => selectedWorker.value?.salary_structure || null)
 const salaryStructureNetPayable = computed(() => selectedWorkerSalaryStructure.value ? calculateSalaryStructureNet(selectedWorkerSalaryStructure.value) : 0)
 const salaryStructureFormNetPayable = computed(() => calculateSalaryStructureNet(salaryStructureForm))
-const payableRecordsForPaymentModal = computed(() => payroll.value.filter(record => record.salary_month === paymentForm.month && Number(record.salary_year) === Number(paymentForm.year) && record.status === 'Finalized' && record.payment_status !== 'Paid' && !record.ledger_transaction_id && !record.salary_payable_id))
+const payableRecordsForPaymentModal = computed(() => payroll.value.filter(record => record.salary_month === paymentForm.month && Number(record.salary_year) === Number(paymentForm.year) && record.status === 'Finalized' && record.payment_status !== 'Paid' && !record.salary_payable_id))
 const selectedPaymentRecords = computed(() => {
   const selectedIds = paymentForm.record_ids.map(id => String(id))
   return payableRecordsForPaymentModal.value.filter(record => selectedIds.includes(String(record.id)))
@@ -1167,47 +1167,31 @@ async function postSalaryPayment() {
     error.value = 'Select at least one finalized unpaid salary record.'
     return
   }
-  const duplicated = selectedPaymentRecords.value.find(record => salaryTransactions.value.some(tx => tx.hr_payroll_record_ids?.includes(record.id)))
+  const duplicated = selectedPaymentRecords.value.find(record => record.salary_payable_id)
   if (duplicated) {
-    error.value = `Duplicate salary posting prevented for ${duplicated.employee_name} ${duplicated.salary_month} ${duplicated.salary_year}.`
+    error.value = `Salary payable already created for ${duplicated.employee_name} ${duplicated.salary_month} ${duplicated.salary_year}.`
     return
   }
-  const tx = buildSalaryTransaction({
-    records: selectedPaymentRecords.value,
-    salaryMonth: paymentForm.month,
-    salaryYear: paymentForm.year,
-    reference: paymentForm.reference
-  })
   const selectedIds = paymentForm.record_ids.map(id => String(id))
-  const updatedPayroll = payroll.value.map(record => {
-    if (!selectedIds.includes(String(record.id))) return record
-    return {
-      ...record,
-      payment_status: record.payment_status || 'Pending',
-      transaction_reference: tx.reference,
-      ledger_transaction_id: tx.id,
-      salary_payable_status: 'Pending'
-    }
-  })
-  let savedTransaction = tx
-  let savedPayroll = updatedPayroll
   try {
     const data = await apiPost('/api/hr/salary-payments', {
-      transaction: tx,
-      payroll_records: updatedPayroll.filter(record => selectedIds.includes(String(record.id)))
+      transaction: {
+        salary_month: paymentForm.month,
+        salary_year: paymentForm.year,
+        reference: paymentForm.reference,
+        total_amount: selectedPaymentTotal.value
+      },
+      payroll_records: payroll.value.filter(record => selectedIds.includes(String(record.id)))
     })
-    savedTransaction = responseRecord(data, 'transaction') || tx
     const responsePayroll = responseList(data, 'payroll')
     if (responsePayroll.length) {
       const responseById = new Map(responsePayroll.map(record => [String(record.id), record]))
-      savedPayroll = payroll.value.map(record => responseById.get(String(record.id)) || record)
+      payroll.value = payroll.value.map(record => responseById.get(String(record.id)) || record)
     }
   } catch (err) {
     error.value = err.message || 'HR salary payable API unavailable; salary payable was not created.'
     return
   }
-  salaryTransactions.value = [savedTransaction, ...salaryTransactions.value]
-  payroll.value = savedPayroll
   showPaymentModal.value = false
   statusMessage.value = 'Salary payable created. Settle it later from Treasury Payables.'
 }

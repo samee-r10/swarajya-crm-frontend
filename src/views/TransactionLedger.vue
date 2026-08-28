@@ -389,7 +389,7 @@ const payableSalaryRecords = computed(() => {
     return record.salary_month === salaryPaymentForm.month &&
       Number(record.salary_year) === Number(salaryPaymentForm.year) &&
       record.status === 'Finalized' &&
-      record.payment_status !== 'Paid'
+      !record.ledger_transaction_id
   })
 })
 const selectedSalaryRecords = computed(() => payableSalaryRecords.value)
@@ -414,7 +414,7 @@ async function postSalaryPayment() {
     salaryPostError.value = 'Select at least one finalized unpaid salary record.'
     return
   }
-  const duplicated = selectedSalaryRecords.value.find(record => salaryTransactions.value.some(tx => tx.hr_payroll_record_ids?.includes(record.id)))
+  const duplicated = selectedSalaryRecords.value.find(record => record.ledger_transaction_id || salaryTransactions.value.some(tx => tx.hr_payroll_record_ids?.includes(record.id)))
   if (duplicated) {
     salaryPostError.value = `Duplicate salary posting prevented for ${salaryPaymentForm.month} ${salaryPaymentForm.year}.`
     return
