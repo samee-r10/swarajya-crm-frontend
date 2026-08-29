@@ -21,12 +21,19 @@
           <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right:6px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/></svg>
           Export CSV
         </button>
+        <button class="button secondary" @click="exportExcel">
+          <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right:6px"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" fill="currentColor"/></svg>
+          Export Excel
+        </button>
         <button class="button secondary" @click="printReport">
           <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right:6px"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z" fill="currentColor"/></svg>
           Print
         </button>
       </div>
     </header>
+
+    <!-- Sub-navigation Tabs -->
+    <ReportHeaderTabs activeTab="general" />
 
     <!-- Filters -->
     <section class="filters-card no-print">
@@ -43,8 +50,20 @@
           <span>Account</span>
           <select v-model="filters.account_id" @change="loadReport">
             <option value="">All Accounts</option>
-            <option v-for="acc in accounts" :key="acc.id" :value="acc.id">{{ acc.name }}</option>
+            <option v-for="acc in accounts" :key="acc.id" :value="acc.id">{{ acc.gl_code ? `${acc.gl_code} · ` : '' }}{{ acc.name }}</option>
           </select>
+        </label>
+        <label>
+          <span>Type</span>
+          <select v-model="filters.type">
+            <option value="">All Types</option>
+            <option value="Income">Income (Credit)</option>
+            <option value="Expense">Expense (Debit)</option>
+          </select>
+        </label>
+        <label class="search-label">
+          <span>Search</span>
+          <input type="search" v-model="filters.search" placeholder="Search reference, party, memo...">
         </label>
         <button class="button" @click="loadReport" :disabled="loading">
           {{ loading ? 'Loading...' : 'Generate Report' }}
@@ -134,11 +153,13 @@
           </tr>
 
           <!-- Journal Entries -->
-          <tr v-for="(entry, idx) in report.entries" :key="entry.id" :class="rowClass(entry)">
+          <tr v-for="(entry, idx) in visibleEntries" :key="entry.id" :class="rowClass(entry)">
             <td class="muted-sm">{{ idx + 1 }}</td>
             <td class="date-cell">{{ formatDateTime(entry.transaction_date || entry.date || entry.created_at) }}</td>
             <td class="ref-cell">
-              <span class="ref-badge">{{ entryRefLabel(entry) }}</span>
+              <RouterLink :to="`/finance/transactions/${entry.id || entry.transaction_id}`" class="ref-link">
+                <span class="ref-badge">{{ entryRefLabel(entry) }}</span>
+              </RouterLink>
             </td>
             <td class="account-cell mono">{{ entry.gl_account_number || entry.gl_code || '—' }}</td>
             <td class="account-cell">{{ entry.gl_account_name || entry.account_name || '—' }}</td>
@@ -191,8 +212,9 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { apiGet } from '../api/client'
+import ReportHeaderTabs from '../components/ReportHeaderTabs.vue'
 
 // ── State ──────────────────────────────────────────────────────────
 const loading = ref(false)
@@ -209,7 +231,25 @@ const today = now.toISOString().split('T')[0]
 const filters = reactive({
   start_date: startOfYear,
   end_date: today,
-  account_id: ''
+  account_id: '',
+  type: '',
+  search: ''
+})
+
+const visibleEntries = computed(() => {
+  if (!report.value?.entries) return []
+  let list = report.value.entries
+  if (filters.type) {
+    list = list.filter(e => e.type === filters.type)
+  }
+  if (filters.search) {
+    const q = filters.search.trim().toLowerCase()
+    list = list.filter(e => {
+      const text = `${e.reference || ''} ${e.description || ''} ${e.customer_name || ''} ${e.vendor_name || ''} ${e.gl_account_name || ''} ${e.category || ''}`.toLowerCase()
+      return text.includes(q)
+    })
+  }
+  return list
 })
 
 // ── Lifecycle ──────────────────────────────────────────────────────
@@ -253,7 +293,6 @@ async function loadReport() {
 }
 
 // ── Currency Conversion ────────────────────────────────────────────
-// Convert a native-currency amount into the currently selected view currency
 function convertAmt(amount, fromCurrency, dateStr) {
   const target = viewCurrency.value
   const num = Number(amount) || 0
@@ -270,15 +309,12 @@ function convertAmt(amount, fromCurrency, dateStr) {
   return num
 }
 
-// Pure formatter — caller must pre-convert the amount
 function money(amount) {
   const sym = currencySymbols[viewCurrency.value] || '$'
   const num = Number(amount) || 0
   return `${sym}${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-// Summary totals from backend are computed in mixed native currencies (INR + USD).
-// We normalize them using the default exchange rate for display in the summary cards.
 function convertSummary(amount) {
   const num = Number(amount) || 0
   if (viewCurrency.value === 'USD') return num
@@ -337,7 +373,7 @@ function printReport() {
 }
 
 function exportCSV() {
-  if (!report.value || !report.value.entries) return
+  if (!visibleEntries.value || !visibleEntries.value.length) return
   
   const headers = [
     'Date', 'Ref ID', 'GL Account No', 'GL Account Name', 'Category', 'Description', 
@@ -349,7 +385,7 @@ function exportCSV() {
     return `"${text}"`
   }
   
-  const rows = report.value.entries.map(entry => {
+  const rows = visibleEntries.value.map(entry => {
     return [
       formatDate(entry.transaction_date || entry.date || entry.created_at),
       entryRefLabel(entry),
@@ -373,7 +409,48 @@ function exportCSV() {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.setAttribute('href', url)
-  link.setAttribute('download', `GL_Report_${filters.start_date || 'All'}_to_${filters.end_date || 'All'}.csv`)
+  link.setAttribute('download', `General_Ledger_${filters.start_date || 'All'}_to_${filters.end_date || 'All'}.csv`)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+function exportExcel() {
+  if (!visibleEntries.value || !visibleEntries.value.length) return
+  
+  const headers = [
+    'Date', 'Ref ID', 'GL Account No', 'GL Account Name', 'Category', 'Description', 
+    'Vendor', 'Customer', 'Product', 'Project', 'Status', 'Debit', 'Credit', 'Running Balance'
+  ]
+  
+  let tableHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"/></head><body><table border="1">`
+  tableHtml += `<tr style="background:#f1f5f9;font-weight:bold">${headers.map(h => `<th>${h}</th>`).join('')}</tr>`
+  
+  visibleEntries.value.forEach(entry => {
+    tableHtml += `<tr>
+      <td>${formatDate(entry.transaction_date || entry.date || entry.created_at)}</td>
+      <td>${entryRefLabel(entry)}</td>
+      <td>${entry.gl_account_number || entry.gl_code || ''}</td>
+      <td>${entry.gl_account_name || entry.account_name || ''}</td>
+      <td>${entry.category || 'General'}</td>
+      <td>${entry.description || ''}</td>
+      <td>${entry.vendor_name || ''}</td>
+      <td>${entry.customer_name || ''}</td>
+      <td>${productLabel(entry)}</td>
+      <td>${entry.project_name || ''}</td>
+      <td>${entry.status || 'Completed'}</td>
+      <td>${entry.debit ? convertAmt(entry.debit, entry.currency, entry.transaction_date).toFixed(2) : ''}</td>
+      <td>${entry.credit ? convertAmt(entry.credit, entry.currency, entry.transaction_date).toFixed(2) : ''}</td>
+      <td>${convertSummary(entry.running_balance).toFixed(2)}</td>
+    </tr>`
+  })
+  tableHtml += `</table></body></html>`
+  
+  const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.setAttribute('href', url)
+  link.setAttribute('download', `General_Ledger_${filters.start_date || 'All'}_to_${filters.end_date || 'All'}.xls`)
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)

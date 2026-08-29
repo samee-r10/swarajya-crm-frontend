@@ -476,15 +476,15 @@ const selectedInvoice = computed(() => {
 const invoiceSelectPlaceholder = computed(() => {
   if (!form.customer_id) return 'Select customer first'
   if (invoiceLoading.value) return 'Loading invoice records...'
-  if (receivableInvoices.value.length === 0) return 'No eligible invoices found'
+  if (receivableInvoices.value.length === 0) return 'No outstanding invoices found'
   return 'Select invoice'
 })
 
 const invoiceHint = computed(() => {
   if (!isSalesRevenueReceipt.value) return ''
-  if (!form.customer_id) return 'Select a customer to load approved, partially paid, or paid invoices.'
+  if (!form.customer_id) return 'Select a customer to load outstanding invoices.'
   if (!invoiceLoading.value && receivableInvoices.value.length === 0) {
-    return 'Approved, Partially Paid, and Paid invoices for this customer and Sales Revenue account are shown.'
+    return 'Only outstanding (Approved and Partially Paid) invoices with remaining balance are shown.'
   }
   return ''
 })
@@ -543,8 +543,15 @@ async function loadReceivableInvoices() {
       customer_id: form.customer_id,
       account_id: form.account_id
     })
+    if (props.id && form.invoice_id) {
+      params.append('include_invoice_id', form.invoice_id)
+    }
     const data = await apiGet(`/api/finance/invoices/receivable?${params}`)
-    receivableInvoices.value = data.invoices || []
+    const list = data.invoices || []
+    receivableInvoices.value = list.filter(invoice => {
+      const isCurrentTxInvoice = props.id && Number(invoice.id) === Number(form.invoice_id)
+      return isCurrentTxInvoice || (invoice.status !== 'Paid' && Number(invoice.balance_due || 0) > 0)
+    })
   } catch (err) {
     error.value = err.message || 'Unable to load invoice records.'
   } finally {

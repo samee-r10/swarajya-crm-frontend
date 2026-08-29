@@ -25,6 +25,8 @@ import InvoiceForm from './views/InvoiceForm.vue'
 import InvoiceDetail from './views/InvoiceDetail.vue'
 import ObjectDetail from './views/ObjectDetail.vue'
 import GLReport from './views/GLReport.vue'
+import CustomerLedgerReport from './views/CustomerLedgerReport.vue'
+import VendorLedgerReport from './views/VendorLedgerReport.vue'
 import Treasury from './views/Treasury.vue'
 import CompanyBankAccounts from './views/CompanyBankAccounts.vue'
 import FundTransfers from './views/FundTransfers.vue'
@@ -77,7 +79,11 @@ const routes = [
   { path: '/finance/invoices/new', name: 'invoice-new', component: InvoiceForm },
   { path: '/finance/invoices/:id', name: 'invoice-detail', component: InvoiceDetail, props: true },
   { path: '/finance/invoices/:id/edit', name: 'invoice-edit', component: InvoiceForm, props: true },
+  { path: '/reports', redirect: '/finance/reports/general-ledger' },
+  { path: '/finance/reports', redirect: '/finance/reports/general-ledger' },
   { path: '/finance/reports/general-ledger', name: 'gl-report', component: GLReport },
+  { path: '/finance/reports/customer-ledger', name: 'customer-ledger-report', component: CustomerLedgerReport },
+  { path: '/finance/reports/vendor-ledger', name: 'vendor-ledger-report', component: VendorLedgerReport },
   { path: '/treasury', name: 'treasury', component: Treasury },
   { path: '/treasury/bank-accounts', name: 'company-bank-accounts', component: CompanyBankAccounts },
   { path: '/treasury/fund-transfers', name: 'fund-transfers', component: FundTransfers },

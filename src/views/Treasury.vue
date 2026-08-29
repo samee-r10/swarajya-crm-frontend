@@ -12,9 +12,6 @@
         <strong>₹{{ formatCurrency(dashboardData.reserve_available) }}</strong>
       </div>
       <div class="hero-actions">
-        <button class="button secondary" type="button" @click="activeTab = 'expense_log'">Expense Log</button>
-        <RouterLink class="button secondary" to="/treasury/payables">Payables</RouterLink>
-        <RouterLink class="button secondary" to="/treasury/products">Products</RouterLink>
         <RouterLink class="button secondary" to="/treasury/bank-accounts">Bank Accounts</RouterLink>
         <RouterLink class="button secondary" to="/treasury/fund-transfers">Fund Transfer</RouterLink>
       </div>
@@ -101,86 +98,7 @@
         </div>
       </div>
 
-      <!-- Quick Summary Tables -->
-      <div class="grid-2col">
-        <!-- Company owner equity split -->
-        <div class="dashboard-block">
-          <div class="block-header">
-            <div>
-              <h4 class="m-0">Company Owners — Equity Split</h4>
-              <small class="text-muted">Active stakeholders and their ownership share of the company</small>
-            </div>
-            <button class="link-btn" @click="activeTab = 'stakeholders'">Manage</button>
-          </div>
-          <div class="block-body">
-            <div v-if="activeStakeholders.length === 0" class="empty-state-small">
-              <p>No company owners configured yet.</p>
-            </div>
-            <div v-else class="ratio-list">
-              <div class="ownership-summary">
-                <span class="ownership-count">
-                  {{ activeStakeholders.length }} owner{{ activeStakeholders.length === 1 ? '' : 's' }}
-                </span>
-                <span class="ownership-split text-muted">{{ equitySplitSummary }}</span>
-              </div>
-              <div v-for="stk in activeStakeholders" :key="stk.id" class="ratio-item">
-                <div class="ratio-info">
-                  <strong>{{ stk.name }}</strong>
-                  <span class="percentage-badge">{{ stk.payout_percentage }}% equity</span>
-                </div>
-                <div class="ratio-bar-bg">
-                  <div class="ratio-bar-fill" :style="{ width: stk.payout_percentage + '%' }"></div>
-                </div>
-              </div>
-              <div class="total-bar">
-                <span>Total company equity:</span>
-                <strong :class="activeStakeholderSum === 100 ? 'text-success' : 'text-danger'">
-                  {{ activeStakeholderSum }}%
-                  <small v-if="activeStakeholderSum !== 100"> (must equal 100%)</small>
-                </strong>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <!-- Recent Activity Ledger -->
-        <div class="dashboard-block">
-          <div class="block-header">
-            <h4>Recent Split Allocations</h4>
-            <button class="link-btn" @click="activeTab = 'ledger'">View All</button>
-          </div>
-          <div class="block-body">
-            <div v-if="dashboardData.recent_payouts.length === 0" class="empty-state-small">
-              <p>No recent payouts recorded.</p>
-            </div>
-            <table v-else class="simple-table">
-              <thead>
-                <tr>
-                  <th>Recipient</th>
-                  <th>Type</th>
-                  <th>Amount</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="p in dashboardData.recent_payouts" :key="p.id">
-                  <td>
-                    <span v-if="p.payout_type === 'Reserve Fund'">Company Reserve</span>
-                    <span v-else-if="['Channel Partner', 'Channel Partner Payout'].includes(p.payout_type)">{{ p.partner_name || 'Channel Partner' }}</span>
-                    <span v-else-if="p.payout_type === 'Stakeholder Contribution'">{{ p.stakeholder_name || 'Owner' }} (paid in)</span>
-                    <span v-else>{{ p.stakeholder_name || 'Owner' }}</span>
-                  </td>
-                  <td><span class="type-pill text-xs">{{ p.payout_type }}</span></td>
-                  <td><strong>₹{{ formatCurrency(p.amount) }}</strong></td>
-                  <td>
-                    <span class="status-pill text-xs" :class="p.status.toLowerCase()">{{ p.status }}</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
     </div>
     <!-- Payment Dashboard Tab -->
     <div v-if="activeTab === 'payment_dashboard'" class="payment-dashboard-tab">
@@ -1334,13 +1252,10 @@ const router = useRouter()
 const activeTab = ref('dashboard')
 const tabs = [
   { id: 'dashboard', label: 'Dashboard', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>' },
-  { id: 'payment_dashboard', label: 'Payment Dashboard', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>' },
   { id: 'revenue', label: 'Revenue Log', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>' },
   { id: 'expense_log', label: 'Expense Log', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-5-5ZM8 18H6v-2h2v2Zm0-4H6v-2h2v2Zm0-4H6V8h2v2Zm8 8h-6v-2h6v2Zm0-4h-6v-2h6v2Zm0-4h-6V8h6v2Z"/></svg>' },
-  { id: 'payables', label: 'Payables', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' },
   { id: 'stakeholders', label: 'Company Owners', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
   { id: 'partners', label: 'Channel Partners', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
-  { id: 'ledger', label: 'Payout Ledger', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>' },
   { id: 'logs', label: 'Audit Logs', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' }
 ]
 

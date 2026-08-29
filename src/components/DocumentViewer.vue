@@ -2,82 +2,174 @@
   <Teleport to="body">
     <div v-if="modelValue" class="viewer-overlay" @click.self="close">
       <section class="viewer-shell" :class="{ fullscreen: isFullscreen }" ref="viewerShell">
+        
+        <!-- Premium Dark Toolbar -->
         <header class="viewer-toolbar">
-          <div class="viewer-file">
-            <strong>{{ currentName }}</strong>
-            <span>{{ currentTypeLabel }}<template v-if="documents.length > 1"> · Attachment {{ activeIndex + 1 }} of {{ documents.length }}</template></span>
+          <!-- File Metadata -->
+          <div class="viewer-file-info">
+            <div class="file-icon-badge" :class="`badge-${currentType.kind}`">
+              <span>{{ currentTypeLabel }}</span>
+            </div>
+            <div class="file-text-meta">
+              <strong :title="currentName">{{ currentName }}</strong>
+              <small>
+                <span class="file-tag">{{ currentTypeLabel }}</span>
+                <span v-if="documents.length > 1" class="attachment-counter">
+                  · Attachment {{ activeIndex + 1 }} of {{ documents.length }}
+                </span>
+                <span v-if="isPdf && pdfPageList.length > 0" class="attachment-counter">
+                  · {{ pdfPageList.length }} Page{{ pdfPageList.length > 1 ? 's' : '' }} (Vertical Scroll)
+                </span>
+              </small>
+            </div>
           </div>
 
-          <div class="viewer-controls" aria-label="Document controls">
-            <button v-if="documents.length > 1" type="button" class="viewer-btn" :disabled="activeIndex === 0" title="Previous attachment" @click="previousDocument">Prev</button>
-            <button v-if="documents.length > 1" type="button" class="viewer-btn" :disabled="activeIndex === documents.length - 1" title="Next attachment" @click="nextDocument">Next</button>
-            <button v-if="isPdf" type="button" class="viewer-btn" title="Previous page" :disabled="pageNumber <= 1" @click="previousPage">Page -</button>
-            <span v-if="isPdf" class="viewer-page">Page {{ pageNumber }}</span>
-            <button v-if="isPdf" type="button" class="viewer-btn" title="Next page" @click="nextPage">Page +</button>
-            <button v-if="canZoom" type="button" class="viewer-btn" title="Zoom out" @click="zoomOut">-</button>
-            <button v-if="canZoom" type="button" class="viewer-btn" title="Fit to width" @click="fitToWidth">Fit Width</button>
-            <button v-if="canZoom" type="button" class="viewer-btn" title="Fit to page" @click="fitToPage">Fit Page</button>
-            <button v-if="canZoom" type="button" class="viewer-btn" title="Zoom in" @click="zoomIn">+</button>
-            <button v-if="canRotate" type="button" class="viewer-btn" title="Rotate" @click="rotate">Rotate</button>
-            <button type="button" class="viewer-btn" title="Full screen" @click="toggleFullscreen">Full Screen</button>
-            <a class="viewer-btn" :href="currentUrl" :download="currentName" title="Download">Download</a>
-            <button type="button" class="viewer-btn" title="Print" :disabled="!canPrint" @click="printDocument">Print</button>
-            <a class="viewer-btn" :href="currentUrl" target="_blank" rel="noopener" title="Open in new tab">Open</a>
-            <button type="button" class="viewer-close" title="Close" @click="close">&times;</button>
+          <!-- Grouped Action Toolbar -->
+          <div class="viewer-toolbar-actions">
+            
+            <!-- Attachment Switcher (for multi-attachment) -->
+            <div v-if="documents.length > 1" class="control-group">
+              <button type="button" class="btn-icon-pill" :disabled="activeIndex === 0" title="Previous document" @click="previousDocument">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <span class="pill-label">{{ activeIndex + 1 }} / {{ documents.length }}</span>
+              <button type="button" class="btn-icon-pill" :disabled="activeIndex === documents.length - 1" title="Next document" @click="nextDocument">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+
+            <div v-if="documents.length > 1" class="divider"></div>
+
+            <!-- Zoom Controls -->
+            <div v-if="canZoom" class="control-group">
+              <button type="button" class="btn-icon-pill" title="Zoom out" @click="zoomOut">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+              <span class="zoom-value">{{ Math.round(zoom * 100) }}%</span>
+              <button type="button" class="btn-icon-pill" title="Zoom in" @click="zoomIn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+              <button type="button" class="btn-text-pill" :class="{ active: fitMode === 'page-width' }" title="Fit to width" @click="fitToWidth">
+                Fit Width
+              </button>
+              <button type="button" class="btn-text-pill" :class="{ active: fitMode === 'page-fit' }" title="Fit to page" @click="fitToPage">
+                Fit Page
+              </button>
+            </div>
+
+            <div v-if="canZoom" class="divider"></div>
+
+            <!-- View Options: Rotate & Fullscreen -->
+            <div class="control-group">
+              <button v-if="canRotate" type="button" class="btn-icon-pill" title="Rotate document" @click="rotate">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              </button>
+              <button type="button" class="btn-icon-pill" :class="{ active: isFullscreen }" title="Toggle Fullscreen" @click="toggleFullscreen">
+                <svg v-if="!isFullscreen" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                <svg v-else viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
+              </button>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Primary Actions: Download, Print, Open -->
+            <div class="control-group actions-group">
+              <a :href="currentUrl" :download="currentName" class="btn-action primary" title="Download Document">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                <span>Download</span>
+              </a>
+              <button v-if="canPrint" type="button" class="btn-icon-pill" title="Print document" @click="printDocument">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              </button>
+              <a :href="currentUrl" target="_blank" rel="noopener" class="btn-icon-pill" title="Open in new browser tab">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+              </a>
+            </div>
+
+            <!-- Close Button -->
+            <button type="button" class="btn-close" title="Close preview (Esc)" @click="close">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+
           </div>
         </header>
 
+        <!-- Canvas Stage Area (Vertical Trackpad / Mouse Scrollable) -->
         <div class="viewer-stage" @pointerdown="startPan" @pointermove="pan" @pointerup="endPan" @pointercancel="endPan" @pointerleave="endPan">
-          <iframe
-            v-if="isPdf"
-            class="viewer-pdf"
-            :src="pdfViewerUrl"
-            :title="currentName"
-            :style="pdfTransform"
-            loading="lazy"
-          ></iframe>
+          <div class="viewer-canvas-wrap">
+            
+            <!-- Continuous Vertical PDF Page Stack -->
+            <div v-if="isPdf" class="pdf-vertical-stack">
+              <div 
+                v-for="pg in pdfPageList" 
+                :key="pg" 
+                class="pdf-page-card"
+                :class="{ 'fit-width': fitMode === 'page-width' }"
+                :style="pdfTransformStyle"
+              >
+                <img 
+                  :src="pdfPageUrl(pg)" 
+                  :alt="`${currentName} - Page ${pg}`" 
+                  class="pdf-page-img"
+                  loading="lazy"
+                  @error="handlePageLoadError(pg)"
+                />
+                <div class="page-number-badge">Page {{ pg }} of {{ pdfPageList.length }}</div>
+              </div>
+            </div>
 
-          <div v-else-if="isImage" class="viewer-image-wrap">
-            <img
+            <!-- Single Image View -->
+            <div v-else-if="isImage" class="viewer-image-wrap">
+              <img
+                :src="currentUrl"
+                :alt="currentName"
+                class="viewer-image"
+                :style="imageTransform"
+                draggable="false"
+              >
+            </div>
+
+            <iframe
+              v-else-if="canEmbed"
+              class="viewer-office"
               :src="currentUrl"
-              :alt="currentName"
-              class="viewer-image"
-              :style="imageTransform"
-              draggable="false"
-            >
-          </div>
+              :title="currentName"
+              loading="lazy"
+              referrerpolicy="no-referrer"
+            ></iframe>
 
-          <iframe
-            v-else-if="canEmbed"
-            class="viewer-office"
-            :src="currentUrl"
-            :title="currentName"
-            loading="lazy"
-            referrerpolicy="no-referrer"
-          ></iframe>
-
-          <div v-else class="viewer-fallback">
-            <strong>Preview not available for this file type.</strong>
-            <p>This file can still be downloaded or opened in a new tab if your browser supports it.</p>
-            <div>
-              <a class="button secondary small" :href="currentUrl" :download="currentName">Download</a>
-              <a class="button secondary small" :href="currentUrl" target="_blank" rel="noopener">Open in New Tab</a>
+            <div v-else class="viewer-fallback">
+              <div class="fallback-card">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" style="color: #94a3b8; margin-bottom: 8px;">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+                <h3>Preview not available for this file type</h3>
+                <p>You can download or open this document directly in a new browser tab.</p>
+                <div class="fallback-actions">
+                  <a class="button primary" :href="currentUrl" :download="currentName">Download Document</a>
+                  <a class="button secondary" :href="currentUrl" target="_blank" rel="noopener">Open in New Tab</a>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
+        <!-- Attachment Thumbnails Footer (if > 1 document) -->
         <footer v-if="documents.length > 1" class="viewer-thumbnails">
           <button
             v-for="(doc, index) in documents"
             :key="documentKey(doc, index)"
             type="button"
+            class="thumb-item"
             :class="{ active: index === activeIndex }"
             @click="setActive(index)"
           >
-            <span>{{ index + 1 }}</span>
-            <strong>{{ documentName(doc) }}</strong>
+            <span class="thumb-num">{{ index + 1 }}</span>
+            <strong class="thumb-title">{{ documentName(doc) }}</strong>
           </button>
         </footer>
+
       </section>
     </div>
   </Teleport>
@@ -98,12 +190,14 @@ const emit = defineEmits(['update:modelValue'])
 const activeIndex = ref(0)
 const zoom = ref(1)
 const rotation = ref(0)
-const pageNumber = ref(1)
-const fitMode = ref('page-width')
+const fitMode = ref('page-fit')
 const isFullscreen = ref(false)
 const viewerShell = ref(null)
 const panOffset = ref({ x: 0, y: 0 })
 const panStart = ref(null)
+
+// Vertical PDF pages stack
+const pdfPageList = ref([1, 2, 3, 4, 5])
 
 const safeDocuments = computed(() => props.documents.filter(documentUrl))
 const documents = computed(() => safeDocuments.value.length ? safeDocuments.value : [])
@@ -119,17 +213,36 @@ const canEmbed = computed(() => currentType.value.kind === 'text' || currentUrl.
 const canZoom = computed(() => isPdf.value || isImage.value)
 const canRotate = computed(() => isPdf.value || isImage.value)
 const canPrint = computed(() => isPdf.value || isImage.value || canEmbed.value)
+
 const imageTransform = computed(() => ({
   transform: `translate(${panOffset.value.x}px, ${panOffset.value.y}px) scale(${zoom.value}) rotate(${rotation.value}deg)`
 }))
-const pdfTransform = computed(() => ({
-  transform: `rotate(${rotation.value}deg)`
-}))
-const pdfViewerUrl = computed(() => {
-  const zoomValue = fitMode.value || Math.round(zoom.value * 100)
-  const hash = `page=${pageNumber.value}&zoom=${zoomValue}&toolbar=1&navpanes=1`
-  return `${currentUrl.value}#${hash}`
+
+const pdfTransformStyle = computed(() => {
+  const baseWidth = fitMode.value === 'page-width' ? 1080 : 820
+  const width = Math.round(baseWidth * zoom.value)
+  return {
+    width: `${width}px`,
+    maxWidth: '98%',
+    transform: `rotate(${rotation.value}deg)`
+  }
 })
+
+function pdfPageUrl(page) {
+  const raw = currentUrl.value
+  if (!raw) return ''
+  if (raw.includes('/api/uploads/preview')) {
+    const separator = raw.includes('?') ? '&' : '?'
+    return `${raw}${separator}page=${page}`
+  }
+  return raw
+}
+
+function handlePageLoadError(page) {
+  if (page > 1 && pdfPageList.value.includes(page)) {
+    pdfPageList.value = pdfPageList.value.filter(p => p < page)
+  }
+}
 
 watch(() => props.modelValue, (open) => {
   if (!open) return
@@ -166,22 +279,14 @@ function nextDocument() {
   setActive(activeIndex.value + 1)
 }
 
-function previousPage() {
-  pageNumber.value = Math.max(1, pageNumber.value - 1)
-}
-
-function nextPage() {
-  pageNumber.value += 1
-}
-
 function zoomIn() {
   fitMode.value = ''
-  zoom.value = Math.min(4, Number((zoom.value + 0.2).toFixed(2)))
+  zoom.value = Math.min(3, Number((zoom.value + 0.15).toFixed(2)))
 }
 
 function zoomOut() {
   fitMode.value = ''
-  zoom.value = Math.max(0.4, Number((zoom.value - 0.2).toFixed(2)))
+  zoom.value = Math.max(0.5, Number((zoom.value - 0.15).toFixed(2)))
 }
 
 function fitToWidth() {
@@ -249,10 +354,10 @@ function endPan(event) {
 function resetView() {
   zoom.value = 1
   rotation.value = 0
-  pageNumber.value = 1
-  fitMode.value = 'page-width'
+  fitMode.value = 'page-fit'
   panOffset.value = { x: 0, y: 0 }
   panStart.value = null
+  pdfPageList.value = [1, 2, 3, 4, 5]
   nextTick(() => {
     isFullscreen.value = Boolean(document.fullscreenElement)
   })
@@ -303,9 +408,15 @@ function detectType(doc) {
   const type = String(doc?.type || doc?.mime_type || '').toLowerCase()
   const format = String(doc?.format || '').toLowerCase()
   const name = documentName(doc).toLowerCase()
-  const extension = [format, name.split('.').pop(), url.split('?')[0].split('.').pop()].find(Boolean) || ''
-  if (type.includes('pdf') || extension === 'pdf') return { kind: 'pdf', label: 'PDF' }
-  if (type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg'].includes(extension) || doc?.resource_type === 'image') return { kind: 'image', label: extension ? extension.toUpperCase() : 'Image' }
+  const path = url.split('?')[0].toLowerCase()
+  const extension = [format, name.split('.').pop(), path.split('.').pop()].find(Boolean) || ''
+  
+  if (type.includes('pdf') || extension === 'pdf' || name.endsWith('.pdf') || path.endsWith('.pdf') || url.includes('.pdf')) {
+    return { kind: 'pdf', label: 'PDF' }
+  }
+  if (type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg'].includes(extension) || (doc?.resource_type === 'image' && extension !== 'pdf')) {
+    return { kind: 'image', label: extension ? extension.toUpperCase() : 'Image' }
+  }
   if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(extension)) return { kind: 'office', label: extension.toUpperCase() }
   if (type.startsWith('text/') || ['txt', 'csv', 'json', 'xml'].includes(extension)) return { kind: 'text', label: extension ? extension.toUpperCase() : 'Text' }
   return { kind: 'unknown', label: extension ? extension.toUpperCase() : 'File' }
@@ -315,26 +426,26 @@ function detectType(doc) {
 <style scoped>
 .viewer-overlay {
   align-items: center;
-  background: rgba(15, 23, 42, 0.72);
-  backdrop-filter: blur(8px);
+  background: rgba(11, 15, 25, 0.85);
+  backdrop-filter: blur(12px);
   display: flex;
   inset: 0;
   justify-content: center;
-  padding: 20px;
+  padding: 24px;
   position: fixed;
-  z-index: 3000;
+  z-index: 3500;
 }
 
 .viewer-shell {
-  background: #0f172a;
-  border: 1px solid rgba(226, 232, 240, 0.18);
-  border-radius: 8px;
-  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+  background: #090d16;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  height: min(92vh, 980px);
+  height: min(94vh, 980px);
   overflow: hidden;
-  width: min(1180px, calc(100vw - 40px));
+  width: min(1280px, calc(100vw - 40px));
 }
 
 .viewer-shell.fullscreen {
@@ -343,107 +454,279 @@ function detectType(doc) {
   width: 100vw;
 }
 
+/* ── Dark Premium Header Toolbar ── */
 .viewer-toolbar {
   align-items: center;
-  background: #ffffff;
-  border-bottom: 1px solid #dbe3ef;
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   gap: 16px;
   justify-content: space-between;
   min-height: 64px;
-  padding: 10px 14px 10px 18px;
+  padding: 10px 20px;
 }
 
-.viewer-file {
+.viewer-file-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   min-width: 0;
 }
 
-.viewer-file strong {
-  color: #0f172a;
+.file-icon-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.badge-pdf { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+.badge-image { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+.badge-office { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+.badge-text { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+.badge-unknown { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); }
+
+.file-text-meta strong {
+  color: #f8fafc;
   display: block;
+  font-size: 14px;
+  font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 320px;
 }
 
-.viewer-file span {
-  color: #64748b;
-  display: block;
-  font-size: 12px;
-  font-weight: 750;
+.file-text-meta small {
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
   margin-top: 2px;
 }
 
-.viewer-controls {
-  align-items: center;
+.file-tag {
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.attachment-counter {
+  color: #94a3b8;
+}
+
+/* ── Grouped Controls ── */
+.viewer-toolbar-actions {
   display: flex;
-  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
-  gap: 6px;
   justify-content: flex-end;
 }
 
-.viewer-btn,
-.viewer-close {
+.control-group {
+  display: flex;
   align-items: center;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.actions-group {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 0 2px;
+}
+
+.btn-icon-pill {
+  background: transparent;
+  border: none;
   border-radius: 6px;
-  color: #1f2937;
+  color: #cbd5e1;
+  padding: 6px;
   cursor: pointer;
   display: inline-flex;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 800;
+  align-items: center;
   justify-content: center;
-  min-height: 34px;
-  padding: 7px 10px;
+  transition: all 0.15s ease;
   text-decoration: none;
 }
 
-.viewer-btn:hover,
-.viewer-close:hover {
-  background: #f8fafc;
-  border-color: #2563eb;
-  color: #2563eb;
+.btn-icon-pill:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
 }
 
-.viewer-btn:disabled {
+.btn-icon-pill.active {
+  background: var(--primary, #f97316);
+  color: #ffffff;
+}
+
+.btn-icon-pill:disabled {
+  opacity: 0.35;
   cursor: not-allowed;
-  opacity: 0.48;
 }
 
-.viewer-close {
-  color: #64748b;
-  font-size: 22px;
-  line-height: 1;
-  min-width: 36px;
-  padding: 3px 9px 6px;
-}
-
-.viewer-page {
-  color: #475569;
+.pill-label,
+.zoom-value {
+  color: #f1f5f9;
   font-size: 12px;
-  font-weight: 800;
-  padding-inline: 4px;
+  font-weight: 700;
+  padding: 0 6px;
+  min-width: 48px;
+  text-align: center;
+  user-select: none;
 }
 
+.btn-text-pill {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #cbd5e1;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-text-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.btn-text-pill.active {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.btn-action.primary {
+  background: var(--primary, #f97316);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 7px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  border: none;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.35);
+}
+
+.btn-action.primary:hover {
+  background: #ea580c;
+  transform: translateY(-1px);
+}
+
+.btn-close {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  color: #cbd5e1;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-left: 6px;
+}
+
+.btn-close:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* ── Canvas Stage Area ── */
 .viewer-stage {
-  background: #111827;
+  background: #090d16;
   min-height: 0;
-  overflow: auto;
+  height: 100%;
+  overflow-y: auto;
   overscroll-behavior: contain;
-  touch-action: pan-x pan-y pinch-zoom;
+  padding: 24px;
 }
 
-.viewer-pdf,
+.viewer-canvas-wrap {
+  width: 100%;
+  min-height: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+/* ── Vertical Continuous PDF Stack ── */
+.pdf-vertical-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  padding-bottom: 40px;
+}
+
+.pdf-page-card {
+  position: relative;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  transition: transform 0.15s ease, width 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pdf-page-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+}
+
+.page-number-badge {
+  position: absolute;
+  bottom: 12px;
+  right: 14px;
+  background: rgba(15, 23, 42, 0.8);
+  color: #f8fafc;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 6px;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  pointer-events: none;
+}
+
 .viewer-office {
   background: #ffffff;
   border: 0;
+  border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
   display: block;
   height: 100%;
-  transform-origin: center center;
-  transition: transform 0.12s ease;
   width: 100%;
 }
 
@@ -453,117 +736,138 @@ function detectType(doc) {
   justify-content: center;
   min-height: 100%;
   overflow: hidden;
-  padding: 30px;
+  padding: 20px;
 }
 
 .viewer-image {
   max-height: calc(92vh - 150px);
   max-width: 100%;
   object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
   transform-origin: center center;
   transition: transform 0.12s ease;
   user-select: none;
 }
 
 .viewer-fallback {
-  align-content: center;
-  color: #ffffff;
-  display: grid;
-  gap: 12px;
-  justify-items: center;
-  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.fallback-card {
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
   padding: 32px;
   text-align: center;
+  max-width: 440px;
+  color: #ffffff;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
 }
 
-.viewer-fallback strong {
-  font-size: 20px;
+.fallback-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: #f8fafc;
 }
 
-.viewer-fallback p {
-  color: #cbd5e1;
-  margin: 0;
+.fallback-card p {
+  margin: 0 0 20px 0;
+  font-size: 13px;
+  color: #94a3b8;
 }
 
-.viewer-fallback div {
+.fallback-actions {
   display: flex;
-  flex-wrap: wrap;
   gap: 10px;
   justify-content: center;
 }
 
 .viewer-thumbnails {
-  background: #ffffff;
-  border-top: 1px solid #dbe3ef;
+  background: #0f172a;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding: 10px 14px;
+  padding: 10px 16px;
 }
 
-.viewer-thumbnails button {
+.thumb-item {
   align-items: center;
-  background: #f8fafc;
-  border: 1px solid #dbe3ef;
-  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
   cursor: pointer;
   display: flex;
-  flex: 0 0 180px;
-  gap: 8px;
+  flex: 0 0 200px;
+  gap: 10px;
   min-width: 0;
-  padding: 8px;
+  padding: 8px 12px;
   text-align: left;
+  transition: all 0.15s ease;
 }
 
-.viewer-thumbnails button.active {
-  background: #e8f0ff;
-  border-color: #2563eb;
+.thumb-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
-.viewer-thumbnails span {
+.thumb-item.active {
+  background: rgba(249, 115, 22, 0.15);
+  border-color: var(--primary, #f97316);
+}
+
+.thumb-num {
   align-items: center;
-  background: #ffffff;
-  border-radius: 4px;
-  color: #2563eb;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #f8fafc;
   display: inline-flex;
-  flex: 0 0 28px;
-  font-size: 12px;
-  font-weight: 900;
-  height: 28px;
+  flex: 0 0 26px;
+  font-size: 11px;
+  font-weight: 800;
+  height: 26px;
   justify-content: center;
 }
 
-.viewer-thumbnails strong {
-  color: #0f172a;
+.thumb-item.active .thumb-num {
+  background: var(--primary, #f97316);
+  color: #ffffff;
+}
+
+.thumb-title {
+  color: #cbd5e1;
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 840px) {
   .viewer-overlay {
     padding: 0;
   }
-
   .viewer-shell {
     border-radius: 0;
     height: 100vh;
     width: 100vw;
   }
-
   .viewer-toolbar {
-    align-items: stretch;
     flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
   }
-
-  .viewer-controls {
+  .file-text-meta strong {
+    max-width: 200px;
+  }
+  .viewer-toolbar-actions {
     justify-content: flex-start;
     overflow-x: auto;
-  }
-
-  .viewer-btn {
-    white-space: nowrap;
+    padding-bottom: 4px;
   }
 }
 </style>

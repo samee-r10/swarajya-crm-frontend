@@ -120,34 +120,7 @@
           <div class="kpi-card"><span>Outstanding Amount</span><strong>{{ money(selectedMetrics.outstanding) }}</strong></div>
         </div>
 
-        <div class="detail-grid">
 
-
-          <div class="record-card">
-            <div class="card-heading">
-              <h3>Product Analytics</h3>
-            </div>
-            <div class="analytics-list">
-              <div v-for="row in analyticsRows" :key="row.label">
-                <span>{{ row.label }}</span>
-                <strong>{{ row.value }}</strong>
-              </div>
-            </div>
-          </div>
-
-          <div class="record-card product-info-card">
-            <div class="card-heading">
-              <h3>Product Details</h3>
-            </div>
-            <dl class="info-grid">
-              <div><dt>Product Type</dt><dd>{{ selectedProduct.product_type || '-' }}</dd></div>
-              <div><dt>Revenue Account</dt><dd>{{ selectedProduct.product_revenue_account || '-' }}</dd></div>
-              <div><dt>Expense Account</dt><dd>{{ selectedProduct.product_expense_account || '-' }}</dd></div>
-              <div><dt>Remarks</dt><dd>{{ selectedProduct.remarks || '-' }}</dd></div>
-              <div class="span-2"><dt>Description</dt><dd>{{ selectedProduct.product_description || '-' }}</dd></div>
-            </dl>
-          </div>
-        </div>
       </section>
     </section>
 

@@ -192,7 +192,8 @@ function defaultForm() {
 
 async function loadOptions() {
   const options = await apiGet('/api/options')
-  paymentModes.value = options.payment_modes || []
+  const rawModes = options.payment_modes || []
+  paymentModes.value = Array.from(new Set(rawModes.map(m => String(m || '').trim()).filter(Boolean)))
 }
 
 async function loadClaims() {

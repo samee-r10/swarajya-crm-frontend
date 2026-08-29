@@ -120,10 +120,8 @@ export function buildSalaryTransaction({ records, salaryMonth, salaryYear, refer
   const postedAt = new Date().toISOString()
   const isBankPayment = !!bankAccount
   const generatedReference = reference || `${isBankPayment ? 'SAL-PAY' : 'SAL-PAYABLE'}-${salaryYear}-${String(salaryMonth).slice(0, 3).toUpperCase()}-${Date.now()}`
-  const id = `${isBankPayment ? 'salary-ledger' : 'salary-payable'}-${salaryYear}-${salaryMonth}-${Date.now()}`
   const salaryPeriod = `${salaryMonth} ${salaryYear}`
   return {
-    id,
     type: 'Expense',
     transaction_type: isBankPayment ? 'Salary Payment' : 'Salary Payable',
     category: isBankPayment ? 'Payroll / Salary Payment' : 'Payroll / Salary Payable',
