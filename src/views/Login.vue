@@ -14,19 +14,19 @@
             <span class="badge-sparkle">✨</span>
             <span class="badge-text">Festive Celebration</span>
             <span class="badge-dot"></span>
-            <span class="badge-occasion">Raksha Bandhan</span>
+            <span class="badge-occasion">Krishna Janmashtami</span>
           </div>
 
-          <!-- Rakhi Vector Visual Component -->
-          <RakshaBandhanVisual />
+          <!-- Janmashtami Vector Visual Component -->
+          <JanmashtamiVisual />
 
           <div class="festive-copy">
             <h1 class="festive-title">
-              Happy Raksha Bandhan <span class="heart-accent">❤️</span>
+              Happy Krishna Janmashtami <span class="feather-accent">🪶</span>
             </h1>
             <p class="festive-subhead">from Swarajya Consultancy</p>
             <div class="festive-quote-card">
-              <p class="festive-quote-text">“Celebrating the eternal bond of trust, care, and togetherness.”</p>
+              <p class="festive-quote-text">“May Lord Krishna's divine wisdom, harmony, and joy inspire your path and success.”</p>
             </div>
           </div>
         </div>
@@ -53,10 +53,10 @@
           <!-- Mobile Compact Festive Greetings Header -->
           <div v-if="isFestiveEnabled" class="mobile-festive-banner">
             <div class="mobile-festive-chip">
-              <span>✨ Happy Raksha Bandhan</span>
+              <span>✨ Happy Krishna Janmashtami 🪶</span>
             </div>
             <p class="mobile-festive-sub">from <strong>Swarajya Consultancy</strong></p>
-            <p class="mobile-festive-quote">“Celebrating the bond of trust, care and togetherness.”</p>
+            <p class="mobile-festive-quote">“May Lord Krishna's divine wisdom, harmony, and joy inspire your path and success.”</p>
           </div>
         </div>
 
@@ -137,7 +137,7 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiPost } from '../api/client'
-import RakshaBandhanVisual from '../components/RakshaBandhanVisual.vue'
+import JanmashtamiVisual from '../components/JanmashtamiVisual.vue'
 
 // Temporary Festive Theme Feature Flag
 // Set to `false` anytime to immediately revert to standard corporate theme
@@ -193,10 +193,10 @@ async function submit() {
 /* Festive Left Panel Theme */
 .brand-panel.festive-brand-panel {
   background:
-    radial-gradient(circle at 10% 15%, rgba(251, 191, 36, 0.12) 0%, transparent 40%),
-    radial-gradient(circle at 90% 85%, rgba(225, 29, 72, 0.08) 0%, transparent 45%),
-    radial-gradient(circle at 80% 20%, rgba(147, 51, 234, 0.07) 0%, transparent 40%),
-    linear-gradient(145deg, #fdf8f4 0%, #faf3ee 45%, #f6eff6 100%);
+    radial-gradient(circle at 10% 15%, rgba(56, 189, 248, 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 90% 85%, rgba(251, 191, 36, 0.12) 0%, transparent 45%),
+    radial-gradient(circle at 80% 20%, rgba(13, 148, 136, 0.1) 0%, transparent 40%),
+    linear-gradient(145deg, #f0f9ff 0%, #e0f2fe 45%, #f5f3ff 100%);
   border-right: 1px solid rgba(226, 232, 240, 0.7);
 }
 
@@ -227,8 +227,8 @@ async function submit() {
 
 .brand-logo-wrap.festive-logo-wrap {
   background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(251, 191, 36, 0.35);
-  box-shadow: 0 6px 24px rgba(217, 119, 6, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  box-shadow: 0 6px 24px rgba(2, 132, 199, 0.1);
 }
 
 .brand-logo {
@@ -252,11 +252,11 @@ async function submit() {
 
 .festive-badge {
   align-items: center;
-  background: linear-gradient(135deg, rgba(254, 243, 199, 0.9) 0%, rgba(255, 228, 230, 0.85) 100%);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: linear-gradient(135deg, rgba(224, 242, 254, 0.95) 0%, rgba(254, 243, 199, 0.9) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.35);
   border-radius: 999px;
-  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.12);
-  color: #92400e;
+  box-shadow: 0 2px 12px rgba(2, 132, 199, 0.12);
+  color: #0369a1;
   display: inline-flex;
   font-size: 13px;
   font-weight: 700;
@@ -271,14 +271,14 @@ async function submit() {
 }
 
 .badge-dot {
-  background: #e11d48;
+  background: #06b6d4;
   border-radius: 50%;
   height: 4px;
   width: 4px;
 }
 
 .badge-occasion {
-  color: #be123c;
+  color: #0284c7;
   font-weight: 800;
 }
 
@@ -288,31 +288,32 @@ async function submit() {
 }
 
 .festive-title {
-  color: #1e1b4b;
-  font-size: clamp(34px, 3.8vw, 48px);
+  color: #0f172a;
+  font-size: clamp(32px, 3.6vw, 46px);
   font-weight: 900;
   letter-spacing: -1.2px;
   line-height: 1.15;
   margin: 0 0 6px;
-  background: linear-gradient(135deg, #1e1b4b 0%, #6b21a8 40%, #be123c 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #0369a1 40%, #0d9488 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
-.heart-accent {
+.feather-accent {
   -webkit-text-fill-color: initial;
   display: inline-block;
   font-size: 0.9em;
-  animation: pulseHeart 2s ease-in-out infinite;
+  animation: swayFeather 3s ease-in-out infinite alternate;
 }
 
-@keyframes pulseHeart {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.18); }
+@keyframes swayFeather {
+  0% { transform: rotate(-8deg) translateY(0); }
+  50% { transform: rotate(8deg) translateY(-2px); }
+  100% { transform: rotate(-5deg) translateY(2px); }
 }
 
 .festive-subhead {
-  color: #831843;
+  color: #0369a1;
   font-size: clamp(17px, 1.8vw, 22px);
   font-weight: 700;
   letter-spacing: -0.3px;
@@ -320,10 +321,10 @@ async function submit() {
 }
 
 .festive-quote-card {
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid rgba(244, 114, 182, 0.25);
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.3);
   border-radius: 16px;
-  box-shadow: 0 8px 30px rgba(190, 24, 93, 0.05);
+  box-shadow: 0 8px 30px rgba(2, 132, 199, 0.08);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   margin: 0 auto;
@@ -335,7 +336,7 @@ async function submit() {
 
 .festive-quote-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 36px rgba(190, 24, 93, 0.09);
+  box-shadow: 0 12px 36px rgba(2, 132, 199, 0.14);
 }
 
 .quote-symbol {
@@ -564,8 +565,8 @@ async function submit() {
 }
 
 .submit-button.festive-submit {
-  background: linear-gradient(135deg, #7c3aed 0%, #c026d3 50%, #e11d48 100%);
-  box-shadow: 0 6px 20px rgba(192, 38, 211, 0.28);
+  background: linear-gradient(135deg, #0284c7 0%, #3b82f6 50%, #0d9488 100%);
+  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.28);
 }
 
 .submit-button:hover:not(:disabled) {
@@ -688,18 +689,18 @@ async function submit() {
   }
 
   .mobile-festive-banner {
-    background: linear-gradient(145deg, #fffbeb 0%, #fff1f2 50%, #faf5ff 100%);
-    border: 1px solid rgba(251, 191, 36, 0.4);
+    background: linear-gradient(145deg, #f0f9ff 0%, #fef9c3 50%, #f0fdf4 100%);
+    border: 1px solid rgba(56, 189, 248, 0.4);
     border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(217, 119, 6, 0.08);
+    box-shadow: 0 4px 20px rgba(2, 132, 199, 0.1);
     padding: 16px 18px;
   }
 
   .mobile-festive-chip {
     background: #ffffff;
-    border: 1px solid rgba(245, 158, 11, 0.3);
+    border: 1px solid rgba(56, 189, 248, 0.35);
     border-radius: 999px;
-    color: #92400e;
+    color: #0369a1;
     display: inline-block;
     font-size: 12px;
     font-weight: 800;
@@ -708,13 +709,13 @@ async function submit() {
   }
 
   .mobile-festive-sub {
-    color: #831843;
+    color: #0284c7;
     font-size: 14px;
     margin: 0 0 6px;
   }
 
   .mobile-festive-sub strong {
-    color: #1e1b4b;
+    color: #0f172a;
     font-weight: 800;
   }
 
