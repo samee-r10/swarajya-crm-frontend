@@ -51,7 +51,7 @@
         <div><span>Active</span><strong>{{ accessibleWorkers.filter(worker => worker.status === 'Active').length }}</strong></div>
         <div><span>Filtered</span><strong>{{ filteredWorkers.length }}</strong></div>
       </div>
-      <table class="record-table">
+      <table class="record-table desktop-only">
         <thead>
           <tr>
             <th>Employee</th>
@@ -87,6 +87,38 @@
           <tr v-if="filteredWorkers.length === 0"><td colspan="7" class="empty-row">No employee records match this view.</td></tr>
         </tbody>
       </table>
+
+      <!-- Mobile Worker Cards -->
+      <div class="mobile-only mobile-card-list">
+        <div v-for="worker in filteredWorkers" :key="'mob-' + worker.id" class="mobile-card">
+          <div class="mobile-card-header">
+            <div>
+              <strong class="mobile-card-title">{{ worker.full_name }}</strong>
+              <div class="mobile-card-sub">{{ worker.employee_id }} · {{ worker.employment_type }}</div>
+            </div>
+            <span :class="statusClass(worker.status)">{{ worker.status }}</span>
+          </div>
+          <div class="mobile-card-body">
+            <div class="mobile-card-row">
+              <span class="mobile-card-label">Department</span>
+              <span class="mobile-card-value">{{ worker.department || '-' }} ({{ worker.designation || '-' }})</span>
+            </div>
+            <div class="mobile-card-row">
+              <span class="mobile-card-label">Manager</span>
+              <span class="mobile-card-value">{{ worker.reporting_manager || '-' }}</span>
+            </div>
+            <div class="mobile-card-row">
+              <span class="mobile-card-label">Joining Date</span>
+              <span class="mobile-card-value">{{ formatDate(worker.date_of_joining) }}</span>
+            </div>
+          </div>
+          <div class="mobile-card-actions">
+            <button class="button secondary small" type="button" @click="viewWorker(worker)">View Details</button>
+            <button v-if="canEditWorker(worker)" class="button small" type="button" @click="openWorkerForm(worker)">Edit</button>
+          </div>
+        </div>
+        <div v-if="filteredWorkers.length === 0" class="empty-panel">No employee records match this view.</div>
+      </div>
     </section>
 
     <section v-if="activeTab === 'payroll'" class="work-grid">

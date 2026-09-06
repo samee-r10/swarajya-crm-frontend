@@ -24,7 +24,7 @@
     </section>
 
     <section v-if="loading" class="record-card empty-state">Loading claims...</section>
-    <section v-else class="table-container">
+    <section v-else class="table-container desktop-only">
       <table class="record-table">
         <thead>
           <tr>
@@ -53,6 +53,46 @@
         </tbody>
       </table>
     </section>
+
+    <!-- Mobile Responsive Claim Cards (Visible on mobile <768px) -->
+    <div v-if="!loading" class="mobile-card-list mobile-only">
+      <div
+        v-for="claim in filteredClaims"
+        :key="claim.id"
+        class="mobile-card"
+        @click="selectClaim(claim)"
+      >
+        <div class="mobile-card-head">
+          <div>
+            <strong class="mobile-card-title">{{ claim.claim_number }}</strong>
+            <small class="muted" style="display: block; font-size: 11px;">{{ claim.employee_name || 'Employee' }}</small>
+          </div>
+          <span class="pill" :class="statusClass(claim.status)">{{ claim.status }}</span>
+        </div>
+        <div class="mobile-card-body">
+          <div class="mobile-card-field">
+            <span>Amount</span>
+            <strong style="color: var(--primary); font-size: 16px;">{{ money(claim.total_claim_amount) }}</strong>
+          </div>
+          <div class="mobile-card-field">
+            <span>Category</span>
+            <strong>{{ claim.expense_category }}</strong>
+          </div>
+          <div class="mobile-card-field">
+            <span>Expense Date</span>
+            <strong>{{ formatDate(claim.expense_date) }}</strong>
+          </div>
+          <div class="mobile-card-field" v-if="claim.department">
+            <span>Department</span>
+            <strong>{{ claim.department }}</strong>
+          </div>
+        </div>
+        <div class="mobile-card-actions" @click.stop>
+          <button class="button secondary" type="button" @click="selectClaim(claim)">View Claim</button>
+        </div>
+      </div>
+      <div v-if="filteredClaims.length === 0" class="empty-state" style="text-align: center; padding: 24px;">No claims found.</div>
+    </div>
 
     <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
       <div class="modal-content claim-modal">

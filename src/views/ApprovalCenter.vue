@@ -15,7 +15,7 @@
         <div><span>CP Payments</span><strong>{{ counts.cp_payments }}</strong></div>
       </div>
 
-      <div class="table-container">
+      <div class="table-container desktop-only">
         <table>
           <thead>
             <tr>
@@ -41,6 +41,41 @@
             <tr v-if="rows.length === 0"><td colspan="7" class="empty-state">No approvals are pending for you.</td></tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Mobile Responsive Approval Cards (Visible on mobile <768px) -->
+      <div class="mobile-card-list mobile-only">
+        <div
+          v-for="row in rows"
+          :key="row.key"
+          class="mobile-card"
+        >
+          <div class="mobile-card-head">
+            <div>
+              <strong class="mobile-card-title">{{ row.reference }}</strong>
+              <small class="muted" style="display: block; font-size: 11px;">{{ row.party || '-' }}</small>
+            </div>
+            <span class="type-pill">{{ row.type }}</span>
+          </div>
+          <div class="mobile-card-body">
+            <div class="mobile-card-field">
+              <span>Amount</span>
+              <strong style="color: var(--primary); font-size: 16px;">{{ money(row.amount) }}</strong>
+            </div>
+            <div class="mobile-card-field">
+              <span>Sequence</span>
+              <strong>{{ row.sequence || '-' }}</strong>
+            </div>
+            <div class="mobile-card-field">
+              <span>Status</span>
+              <strong><span class="pill status-warning">{{ row.status }}</span></strong>
+            </div>
+          </div>
+          <div class="mobile-card-actions">
+            <RouterLink class="button" :to="row.to">Review & Approve</RouterLink>
+          </div>
+        </div>
+        <div v-if="rows.length === 0" class="empty-state" style="text-align: center; padding: 24px;">No approvals are pending for you.</div>
       </div>
     </section>
   </div>

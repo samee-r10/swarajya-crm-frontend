@@ -18,7 +18,7 @@
       <div class="metric-card"><span>Pending Payables</span><strong>{{ money(stats.pending_payables) }}</strong></div>
     </section>
 
-    <section class="table-container">
+    <section class="table-container desktop-only">
       <table class="record-table">
         <thead>
           <tr>
@@ -56,6 +56,43 @@
         </tbody>
       </table>
     </section>
+
+    <!-- Mobile Responsive Bank Account Cards (Visible on mobile <768px) -->
+    <div class="mobile-card-list mobile-only">
+      <div
+        v-for="account in bankAccounts"
+        :key="account.id"
+        class="mobile-card"
+        @click="openStatement(account)"
+      >
+        <div class="mobile-card-head">
+          <div>
+            <strong class="mobile-card-title">{{ account.account_name }}</strong>
+            <small class="muted" style="display: block; font-size: 11px;">{{ account.bank_name }} · {{ account.account_number }}</small>
+          </div>
+          <span :class="statusClass(account.status)">{{ account.status || 'Active' }}</span>
+        </div>
+        <div class="mobile-card-body">
+          <div class="mobile-card-field">
+            <span>Available Balance</span>
+            <strong style="color: var(--primary); font-size: 17px;">{{ money(displayBalance(account), account.currency) }}</strong>
+          </div>
+          <div class="mobile-card-field" v-if="account.legal_entity">
+            <span>Entity</span>
+            <strong>{{ account.legal_entity }}</strong>
+          </div>
+          <div class="mobile-card-field" v-if="account.account_type">
+            <span>Account Type</span>
+            <strong>{{ account.account_type }}</strong>
+          </div>
+        </div>
+        <div class="mobile-card-actions" @click.stop>
+          <button class="button" type="button" @click="openStatement(account)">View Statement</button>
+          <button class="button secondary" type="button" @click="checkBalance(account)">Check Balance</button>
+        </div>
+      </div>
+      <div v-if="bankAccounts.length === 0" class="empty-state" style="text-align: center; padding: 24px;">No company bank accounts configured.</div>
+    </div>
 
     <section v-if="balanceResult" class="record-card balance-check-card">
       <div>

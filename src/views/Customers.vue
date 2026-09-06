@@ -33,7 +33,7 @@
       <button class="button secondary small" type="button" @click="selectedIds = []">Clear selection</button>
     </section>
 
-    <section class="table-container shadow-premium">
+    <section class="table-container shadow-premium desktop-only">
       <CrmTableSkeleton v-if="loading" :rows="7" :columns="7" />
       <table v-else class="record-table">
         <thead>
@@ -101,6 +101,42 @@
         </button>
       </div>
     </section>
+
+    <!-- Mobile Responsive Customer Cards (Visible on mobile <768px) -->
+    <div class="mobile-card-list mobile-only">
+      <div
+        v-for="customer in paginatedCustomers"
+        :key="customer.id"
+        class="mobile-card"
+        @click="goToDetail(customer.id)"
+      >
+        <div class="mobile-card-head">
+          <div>
+            <strong class="mobile-card-title">{{ customer.company_name }}</strong>
+            <small class="muted" style="display: block; font-size: 11px;" v-if="customer.industry">{{ customer.industry }}</small>
+          </div>
+          <span class="pill status" :class="customer.status.toLowerCase()">{{ customer.status }}</span>
+        </div>
+        <div class="mobile-card-body">
+          <div class="mobile-card-field">
+            <span>Primary Contact</span>
+            <strong>{{ customer.contact_name }}</strong>
+          </div>
+          <div class="mobile-card-field">
+            <span>Email</span>
+            <strong>{{ customer.email || '--' }}</strong>
+          </div>
+          <div class="mobile-card-field" v-if="customer.phone">
+            <span>Phone</span>
+            <strong>{{ customer.phone }}</strong>
+          </div>
+        </div>
+        <div class="mobile-card-actions" @click.stop>
+          <RouterLink :to="`/customers/${customer.id}`" class="button secondary">Open Customer</RouterLink>
+        </div>
+      </div>
+      <div v-if="!loading && filteredCustomers.length === 0" class="empty-state" style="text-align: center; padding: 24px;">No customers found.</div>
+    </div>
 
     <!-- Modal -->
     <div v-if="showNewModal" class="modal-overlay" @click.self="showNewModal = false">

@@ -102,7 +102,7 @@
       <p>{{ error }}</p>
     </section>
 
-    <section v-else class="table-container">
+    <section v-else class="table-container desktop-only">
       <table class="ledger-table">
         <thead>
           <tr>
@@ -176,6 +176,45 @@
         </button>
       </div>
     </section>
+
+    <!-- Mobile Responsive Transaction Cards (Visible on mobile <768px) -->
+    <div v-if="!loading && !error" class="mobile-card-list mobile-only">
+      <div
+        v-for="transaction in paginatedTransactions"
+        :key="transaction.id"
+        class="mobile-card"
+        @click="goToDetail(transaction.id)"
+      >
+        <div class="mobile-card-head">
+          <div>
+            <strong class="mobile-card-title">#{{ displayTransactionId(transaction) }}</strong>
+            <small class="muted" style="display: block; font-size: 11px;">{{ formatDate(transaction.transaction_date) }}</small>
+          </div>
+          <span v-if="transaction.status === 'Reversed'" class="pill" style="background: #fef2f2; color: #dc2626;">Reversed</span>
+          <span v-else class="pill" :class="transaction.type === 'Income' ? 'status' : 'stage'">{{ transaction.type }}</span>
+        </div>
+        <div class="mobile-card-body">
+          <div class="mobile-card-field">
+            <span>Total Amount</span>
+            <strong :style="{ color: transaction.type === 'Income' ? '#16a34a' : '#dc2626', fontSize: '16px' }">
+              {{ transaction.type === 'Income' ? '+' : '-' }} {{ money(viewCurrency, convertAmount(transaction.total_amount || transaction.amount, transaction.currency, transaction.transaction_date)) }}
+            </strong>
+          </div>
+          <div class="mobile-card-field">
+            <span>Category / Party</span>
+            <strong>{{ partyLabel(transaction) }}</strong>
+          </div>
+          <div class="mobile-card-field" v-if="transaction.account_name">
+            <span>Account</span>
+            <strong>{{ transaction.account_name }}</strong>
+          </div>
+        </div>
+        <div class="mobile-card-actions" @click.stop>
+          <RouterLink :to="`/finance/transactions/${transaction.id}`" class="button secondary">View Details</RouterLink>
+        </div>
+      </div>
+      <div v-if="filteredTransactions.length === 0" class="empty-state" style="text-align: center; padding: 24px;">No transactions match your filters.</div>
+    </div>
 
     <transition name="fade">
       <div v-if="showTransactionModal" class="transaction-modal-overlay">

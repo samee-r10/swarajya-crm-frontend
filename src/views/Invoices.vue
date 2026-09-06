@@ -94,7 +94,7 @@
       </div>
     </section>
 
-    <section class="table-container">
+    <section class="table-container desktop-only">
       <table class="record-table">
         <thead>
           <tr>
@@ -148,6 +148,46 @@
         </button>
       </div>
     </section>
+
+    <!-- Mobile Responsive Invoice Cards (Visible on mobile <768px) -->
+    <div class="mobile-card-list mobile-only">
+      <div
+        v-for="inv in paginatedInvoices"
+        :key="inv.id"
+        class="mobile-card"
+        @click="goToDetail(inv.id)"
+      >
+        <div class="mobile-card-head">
+          <div>
+            <strong class="mobile-card-title">{{ inv.invoice_number }}</strong>
+            <small class="muted" style="display: block; font-size: 11px;">{{ inv.customer_name }}</small>
+          </div>
+          <span class="pill" :class="statusClass(inv.status)">{{ inv.status }}</span>
+        </div>
+        <div class="mobile-card-body">
+          <div class="mobile-card-field">
+            <span>Total Amount</span>
+            <strong style="color: var(--primary); font-size: 16px;">{{ viewCurrency }} {{ Number(convertAmount(inv.total_amount, inv.currency, inv.invoice_date)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }}</strong>
+          </div>
+          <div class="mobile-card-field">
+            <span>Invoice Date</span>
+            <strong>{{ formatDate(inv.invoice_date) }}</strong>
+          </div>
+          <div class="mobile-card-field" v-if="inv.due_date">
+            <span>Due Date</span>
+            <strong>{{ formatDate(inv.due_date) }}</strong>
+          </div>
+          <div class="mobile-card-field" v-if="inv.project_name">
+            <span>Project</span>
+            <strong>{{ inv.project_name }}</strong>
+          </div>
+        </div>
+        <div class="mobile-card-actions" @click.stop>
+          <RouterLink :to="`/finance/invoices/${inv.id}`" class="button secondary">View Invoice</RouterLink>
+        </div>
+      </div>
+      <div v-if="filtered.length === 0" class="empty-state" style="text-align: center; padding: 24px;">No invoices found.</div>
+    </div>
   </div>
 </template>
 

@@ -33,7 +33,7 @@
     </section>
 
     <section v-if="loading" class="record-card empty-state">Loading payables...</section>
-    <section v-else class="table-container">
+    <section v-else class="table-container desktop-only">
       <table class="record-table">
         <thead>
           <tr>
@@ -72,6 +72,47 @@
         </tbody>
       </table>
     </section>
+
+    <!-- Mobile Cards List (Visible on mobile <768px) -->
+    <div v-if="!loading" class="mobile-card-list mobile-only">
+      <div
+        v-for="payable in visiblePayables"
+        :key="payable.id"
+        class="mobile-card"
+        @click="openPayment(payable)"
+      >
+        <div class="mobile-card-head">
+          <div>
+            <strong class="mobile-card-title">{{ payable.payable_number }}</strong>
+            <small class="muted" style="display: block; font-size: 11px;">{{ payable.party_name || payable.source_module }}</small>
+          </div>
+          <span class="pill" :class="statusClass(payable.status)">{{ payable.status }}</span>
+        </div>
+        <div class="mobile-card-body">
+          <div class="mobile-card-field">
+            <span>Outstanding</span>
+            <strong style="color: #dc2626;">{{ money(payable.outstanding_amount) }}</strong>
+          </div>
+          <div class="mobile-card-field">
+            <span>Original Amount</span>
+            <strong>{{ money(payable.original_amount) }}</strong>
+          </div>
+          <div class="mobile-card-field">
+            <span>Date</span>
+            <strong>{{ formatDate(payable.transaction_date) }}</strong>
+          </div>
+          <div class="mobile-card-field">
+            <span>Reference</span>
+            <strong>{{ payable.source_reference || '-' }}</strong>
+          </div>
+        </div>
+        <div class="mobile-card-actions" @click.stop>
+          <button v-if="['Pending','Partially Paid'].includes(payable.status)" class="button" type="button" @click="openPayment(payable)">Mark Paid</button>
+          <button class="button secondary" type="button" @click="openPayment(payable)">View Details</button>
+        </div>
+      </div>
+      <div v-if="visiblePayables.length === 0" class="empty-state" style="text-align: center; padding: 24px;">No {{ activeTab === 'pending' ? 'payment pending' : 'paid' }} payables found.</div>
+    </div>
 
     <div v-if="selectedPayable" class="modal-overlay" @click.self="selectedPayable = null">
       <div class="modal-content payable-modal">

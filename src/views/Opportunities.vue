@@ -26,7 +26,7 @@
       </div>
     </section>
 
-    <section class="table-container">
+    <section class="table-container desktop-only">
       <table class="record-table">
         <thead>
           <tr>
@@ -60,6 +60,42 @@
         </tbody>
       </table>
     </section>
+
+    <!-- Mobile Responsive Cards (Visible on mobile <768px) -->
+    <div class="mobile-card-list mobile-only">
+      <div
+        v-for="opp in filtered"
+        :key="opp.id"
+        class="mobile-card"
+        @click="goToDetail(opp.id)"
+      >
+        <div class="mobile-card-head">
+          <div>
+            <strong class="mobile-card-title">{{ opp.title }}</strong>
+            <small class="muted" style="display: block; font-size: 11px;">{{ opp.opportunity_number || '#' + opp.id }}</small>
+          </div>
+          <span class="pill stage">{{ opp.stage }}</span>
+        </div>
+        <div class="mobile-card-body">
+          <div class="mobile-card-field">
+            <span>Customer</span>
+            <strong>{{ opp.company_name }}</strong>
+          </div>
+          <div class="mobile-card-field" v-if="hasField('value')">
+            <span>Value</span>
+            <strong style="color: var(--primary);">{{ opp.currency }} {{ Number(opp.value || 0).toLocaleString() }}</strong>
+          </div>
+          <div class="mobile-card-field">
+            <span>Expected Close</span>
+            <strong>{{ formatDate(opp.expected_close) }}</strong>
+          </div>
+        </div>
+        <div class="mobile-card-actions" @click.stop>
+          <RouterLink :to="`/opportunities/${opp.id}`" class="button secondary">View Opportunity</RouterLink>
+        </div>
+      </div>
+      <div v-if="filtered.length === 0" class="empty-state" style="text-align: center; padding: 24px;">No opportunities found.</div>
+    </div>
 
     <!-- Modal -->
     <div v-if="showNewModal" class="modal-overlay" @click="showNewModal = false">

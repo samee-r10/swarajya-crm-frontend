@@ -26,7 +26,7 @@
       </div>
     </section>
 
-    <section class="table-container">
+    <section class="table-container desktop-only">
       <table class="record-table">
         <thead>
           <tr>
@@ -73,6 +73,42 @@
         </button>
       </div>
     </section>
+
+    <!-- Mobile Responsive Project Cards (Visible on mobile <768px) -->
+    <div class="mobile-card-list mobile-only">
+      <div
+        v-for="project in paginatedProjects"
+        :key="project.id"
+        class="mobile-card"
+        @click="goToDetail(project.id)"
+      >
+        <div class="mobile-card-head">
+          <div>
+            <strong class="mobile-card-title">{{ project.project_name }}</strong>
+            <small class="muted" style="display: block; font-size: 11px;" v-if="project.opportunity_title">{{ project.opportunity_title }}</small>
+          </div>
+          <span class="pill status">{{ project.status }}</span>
+        </div>
+        <div class="mobile-card-body">
+          <div class="mobile-card-field">
+            <span>Customer</span>
+            <strong>{{ project.company_name }}</strong>
+          </div>
+          <div class="mobile-card-field">
+            <span>Timeline</span>
+            <strong>{{ formatDate(project.delivery_timeline) }}</strong>
+          </div>
+          <div class="mobile-card-field" v-if="project.owner">
+            <span>Owner</span>
+            <strong>{{ project.owner }}</strong>
+          </div>
+        </div>
+        <div class="mobile-card-actions" @click.stop>
+          <RouterLink :to="`/projects/${project.id}`" class="button secondary">View Project</RouterLink>
+        </div>
+      </div>
+      <div v-if="filtered.length === 0" class="empty-state" style="text-align: center; padding: 24px;">No projects found matching your filters.</div>
+    </div>
 
     <!-- Modal -->
     <div v-if="showNewModal" class="modal-overlay" @click="showNewModal = false">

@@ -50,7 +50,7 @@
 
     <section class="record-card">
       <h2>Transfer History</h2>
-      <table class="record-table">
+      <table class="record-table desktop-only">
         <thead><tr><th>Transfer #</th><th>Date</th><th>From</th><th>To</th><th>Reference</th><th class="right">Amount</th><th>Remarks</th></tr></thead>
         <tbody>
           <tr v-for="transfer in transfers" :key="transfer.id || transfer.transfer_number">
@@ -65,6 +65,38 @@
           <tr v-if="transfers.length === 0"><td colspan="7" class="empty-row">No internal transfers posted yet.</td></tr>
         </tbody>
       </table>
+
+      <!-- Mobile Responsive Transfer Cards (Visible on mobile <768px) -->
+      <div class="mobile-card-list mobile-only">
+        <div
+          v-for="transfer in transfers"
+          :key="transfer.id || transfer.transfer_number"
+          class="mobile-card"
+        >
+          <div class="mobile-card-head">
+            <div>
+              <strong class="mobile-card-title">{{ transfer.transfer_number }}</strong>
+              <small class="muted" style="display: block; font-size: 11px;">{{ formatDate(transfer.transfer_date) }}</small>
+            </div>
+            <strong style="color: var(--primary); font-size: 15px;">{{ money(transfer.transfer_amount || transfer.amount, transfer.currency) }}</strong>
+          </div>
+          <div class="mobile-card-body">
+            <div class="mobile-card-field">
+              <span>From Account</span>
+              <strong>{{ transfer.from_bank_account_name || transfer.from_account_name }}</strong>
+            </div>
+            <div class="mobile-card-field">
+              <span>To Account</span>
+              <strong>{{ transfer.to_bank_account_name || transfer.to_account_name }}</strong>
+            </div>
+            <div class="mobile-card-field" v-if="transfer.transaction_reference || transfer.reference">
+              <span>Reference</span>
+              <strong>{{ transfer.transaction_reference || transfer.reference }}</strong>
+            </div>
+          </div>
+        </div>
+        <div v-if="transfers.length === 0" class="empty-state" style="text-align: center; padding: 24px;">No internal transfers posted yet.</div>
+      </div>
     </section>
   </div>
 </template>

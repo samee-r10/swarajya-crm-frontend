@@ -98,24 +98,31 @@
         <div class="viewer-stage" @pointerdown="startPan" @pointermove="pan" @pointerup="endPan" @pointercancel="endPan" @pointerleave="endPan">
           <div class="viewer-canvas-wrap">
             
-            <!-- Continuous Vertical PDF Page Stack -->
-            <div v-if="isPdf" class="pdf-vertical-stack">
-              <div 
-                v-for="pg in pdfPageList" 
-                :key="pg" 
-                class="pdf-page-card"
-                :class="{ 'fit-width': fitMode === 'page-width' }"
-                :style="pdfTransformStyle"
+            <!-- Native PDF Document View -->
+            <div v-if="isPdf" class="pdf-container-wrap" :style="pdfTransformStyle">
+              <object
+                :data="currentUrl"
+                type="application/pdf"
+                class="pdf-native-frame"
+                :title="currentName"
               >
-                <img 
-                  :src="pdfPageUrl(pg)" 
-                  :alt="`${currentName} - Page ${pg}`" 
-                  class="pdf-page-img"
-                  loading="lazy"
-                  @error="handlePageLoadError(pg)"
-                />
-                <div class="page-number-badge">Page {{ pg }} of {{ pdfPageList.length }}</div>
-              </div>
+                <iframe
+                  :src="currentUrl"
+                  class="pdf-native-frame"
+                  :title="currentName"
+                >
+                  <div class="viewer-fallback">
+                    <div class="fallback-card">
+                      <h3>PDF Preview</h3>
+                      <p>Open or download the document below.</p>
+                      <div class="fallback-actions">
+                        <a class="button primary" :href="currentUrl" :download="currentName">Download PDF</a>
+                        <a class="button secondary" :href="currentUrl" target="_blank" rel="noopener">Open PDF in New Tab</a>
+                      </div>
+                    </div>
+                  </div>
+                </iframe>
+              </object>
             </div>
 
             <!-- Single Image View -->
@@ -219,12 +226,15 @@ const imageTransform = computed(() => ({
 }))
 
 const pdfTransformStyle = computed(() => {
-  const baseWidth = fitMode.value === 'page-width' ? 1080 : 820
-  const width = Math.round(baseWidth * zoom.value)
+  const basePercent = fitMode.value === 'page-width' ? 100 : 90
+  const widthPercent = Math.min(100, Math.round(basePercent * zoom.value))
   return {
-    width: `${width}px`,
-    maxWidth: '98%',
-    transform: `rotate(${rotation.value}deg)`
+    width: `${widthPercent}%`,
+    maxWidth: '100%',
+    height: '100%',
+    minHeight: '75vh',
+    transform: `rotate(${rotation.value}deg)`,
+    transition: 'all 0.2s ease'
   }
 })
 
@@ -676,48 +686,27 @@ function detectType(doc) {
   justify-content: center;
 }
 
-/* ── Vertical Continuous PDF Stack ── */
-.pdf-vertical-stack {
+/* ── PDF Native Container & Frame ── */
+.pdf-container-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
+  justify-content: center;
   width: 100%;
-  padding-bottom: 40px;
-}
-
-.pdf-page-card {
-  position: relative;
-  background: #ffffff;
+  height: 100%;
+  min-height: 75vh;
   border-radius: 8px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
   overflow: hidden;
-  transition: transform 0.15s ease, width 0.15s ease;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
 }
 
-.pdf-page-img {
+.pdf-native-frame {
   width: 100%;
-  height: auto;
-  display: block;
-  object-fit: contain;
-}
-
-.page-number-badge {
-  position: absolute;
-  bottom: 12px;
-  right: 14px;
-  background: rgba(15, 23, 42, 0.8);
-  color: #f8fafc;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 6px;
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  pointer-events: none;
+  height: 100%;
+  min-height: 75vh;
+  border: 0;
+  border-radius: 8px;
+  background: #ffffff;
 }
 
 .viewer-office {
