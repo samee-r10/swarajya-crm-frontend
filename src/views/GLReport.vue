@@ -88,14 +88,14 @@
         <span class="card-sub">Before period start</span>
       </div>
       <div class="summary-card credits">
-        <span class="card-label">Total Credits (Inflow)</span>
-        <strong class="card-value positive">+ {{ money(convertSummary(report.total_credits)) }}</strong>
-        <span class="card-sub">Income received</span>
+        <span class="card-label">Total Credits</span>
+        <strong class="card-value positive">{{ money(convertSummary(report.total_credits)) }}</strong>
+        <span class="card-sub">Credit total</span>
       </div>
       <div class="summary-card debits">
-        <span class="card-label">Total Debits (Outflow)</span>
-        <strong class="card-value negative">- {{ money(convertSummary(report.total_debits)) }}</strong>
-        <span class="card-sub">Expenses paid out</span>
+        <span class="card-label">Total Debits</span>
+        <strong class="card-value">{{ money(convertSummary(report.total_debits)) }}</strong>
+        <span class="card-sub">Debit total</span>
       </div>
       <div class="summary-card closing">
         <span class="card-label">Closing Balance</span>
@@ -136,8 +136,8 @@
             <th style="width:150px">Product</th>
             <th style="width:150px">Project</th>
             <th style="width:100px">Status</th>
-            <th class="right" style="width:130px">Debit (Out)</th>
-            <th class="right" style="width:130px">Credit (In)</th>
+            <th class="right" style="width:130px">Debit</th>
+            <th class="right" style="width:130px">Credit</th>
             <th class="right" style="width:140px">Running Balance</th>
           </tr>
         </thead>
@@ -153,7 +153,7 @@
           </tr>
 
           <!-- Journal Entries -->
-          <tr v-for="(entry, idx) in visibleEntries" :key="entry.id" :class="rowClass(entry)">
+          <tr v-for="(entry, idx) in visibleEntries" :key="entry.leg_id || (entry.id + '-' + idx)" :class="rowClass(entry)">
             <td class="muted-sm">{{ idx + 1 }}</td>
             <td class="date-cell">{{ formatDateTime(entry.transaction_date || entry.date || entry.created_at) }}</td>
             <td class="ref-cell">
@@ -183,11 +183,11 @@
             <td class="text-cell">{{ entry.project_name || '—' }}</td>
             <td><span class="status-badge" :class="{ reversed: entry.status === 'Reversed' }">{{ entry.status || 'Completed' }}</span></td>
             <td class="right mono debit-amount">
-              <span v-if="entry.debit">- {{ money(convertAmt(entry.debit, entry.currency, entry.transaction_date)) }}</span>
+              <span v-if="entry.debit != null && entry.debit !== ''">{{ money(convertAmt(entry.debit, entry.currency, entry.transaction_date)) }}</span>
               <span v-else class="muted">—</span>
             </td>
             <td class="right mono credit-amount">
-              <span v-if="entry.credit">+ {{ money(convertAmt(entry.credit, entry.currency, entry.transaction_date)) }}</span>
+              <span v-if="entry.credit != null && entry.credit !== ''">{{ money(convertAmt(entry.credit, entry.currency, entry.transaction_date)) }}</span>
               <span v-else class="muted">—</span>
             </td>
             <td class="right mono running-balance" :class="entry.running_balance >= 0 ? 'positive' : 'negative'">
@@ -195,11 +195,11 @@
             </td>
           </tr>
 
-          <!-- Closing Balance Row -->
+          <!-- Closing Balance / Totals Row -->
           <tr class="closing-row">
-            <td colspan="12"><strong>Closing Balance</strong> — Carried Forward</td>
-            <td class="right mono negative"><strong>- {{ money(convertSummary(report.total_debits)) }}</strong></td>
-            <td class="right mono positive"><strong>+ {{ money(convertSummary(report.total_credits)) }}</strong></td>
+            <td colspan="12"><strong>TOTAL / CLOSING BALANCE</strong></td>
+            <td class="right mono debit-amount"><strong>{{ money(convertSummary(report.total_debits)) }}</strong></td>
+            <td class="right mono credit-amount"><strong>{{ money(convertSummary(report.total_credits)) }}</strong></td>
             <td class="right mono" :class="report.closing_balance >= 0 ? 'positive' : 'negative'">
               <strong>{{ money(convertSummary(report.closing_balance)) }}</strong>
             </td>
@@ -346,7 +346,7 @@ function productLabel(entry) {
 
 function rowClass(entry) {
   if (entry.status === 'Reversed') return 'reversed-row'
-  return entry.type === 'Income' ? 'credit-row' : 'debit-row'
+  return (entry.debit != null && entry.debit !== '') ? 'debit-row' : 'credit-row'
 }
 
 function entryRefLabel(entry) {
@@ -640,8 +640,8 @@ function exportExcel() {
 .gl-table tr:last-child td { border-bottom: none; }
 
 /* Row Types */
-.credit-row { background: #f0fdf4; }
-.debit-row  { background: #fff7f7; }
+.debit-row  { background: #f0fdf4; }
+.credit-row { background: #fff7f7; }
 .reversed-row { background: #f8fafc; color: #64748b; }
 .reversed-row td { text-decoration-color: rgba(100, 116, 139, 0.45); }
 
@@ -718,8 +718,8 @@ function exportExcel() {
 .right { text-align: right; }
 .mono { font-family: 'JetBrains Mono', monospace; }
 
-.debit-amount  { color: #dc2626; }
-.credit-amount { color: #16a34a; }
+.debit-amount  { color: #16a34a; font-weight: 700; }
+.credit-amount { color: #dc2626; font-weight: 700; }
 .positive { color: #16a34a; }
 .negative { color: #dc2626; }
 .running-balance { font-weight: 700; font-size: 14px; }
@@ -802,8 +802,8 @@ function exportExcel() {
     font-size: 11px;
   }
 
-  .credit-row { background: #f6fff8 !important; }
-  .debit-row  { background: #fff8f8 !important; }
+  .debit-row  { background: #f6fff8 !important; }
+  .credit-row { background: #fff8f8 !important; }
 
   tr { page-break-inside: avoid; }
 }

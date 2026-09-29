@@ -155,9 +155,13 @@ const detailFields = computed(() => {
     { label: 'CGST Amount', value: money(t.currency, t.cgst_amount) },
     { label: 'IGST Percent', value: `${Number(t.igst_percent || 0).toFixed(2)}%` },
     { label: 'IGST Amount', value: money(t.currency, t.igst_amount) },
+    { label: 'Additional Charges Percent', value: `${Number(t.additional_charges_percent || 0).toFixed(2)}%` },
+    { label: 'Additional Charges', value: money(t.currency, t.additional_charges || t.additional_charges_amount) },
     { label: 'TDS Percent', value: `${Number(t.tds_percent || 0).toFixed(2)}%` },
     { label: 'TDS Amount', value: money(t.currency, t.tds_amount) },
-    { label: 'Total Amount', value: money(t.currency, transactionTotalAmount(t)) },
+    { label: 'Platform Fee Percent', value: `${Number(t.platform_fee_percent || 0).toFixed(2)}%` },
+    { label: 'Platform Charges / Fee', value: money(t.currency, t.platform_fee_amount || t.platform_charges) },
+    { label: 'Total Net Amount', value: money(t.currency, transactionTotalAmount(t)) },
     { label: 'Created At', value: t.created_at || '' },
     { label: 'Description', value: t.description || '', long: true }
   ]
@@ -210,16 +214,20 @@ function money(currency, amount) {
 }
 
 function transactionTotalAmount(t) {
+  if (t.total_amount !== undefined && t.total_amount !== null && t.total_amount !== '') {
+    return Number(t.total_amount)
+  }
   const amount = Number(t.amount || 0)
   const cgst = Number(t.cgst_amount || 0)
   const igst = Number(t.igst_amount || 0)
   const tds = Number(t.tds_amount || 0)
-  const computedTotal = Number((amount + cgst + igst - tds).toFixed(2))
-  const storedTotal = Number(t.total_amount || 0)
-
-  if (cgst || igst || tds) return computedTotal
-  if (storedTotal && Math.abs(storedTotal - amount) > 0.01) return storedTotal
-  return amount
+  const addCharges = Number(t.additional_charges || t.additional_charges_amount || 0)
+  const platformFee = Number(t.platform_fee_amount || t.platform_charges || 0)
+  if (t.type === 'Income') {
+    return Number((amount + cgst + igst + addCharges - tds - platformFee).toFixed(2))
+  } else {
+    return Number((amount + cgst + igst + addCharges + platformFee - tds).toFixed(2))
+  }
 }
 </script>
 

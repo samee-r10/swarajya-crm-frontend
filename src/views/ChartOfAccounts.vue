@@ -41,7 +41,6 @@
               </td>
               <td>
                 <strong>{{ account.name }}</strong>
-                <span v-if="account.duplicate_count > 1" class="pill merged-pill">{{ account.duplicate_count }} merged</span>
               </td>
               <td><span class="pill">{{ account.type }}</span></td>
               <td><span class="pill" :class="account.is_active ? 'status-on' : 'status-off'">{{ account.is_active ? 'Active' : 'Blocked' }}</span></td>
@@ -78,19 +77,25 @@
                         <th>Party</th>
                         <th>Invoice</th>
                         <th>Description</th>
-                        <th class="right">Amount</th>
+                        <th class="right">Debit</th>
+                        <th class="right">Credit</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="transaction in accountTransactions" :key="transaction.id">
+                      <tr v-for="transaction in accountTransactions" :key="transaction.leg_id || transaction.id">
                         <td>{{ formatDate(transaction.transaction_date) }}</td>
                         <td class="mono">#{{ transaction.id }}</td>
-                        <td><span class="pill" :class="transaction.status === 'Reversed' ? 'status-off' : 'visibility'">{{ transaction.status === 'Reversed' ? 'Reversed' : transaction.type }}</span></td>
+                        <td><span class="pill" :class="transaction.status === 'Reversed' ? 'status-off' : (transaction.credit ? 'credit-pill' : 'debit-pill')">{{ transaction.status === 'Reversed' ? 'Reversed' : (transaction.credit ? 'Credit' : 'Debit') }}</span></td>
                         <td>{{ partyLabel(transaction) }}</td>
                         <td>{{ transaction.invoice_number || '-' }}</td>
                         <td>{{ transaction.description || transaction.category || '-' }}</td>
-                        <td class="right mono" :class="transaction.type === 'Income' ? 'amount-positive' : 'amount-negative'">
-                          {{ transaction.type === 'Income' ? '+' : '-' }} {{ money(transaction.currency, transaction.total_amount || transaction.amount) }}
+                        <td class="right mono debit-amount">
+                          <span v-if="transaction.debit != null && transaction.debit !== ''">{{ money(transaction.currency, transaction.debit) }}</span>
+                          <span v-else class="muted">—</span>
+                        </td>
+                        <td class="right mono credit-amount">
+                          <span v-if="transaction.credit != null && transaction.credit !== ''">{{ money(transaction.currency, transaction.credit) }}</span>
+                          <span v-else class="muted">—</span>
                         </td>
                       </tr>
                     </tbody>
@@ -593,5 +598,25 @@ onMounted(loadAccounts)
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+.debit-amount {
+  color: #16a34a !important;
+  font-weight: 700;
+}
+
+.credit-amount {
+  color: #dc2626 !important;
+  font-weight: 700;
+}
+
+.debit-pill {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+}
+
+.credit-pill {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
 }
 </style>

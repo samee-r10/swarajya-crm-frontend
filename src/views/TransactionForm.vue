@@ -43,10 +43,14 @@
     <label v-if="form.type === 'Income'">Associated Project<select v-model="form.project_id"><option value="">Select Project</option><option v-for="project in filteredProjects" :key="project.id" :value="project.id">{{ project.project_name }}</option></select></label>
     <label v-else>Vendor<select v-model="form.vendor_id"><option value="">Select Vendor</option><option v-for="vendor in vendors" :key="vendor.id" :value="vendor.id">{{ vendor.name }}</option></select></label>
     <label>Currency<select v-model="form.currency"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }}</option></select></label>
-    <label>Amount<input v-model="form.amount" type="number" step="0.01" required></label>
+    <label>Amount<input v-model="form.amount" type="number" step="0.01" required @input="onAmountInput"></label>
     <label>CGST %<input v-model="form.cgst_percent" type="number" step="0.01"></label>
     <label>IGST %<input v-model="form.igst_percent" type="number" step="0.01"></label>
     <label>TDS %<input v-model="form.tds_percent" type="number" step="0.01"></label>
+    <label>Additional Charges %<input v-model="form.additional_charges_percent" type="number" step="0.01" @input="onAdditionalChargesPercentInput" placeholder="e.g. 2"></label>
+    <label>Additional Charges ({{ currentCurrencySymbol }})<input v-model="form.additional_charges" type="number" step="0.01" @input="onAdditionalChargesAmountInput" placeholder="e.g. 10.00"></label>
+    <label>Platform Charges %<input v-model="form.platform_fee_percent" type="number" step="0.01" @input="onPlatformFeePercentInput" placeholder="e.g. 1"></label>
+    <label>Platform Charges ({{ currentCurrencySymbol }})<input v-model="form.platform_fee_amount" type="number" step="0.01" @input="onPlatformFeeAmountInput" placeholder="e.g. 0.50"></label>
     <label>Category<select v-model="form.category"><option value="">Select Category</option><option>Item</option><option>Service</option><option>Fixed Assets</option><option>Loan Disbursement</option><option>Loan Repayment</option></select></label>
     <label v-if="requiresLoanAccount">Loan Account
       <select v-model="form.loan_account_id" required>
@@ -179,28 +183,57 @@
             <div class="breakdown-row"><span>Base Amount</span><strong>{{ money(form.amount) }}</strong></div>
             <div class="breakdown-row" v-if="computedCGST > 0"><span>CGST ({{ form.cgst_percent }}%)</span><strong>+ {{ money(computedCGST) }}</strong></div>
             <div class="breakdown-row" v-if="computedIGST > 0"><span>IGST ({{ form.igst_percent }}%)</span><strong>+ {{ money(computedIGST) }}</strong></div>
+            <div class="breakdown-row" v-if="computedAdditionalCharges > 0"><span>Additional Charges ({{ form.additional_charges_percent || 0 }}%)</span><strong>+ {{ money(computedAdditionalCharges) }}</strong></div>
             <div class="breakdown-row" v-if="computedTDS > 0"><span>TDS ({{ form.tds_percent }}%)</span><strong class="negative">- {{ money(computedTDS) }}</strong></div>
-            <div class="breakdown-row grand-total"><span>Total Posting Amount</span><strong>{{ money(computedTotal) }}</strong></div>
+            <div class="breakdown-row" v-if="computedPlatformFee > 0">
+              <span>Platform Charges / Gateway Fee ({{ form.platform_fee_percent || 0 }}%)</span>
+              <strong :class="form.type === 'Income' ? 'negative' : ''">{{ form.type === 'Income' ? '-' : '+' }} {{ money(computedPlatformFee) }}</strong>
+            </div>
+            <div class="breakdown-row grand-total"><span>Total Net Posting Amount</span><strong>{{ money(computedTotal) }}</strong></div>
           </div>
 
           <!-- Double Entry Ledger simulated table -->
           <div class="ledger-preview-card">
-            <h3>Simulated General Ledger Postings</h3>
+            <div class="preview-card-header">
+              <div>
+                <span class="preview-eyebrow">General Ledger Allocation</span>
+                <h3 style="margin: 0;">Simulated GL Postings</h3>
+              </div>
+              <span class="balanced-badge" :class="simulatedLedgerTotals.isBalanced ? 'balanced-ok' : 'balanced-err'">
+                {{ simulatedLedgerTotals.isBalanced ? '✓ Journal Balanced' : `⚠ Unbalanced (${money(simulatedLedgerTotals.difference)})` }}
+              </span>
+            </div>
             <table class="preview-ledger-table">
               <thead>
                 <tr>
+                  <th style="width: 85px;">GL Code</th>
                   <th>Account Name</th>
-                  <th class="right">Debit (Dr)</th>
-                  <th class="right">Credit (Cr)</th>
+                  <th style="width: 90px;">Type</th>
+                  <th class="right" style="width: 125px;">Debit (Dr)</th>
+                  <th class="right" style="width: 125px;">Credit (Cr)</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="entry in simulatedLedger" :key="entry.account" :class="entry.debit ? 'debit-row' : 'credit-row'">
-                  <td>{{ entry.account }}</td>
-                  <td class="right mono debit-col"><span v-if="entry.debit">+ {{ money(entry.debit) }}</span><span v-else class="muted">—</span></td>
-                  <td class="right mono credit-col"><span v-if="entry.credit">+ {{ money(entry.credit) }}</span><span v-else class="muted">—</span></td>
+                <tr v-for="entry in simulatedLedger" :key="entry.gl_code + entry.account" :class="entry.debit ? 'debit-row' : 'credit-row'">
+                  <td><span class="gl-code-pill">{{ entry.gl_code }}</span></td>
+                  <td>
+                    <strong>{{ entry.account }}</strong>
+                    <small class="entry-sub-desc" v-if="entry.description">{{ entry.description }}</small>
+                  </td>
+                  <td>
+                    <span class="preview-type-pill" :class="entry.type.toLowerCase()">{{ entry.type }}</span>
+                  </td>
+                  <td class="right mono debit-col"><span v-if="entry.debit">{{ money(entry.debit) }}</span><span v-else class="muted">—</span></td>
+                  <td class="right mono credit-col"><span v-if="entry.credit">{{ money(entry.credit) }}</span><span v-else class="muted">—</span></td>
                 </tr>
               </tbody>
+              <tfoot>
+                <tr class="preview-total-row">
+                  <td colspan="3"><strong>TOTAL JOURNAL POSTING</strong></td>
+                  <td class="right mono debit-col"><strong>{{ money(simulatedLedgerTotals.totalDebit) }}</strong></td>
+                  <td class="right mono credit-col"><strong>{{ money(simulatedLedgerTotals.totalCredit) }}</strong></td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </main>
@@ -247,7 +280,7 @@ const receivableInvoices = ref([])
 const invoiceLoading = ref(false)
 const transactionFields = ref([])
 const error = ref('')
-const form = reactive({ transaction_date: new Date().toISOString().slice(0, 10), type: 'Income', account_id: '', product_id: '', customer_id: '', project_id: '', vendor_id: '', invoice_id: '', invoice_number: '', expense_claim_id: '', loan_account_id: '', loan_schedule_id: '', currency: 'INR', amount: '', cgst_percent: 0, igst_percent: 0, tds_percent: 0, category: '', depreciation_value: '', description: '', attachments: [] })
+const form = reactive({ transaction_date: new Date().toISOString().slice(0, 10), type: 'Income', account_id: '', product_id: '', customer_id: '', project_id: '', vendor_id: '', invoice_id: '', invoice_number: '', expense_claim_id: '', loan_account_id: '', loan_schedule_id: '', currency: 'INR', amount: '', cgst_percent: 0, igst_percent: 0, tds_percent: 0, additional_charges_percent: '', additional_charges: '', platform_fee_percent: '', platform_fee_amount: '', category: '', depreciation_value: '', description: '', attachments: [] })
 const postingDateOption = ref('today')
 const uploadingDocument = ref(false)
 const isEditing = computed(() => !!props.id)
@@ -412,6 +445,8 @@ const selectedLoan = computed(() => {
   return loans.value.find(item => Number(item.id) === Number(form.loan_account_id)) || null
 })
 
+const currentCurrencySymbol = computed(() => currencySymbolsMap[form.currency] || '$')
+
 const computedCGST = computed(() => {
   const amt = parseFloat(form.amount) || 0
   const pct = parseFloat(form.cgst_percent) || 0
@@ -430,9 +465,60 @@ const computedTDS = computed(() => {
   return parseFloat((amt * (pct / 100)).toFixed(2))
 })
 
+const computedAdditionalCharges = computed(() => {
+  return parseFloat((parseFloat(form.additional_charges) || 0).toFixed(2))
+})
+
+const computedPlatformFee = computed(() => {
+  return parseFloat((parseFloat(form.platform_fee_amount) || 0).toFixed(2))
+})
+
+function onAmountInput() {
+  if (form.additional_charges_percent !== '' && form.additional_charges_percent !== undefined) {
+    onAdditionalChargesPercentInput()
+  }
+  if (form.platform_fee_percent !== '' && form.platform_fee_percent !== undefined) {
+    onPlatformFeePercentInput()
+  }
+}
+
+function onAdditionalChargesPercentInput() {
+  const amt = parseFloat(form.amount) || 0
+  const pct = parseFloat(form.additional_charges_percent) || 0
+  form.additional_charges = amt > 0 && pct ? parseFloat((amt * (pct / 100)).toFixed(2)) : (pct === 0 ? 0 : '')
+}
+
+function onAdditionalChargesAmountInput() {
+  const amt = parseFloat(form.amount) || 0
+  const val = parseFloat(form.additional_charges) || 0
+  form.additional_charges_percent = amt > 0 && val ? parseFloat(((val / amt) * 100).toFixed(2)) : (val === 0 ? 0 : '')
+}
+
+function onPlatformFeePercentInput() {
+  const amt = parseFloat(form.amount) || 0
+  const pct = parseFloat(form.platform_fee_percent) || 0
+  form.platform_fee_amount = amt > 0 && pct ? parseFloat((amt * (pct / 100)).toFixed(2)) : (pct === 0 ? 0 : '')
+}
+
+function onPlatformFeeAmountInput() {
+  const amt = parseFloat(form.amount) || 0
+  const val = parseFloat(form.platform_fee_amount) || 0
+  form.platform_fee_percent = amt > 0 && val ? parseFloat(((val / amt) * 100).toFixed(2)) : (val === 0 ? 0 : '')
+}
+
 const computedTotal = computed(() => {
   const amt = parseFloat(form.amount) || 0
-  return parseFloat((amt + computedCGST.value + computedIGST.value - computedTDS.value).toFixed(2))
+  const addCharges = computedAdditionalCharges.value
+  const platformFee = computedPlatformFee.value
+  const cgst = computedCGST.value
+  const igst = computedIGST.value
+  const tds = computedTDS.value
+
+  if (form.type === 'Income') {
+    return parseFloat((amt + cgst + igst + addCharges - tds - platformFee).toFixed(2))
+  } else {
+    return parseFloat((amt + cgst + igst + addCharges + platformFee - tds).toFixed(2))
+  }
 })
 
 const selectedAccountName = computed(() => {
@@ -583,6 +669,10 @@ async function loadExistingTransaction() {
       cgst_percent: tx.cgst_percent || 0,
       igst_percent: tx.igst_percent || 0,
       tds_percent: tx.tds_percent || 0,
+      additional_charges_percent: tx.additional_charges_percent ?? '',
+      additional_charges: tx.additional_charges ?? tx.additional_charges_amount ?? '',
+      platform_fee_percent: tx.platform_fee_percent ?? '',
+      platform_fee_amount: tx.platform_fee_amount ?? tx.platform_charges ?? '',
       category: tx.category || '',
       depreciation_value: tx.depreciation_value ?? '',
       description: tx.description || '',
@@ -655,84 +745,186 @@ const selectedPartyName = computed(() => {
 
 const simulatedLedger = computed(() => {
   const amt = parseFloat(form.amount) || 0
+  const addCharges = computedAdditionalCharges.value
+  const platformFee = computedPlatformFee.value
+  const cgst = computedCGST.value
+  const igst = computedIGST.value
+  const tds = computedTDS.value
+  const netBank = computedTotal.value
   const ledger = []
   
   if (form.type === 'Income') {
-    // Total amount is debited to Bank Account asset
+    // 1. Bank Account (Debit)
+    if (netBank > 0) {
+      ledger.push({
+        gl_code: '1010',
+        account: 'Bank Account',
+        type: 'Asset',
+        description: 'Net Settlement Received in Bank',
+        debit: netBank,
+        credit: 0
+      })
+    }
+    // 2. Payment Gateway & Platform Fees (Debit)
+    if (platformFee > 0) {
+      ledger.push({
+        gl_code: '5040',
+        account: 'Payment Gateway & Platform Fees',
+        type: 'Expense',
+        description: `Payment Gateway / Platform Fee (${form.platform_fee_percent || 0}%)`,
+        debit: platformFee,
+        credit: 0
+      })
+    }
+    // 3. TDS Receivable (Debit)
+    if (tds > 0) {
+      ledger.push({
+        gl_code: '1040',
+        account: 'TDS Receivable',
+        type: 'Asset',
+        description: `TDS Receivable Asset (${form.tds_percent || 0}%)`,
+        debit: tds,
+        credit: 0
+      })
+    }
+    // 4. Primary Revenue Account (Credit)
+    const selectedAcc = selectedAccount.value
+    const revGl = selectedAcc?.gl_code || '4000'
+    const revName = selectedAcc?.name || (revGl === '4010' ? 'Subscription Revenue' : 'Sales Revenue')
     ledger.push({
-      account: `[Asset] Bank Account`,
-      debit: computedTotal.value,
-      credit: 0
-    })
-    // Base amount is credited to selected Revenue account
-    const revenueAccName = selectedAccountName.value !== 'Not Selected' ? selectedAccountName.value : 'Sales Revenue'
-    ledger.push({
-      account: `[Revenue] ${revenueAccName}${form.category ? ` (${form.category})` : ''}`,
+      gl_code: revGl,
+      account: revName,
+      type: 'Revenue',
+      description: form.description || (revGl === '4010' ? 'Gross Subscription Revenue' : `Gross Revenue (${revName})`),
       debit: 0,
       credit: amt
     })
-    // Tax credits if CGST / IGST present
-    if (computedCGST.value > 0) {
+    // 5. Additional Charges Income (Credit)
+    if (addCharges > 0) {
       ledger.push({
-        account: `[Liability] CGST Output Tax Payable`,
+        gl_code: '4020',
+        account: 'Additional Charges Income',
+        type: 'Revenue',
+        description: `Additional Charges Income (${form.additional_charges_percent || 0}%)`,
         debit: 0,
-        credit: computedCGST.value
+        credit: addCharges
       })
     }
-    if (computedIGST.value > 0) {
+    // 6. CGST Output Tax (Credit)
+    if (cgst > 0) {
       ledger.push({
-        account: `[Liability] IGST Output Tax Payable`,
+        gl_code: '2010',
+        account: 'CGST Output Tax Payable',
+        type: 'Liability',
+        description: `CGST Output Tax Payable (${form.cgst_percent || 0}%)`,
         debit: 0,
-        credit: computedIGST.value
+        credit: cgst
       })
     }
-    // TDS debit if TDS present (TDS Receivable asset)
-    if (computedTDS.value > 0) {
+    // 7. IGST Output Tax (Credit)
+    if (igst > 0) {
       ledger.push({
-        account: `[Asset] TDS Receivable`,
-        debit: computedTDS.value,
-        credit: 0
+        gl_code: '2020',
+        account: 'IGST Output Tax Payable',
+        type: 'Liability',
+        description: `IGST Output Tax Payable (${form.igst_percent || 0}%)`,
+        debit: 0,
+        credit: igst
       })
     }
-  } else {
-    // Total amount is credited to Bank Account asset
+  } else { // Expense
+    // 1. Primary Operating Expense Account (Debit)
+    const selectedAcc = selectedAccount.value
+    const expGl = selectedAcc?.gl_code || '5000'
+    const expName = selectedAcc?.name || 'Operating Expenses'
     ledger.push({
-      account: `[Asset] Bank Account`,
-      debit: 0,
-      credit: computedTotal.value
-    })
-    // Base amount is debited to selected Expense account
-    const expenseAccName = selectedAccountName.value !== 'Not Selected' ? selectedAccountName.value : 'Operating Expenses'
-    ledger.push({
-      account: `[Expense] ${expenseAccName}${form.category ? ` (${form.category})` : ''}`,
+      gl_code: expGl,
+      account: expName,
+      type: 'Expense',
+      description: form.description || `Base Operating Expense (${expName})`,
       debit: amt,
       credit: 0
     })
-    // Tax debits if CGST / IGST present
-    if (computedCGST.value > 0) {
+    // 2. Additional Charges Expense (Debit)
+    if (addCharges > 0) {
       ledger.push({
-        account: `[Asset] CGST Input Tax Credit`,
-        debit: computedCGST.value,
+        gl_code: '5050',
+        account: 'Additional Charges Expense',
+        type: 'Expense',
+        description: `Additional Charges Expense (${form.additional_charges_percent || 0}%)`,
+        debit: addCharges,
         credit: 0
       })
     }
-    if (computedIGST.value > 0) {
+    // 3. Payment Gateway & Platform Fees (Debit)
+    if (platformFee > 0) {
       ledger.push({
-        account: `[Asset] IGST Input Tax Credit`,
-        debit: computedIGST.value,
+        gl_code: '5040',
+        account: 'Payment Gateway & Platform Fees',
+        type: 'Expense',
+        description: `Payment Gateway / Platform Fee (${form.platform_fee_percent || 0}%)`,
+        debit: platformFee,
         credit: 0
       })
     }
-    // TDS credit if TDS present (TDS Payable liability)
-    if (computedTDS.value > 0) {
+    // 4. CGST Input Tax Credit (Debit)
+    if (cgst > 0) {
       ledger.push({
-        account: `[Liability] TDS Payable`,
+        gl_code: '1020',
+        account: 'CGST Input Tax Credit',
+        type: 'Asset',
+        description: `CGST Input Tax Credit (${form.cgst_percent || 0}%)`,
+        debit: cgst,
+        credit: 0
+      })
+    }
+    // 5. IGST Input Tax Credit (Debit)
+    if (igst > 0) {
+      ledger.push({
+        gl_code: '1030',
+        account: 'IGST Input Tax Credit',
+        type: 'Asset',
+        description: `IGST Input Tax Credit (${form.igst_percent || 0}%)`,
+        debit: igst,
+        credit: 0
+      })
+    }
+    // 6. TDS Payable (Credit)
+    if (tds > 0) {
+      ledger.push({
+        gl_code: '2030',
+        account: 'TDS Payable',
+        type: 'Liability',
+        description: `TDS Payable Liability (${form.tds_percent || 0}%)`,
         debit: 0,
-        credit: computedTDS.value
+        credit: tds
+      })
+    }
+    // 7. Bank Account Outflow (Credit)
+    if (netBank > 0) {
+      ledger.push({
+        gl_code: '1010',
+        account: 'Bank Account',
+        type: 'Asset',
+        description: 'Net Cash Outflow from Bank',
+        debit: 0,
+        credit: netBank
       })
     }
   }
   return ledger
+})
+
+const simulatedLedgerTotals = computed(() => {
+  const dr = simulatedLedger.value.reduce((sum, item) => sum + (parseFloat(item.debit) || 0), 0)
+  const cr = simulatedLedger.value.reduce((sum, item) => sum + (parseFloat(item.credit) || 0), 0)
+  const diff = Math.abs(dr - cr)
+  return {
+    totalDebit: dr,
+    totalCredit: cr,
+    difference: diff,
+    isBalanced: diff < 0.01
+  }
 })
 
 function openPreview() {
@@ -1095,6 +1287,94 @@ async function save() {
 
 .credit-row td:first-child {
   border-left: 4px solid #dc2626;
+}
+
+.preview-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.preview-eyebrow {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+  display: block;
+}
+
+.balanced-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+
+.balanced-ok {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.balanced-err {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.gl-code-pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 800;
+  color: #0369a1;
+  background: #e0f2fe;
+  padding: 3px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.entry-sub-desc {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.preview-type-pill {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.preview-type-pill.asset {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.preview-type-pill.expense {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.preview-type-pill.revenue {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.preview-type-pill.liability {
+  background: #fce7f3;
+  color: #9d174d;
+}
+
+.preview-total-row td {
+  background: #f8fafc;
+  font-weight: 800;
+  border-top: 2px solid var(--line);
+  border-bottom: 2px solid var(--line);
+  padding: 12px;
 }
 
 .modal-footer {
