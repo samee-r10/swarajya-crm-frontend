@@ -141,7 +141,7 @@ import GaneshUtsavVisual from '../components/GaneshUtsavVisual.vue'
 
 // Temporary Festive Theme Feature Flag
 // Set to `false` anytime to immediately revert to standard corporate theme
-const isFestiveEnabled = ref(true)
+const isFestiveEnabled = ref(false)
 
 const router = useRouter()
 const form = reactive({ email: '', password: '' })
