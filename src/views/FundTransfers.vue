@@ -32,8 +32,8 @@
         <p v-if="selectedFromAccount" class="span-2 field-hint">Available in source: {{ money(selectedFromAccount.current_balance ?? selectedFromAccount.balance ?? selectedFromAccount.opening_balance, selectedFromAccount.currency) }}</p>
         <p v-if="error" class="span-2 flash warning">{{ error }}</p>
         <div class="span-2 action-row">
-          <button class="button secondary" type="button" @click="resetForm">Reset</button>
-          <button class="button" type="submit">Execute Transfer</button>
+          <button class="button secondary" type="button" :disabled="submittingTransfer" @click="resetForm">Reset</button>
+          <button class="button" type="submit" :disabled="submittingTransfer">{{ submittingTransfer ? 'Transferring...' : 'Execute Transfer' }}</button>
         </div>
       </form>
 
@@ -108,6 +108,7 @@ import { apiGet, apiPost } from '../api/client'
 const bankAccounts = ref([])
 const transfers = ref([])
 const error = ref('')
+const submittingTransfer = ref(false)
 const LOCAL_TREASURY_BANKS_KEY = 'crm_treasury_bank_accounts'
 const form = reactive(defaultTransfer())
 
@@ -176,14 +177,18 @@ function validateTransfer() {
 }
 
 async function executeTransfer() {
+  if (submittingTransfer.value) return
   error.value = ''
   if (!validateTransfer()) return
+  submittingTransfer.value = true
   try {
     await apiPost('/api/treasury/fund-transfers', form)
     resetForm()
     await loadData()
   } catch (err) {
     error.value = err.message || 'Unable to execute transfer.'
+  } finally {
+    submittingTransfer.value = false
   }
 }
 

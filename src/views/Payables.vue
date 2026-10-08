@@ -159,8 +159,8 @@
           <button v-if="!isSalaryPayable && !isOtherPayment && payment.payment_mode !== 'UPI'" class="button secondary span-2" type="button" @click="openRecipientAccountForm">Add Recipient Bank Account</button>
           <p v-if="error" class="span-2 flash warning">{{ error }}</p>
           <div class="span-2 action-row">
-            <button class="button secondary" type="button" @click="selectedPayable = null">Cancel</button>
-            <button class="button" type="submit">Confirm Payment</button>
+            <button class="button secondary" type="button" :disabled="submittingPayment" @click="selectedPayable = null">Cancel</button>
+            <button class="button" type="submit" :disabled="submittingPayment">{{ submittingPayment ? 'Processing...' : 'Confirm Payment' }}</button>
           </div>
         </form>
         <div v-else class="action-row">
@@ -258,6 +258,7 @@ const search = ref('')
 const activeTab = ref('pending')
 const selectedPayable = ref(null)
 const error = ref('')
+const submittingPayment = ref(false)
 const paymentModes = ref([])
 const bankAccounts = ref([])
 const recipientAccounts = ref([])
@@ -426,6 +427,7 @@ function paymentReference(payable) {
 }
 
 async function markPaid() {
+  if (submittingPayment.value) return
   if (!payment.bank_account_id) {
     error.value = 'Select the bank account used for this payable payment.'
     return
@@ -439,12 +441,15 @@ async function markPaid() {
     return
   }
   error.value = ''
+  submittingPayment.value = true
   try {
     await apiPost(`/api/treasury/payables/${selectedPayable.value.id}/payments`, paymentPayload())
     selectedPayable.value = null
     await loadPayables()
   } catch (err) {
     error.value = err.message
+  } finally {
+    submittingPayment.value = false
   }
 }
 

@@ -329,11 +329,19 @@ async function openStatement(account) {
   statementLoading.value = true
   error.value = ''
   try {
-    const data = await apiGet(`/api/treasury/bank-accounts/${account.id}/statement`)
-    const entries = data?.transactions || data?.statement || data?.entries || []
+    let data = await apiGet(`/api/treasury/bank-accounts/${account.id}/statement`)
+    let entries = data?.transactions || data?.statement || data?.entries
+    if (!entries) {
+      data = await apiGet(`/api/treasury/bank-accounts/${account.id}`)
+      entries = data?.transactions || []
+    }
     if (Array.isArray(entries)) statementTransactions.value = entries
   } catch (err) {
-    if (!String(err.message || '').includes('404')) {
+    try {
+      const data = await apiGet(`/api/treasury/bank-accounts/${account.id}`)
+      const entries = data?.transactions || []
+      if (Array.isArray(entries)) statementTransactions.value = entries
+    } catch {
       error.value = err.message || 'Unable to load statement.'
     }
   } finally {
@@ -456,14 +464,15 @@ function compareStatementEntries(a, b) {
   if (dateDiff) return dateDiff
   const createdDiff = safeTime(a.created_at) - safeTime(b.created_at)
   if (createdDiff) return createdDiff
-  return String(a.id || a.reference || '').localeCompare(String(b.id || b.reference || ''))
+  return (Number(a.id) || 0) - (Number(b.id) || 0)
 }
 
 function statementSortTime(entry) {
-  const transactionValue = entry.date || entry.transaction_date
-  if (isDateOnly(transactionValue)) {
-    return safeTime(combineDateWithActionTime(transactionValue, entry.created_at))
+  if (entry.created_at) {
+    const t = safeTime(entry.created_at)
+    if (t) return t
   }
+  const transactionValue = entry.date || entry.transaction_date
   return safeTime(transactionValue)
 }
 
@@ -481,30 +490,31 @@ function money(value, currency = 'INR') {
 }
 
 function formatDate(value) {
-  return value ? new Date(value).toLocaleDateString() : '-'
+  if (!value) return '-'
+  const d = new Date(value)
+  return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : '-'
 }
 
 function formatStatementDate(entry) {
-  const value = entry.date || entry.transaction_date
+  const value = entry.created_at || entry.date || entry.transaction_date
   if (!value) return '-'
-  const displayValue = isDateOnly(value) ? combineDateWithActionTime(value, entry.created_at) : value
-  return formatTimestamp(displayValue)
-}
-
-function combineDateWithActionTime(dateValue, actionTimeValue) {
-  if (!actionTimeValue) return `${dateValue}T00:00:00`
-  const actionDate = new Date(actionTimeValue)
-  if (!Number.isFinite(actionDate.getTime())) return `${dateValue}T00:00:00`
-  const time = [
-    String(actionDate.getHours()).padStart(2, '0'),
-    String(actionDate.getMinutes()).padStart(2, '0'),
-    String(actionDate.getSeconds()).padStart(2, '0')
-  ].join(':')
-  return `${dateValue}T${time}`
+  return formatTimestamp(value)
 }
 
 function formatTimestamp(value) {
-  return value ? new Date(value).toLocaleString() : '-'
+  if (!value) return '-'
+  const d = new Date(value)
+  if (!Number.isFinite(d.getTime())) return String(value)
+  return d.toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
 }
 
 function statusClass(status) {
