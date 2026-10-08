@@ -195,10 +195,11 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet } from '../api/client'
+import { useDebouncedRef } from '../utils/debounce'
 
 const router = useRouter()
 const invoices = ref([])
-const search = ref('')
+const search = useDebouncedRef('', 300)
 const status = ref('')
 const statuses = ['Draft', 'Sent', 'Approved', 'Partially Paid', 'Paid', 'Cancelled', 'Overdue']
 

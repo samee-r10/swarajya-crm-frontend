@@ -1656,33 +1656,28 @@ async function loadAllData() {
     try { return await fn() } catch (e) { console.warn(`Treasury: ${label} failed –`, e.message) }
   }
 
-  const dash = await safe(() => apiGet('/api/treasury/dashboard'), 'dashboard')
+  const [dash, revs, exps, stks, userData, pts, ledger, logs, payStats, bankData] = await Promise.all([
+    safe(() => apiGet('/api/treasury/dashboard'), 'dashboard'),
+    safe(() => apiGet('/api/treasury/revenue'), 'revenue'),
+    safe(() => apiGet('/api/treasury/expense-log'), 'expense-log'),
+    safe(() => apiGet('/api/treasury/stakeholders'), 'stakeholders'),
+    safe(() => apiGet('/api/setup/users'), 'users'),
+    safe(() => apiGet('/api/treasury/channel-partners'), 'channel-partners'),
+    safe(() => apiGet('/api/treasury/payouts'), 'payouts'),
+    safe(() => apiGet('/api/treasury/logs'), 'logs'),
+    safe(() => apiGet('/api/treasury/payment-stats'), 'payment-stats'),
+    safe(() => apiGet('/api/treasury/bank-accounts'), 'bank accounts')
+  ])
+
   if (dash) dashboardData.value = dash
-
-  const revs = await safe(() => apiGet('/api/treasury/revenue'), 'revenue')
   if (revs?.revenue) revenueEntries.value = revs.revenue
-
-  const exps = await safe(() => apiGet('/api/treasury/expense-log'), 'expense-log')
   if (exps?.expenses) expenseEntries.value = exps.expenses
-
-  const stks = await safe(() => apiGet('/api/treasury/stakeholders'), 'stakeholders')
   if (stks?.stakeholders) stakeholders.value = stks.stakeholders
-  const userData = await safe(() => apiGet('/api/setup/users'), 'users')
   if (userData?.users) users.value = userData.users
-
-  const pts = await safe(() => apiGet('/api/treasury/channel-partners'), 'channel-partners')
   if (pts?.partners) partners.value = pts.partners
-
-  const ledger = await safe(() => apiGet('/api/treasury/payouts'), 'payouts')
   if (ledger?.payouts) payoutLedger.value = ledger.payouts
-
-  const logs = await safe(() => apiGet('/api/treasury/logs'), 'logs')
   if (logs?.logs) auditLogs.value = logs.logs
-
-  const payStats = await safe(() => apiGet('/api/treasury/payment-stats'), 'payment-stats')
   if (payStats) paymentStats.value = payStats
-
-  const bankData = await safe(() => apiGet('/api/treasury/bank-accounts'), 'bank accounts')
   if (bankData?.bank_accounts) bankAccounts.value = bankData.bank_accounts
 }
 

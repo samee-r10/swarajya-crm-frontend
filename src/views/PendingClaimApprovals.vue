@@ -59,22 +59,60 @@
           <div><span>Amount</span><strong>{{ money(selectedApproval.claim.total_claim_amount) }}</strong></div>
         </section>
 
-        <section class="approval-body">
-          <label>Description<textarea :value="selectedApproval.claim.expense_description" rows="3" readonly></textarea></label>
-          <label>Approval Remarks<textarea v-model="remarks" rows="3" placeholder="Add approval or rejection remarks"></textarea></label>
-        </section>
-        <DocumentPreview
-          v-if="selectedApproval.claim.attachment"
-          :document="selectedApproval.claim.attachment"
-          label="Supporting Document"
-          access-note="Visible to assigned approvers for review and finance users with claim access."
-        />
-        <p v-if="error" class="flash warning">{{ error }}</p>
-        <div class="action-row">
-          <button class="button secondary" type="button" @click="selectedApproval = null">Close</button>
-          <button class="button secondary danger-text" type="button" @click="decide('reject')">Reject</button>
-          <button class="button" type="button" @click="decide('approve')">Approve</button>
+        <div v-if="selectedApproval.delegated_from_name" class="flash info" style="margin: 0 24px 14px;">
+          <strong>ℹ️ Delegated Approval:</strong> Delegated from {{ selectedApproval.delegated_from_name }}
+          <span v-if="selectedApproval.delegation_remarks"> &mdash; "{{ selectedApproval.delegation_remarks }}"</span>
         </div>
+
+        <div v-if="isDelegating" class="delegation-box">
+          <div class="delegation-header">
+            <h3>Delegate Claim Approval</h3>
+            <p class="muted">Assign this claim review to another active user or stakeholder.</p>
+          </div>
+          <label>Assign Approval To:
+            <select v-model="delegateUserId" required>
+              <option value="">Select a user...</option>
+              <option
+                v-for="u in eligibleDelegates"
+                :key="u.id"
+                :value="u.id"
+                :disabled="u.id === selectedApproval.linked_user_id"
+              >
+                {{ u.full_name }} ({{ u.email }}){{ u.is_stakeholder ? ' · Stakeholder' : '' }}
+              </option>
+            </select>
+          </label>
+          <label>Delegation Reason / Remarks:
+            <textarea v-model="delegateRemarks" rows="2" placeholder="e.g. Delegating review while on leave / requested proxy"></textarea>
+          </label>
+          <p v-if="error" class="flash warning">{{ error }}</p>
+          <div class="action-row" style="margin-top: 14px; padding: 0;">
+            <button class="button secondary" type="button" :disabled="delegatingLoading" @click="isDelegating = false">Cancel</button>
+            <button class="button" type="button" :disabled="!delegateUserId || delegatingLoading" @click="submitDelegation">
+              {{ delegatingLoading ? 'Delegating...' : 'Confirm Delegation' }}
+            </button>
+          </div>
+        </div>
+
+        <template v-else>
+          <section class="approval-body">
+            <label>Description<textarea :value="selectedApproval.claim.expense_description" rows="3" readonly></textarea></label>
+            <label>Approval Remarks<textarea v-model="remarks" rows="3" placeholder="Add approval or rejection remarks"></textarea></label>
+          </section>
+          <DocumentPreview
+            v-if="selectedApproval.claim.attachment"
+            :document="selectedApproval.claim.attachment"
+            label="Supporting Document"
+            access-note="Visible to assigned approvers for review and finance users with claim access."
+          />
+          <p v-if="error" class="flash warning">{{ error }}</p>
+          <div class="action-row">
+            <button class="button secondary" type="button" @click="selectedApproval = null">Close</button>
+            <button v-if="selectedApproval.can_delegate ?? true" class="button secondary" type="button" @click="startDelegating">Delegate Approval</button>
+            <button class="button secondary danger-text" type="button" @click="decide('reject')">Reject</button>
+            <button class="button" type="button" @click="decide('approve')">Approve</button>
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -90,8 +128,15 @@ const selectedApproval = ref(null)
 const loading = ref(false)
 const remarks = ref('')
 const error = ref('')
+const eligibleDelegates = ref([])
+const isDelegating = ref(false)
+const delegateUserId = ref('')
+const delegateRemarks = ref('')
+const delegatingLoading = ref(false)
 
-onMounted(loadApprovals)
+onMounted(async () => {
+  await Promise.all([loadApprovals(), loadDelegates()])
+})
 
 async function loadApprovals() {
   loading.value = true
@@ -103,10 +148,48 @@ async function loadApprovals() {
   }
 }
 
+async function loadDelegates() {
+  try {
+    const data = await apiGet('/api/approvals/eligible-delegates')
+    eligibleDelegates.value = data.delegates || []
+  } catch {
+    eligibleDelegates.value = []
+  }
+}
+
 function openApproval(approval) {
   selectedApproval.value = approval
   remarks.value = ''
   error.value = ''
+  isDelegating.value = false
+  delegateUserId.value = ''
+  delegateRemarks.value = ''
+}
+
+function startDelegating() {
+  isDelegating.value = true
+  delegateUserId.value = ''
+  delegateRemarks.value = ''
+  error.value = ''
+}
+
+async function submitDelegation() {
+  if (!delegateUserId.value) return
+  delegatingLoading.value = true
+  error.value = ''
+  try {
+    await apiPost(`/api/claim-approvals/${selectedApproval.value.id}/delegate`, {
+      delegate_to_user_id: delegateUserId.value,
+      remarks: delegateRemarks.value,
+    })
+    isDelegating.value = false
+    selectedApproval.value = null
+    await loadApprovals()
+  } catch (err) {
+    error.value = err.message || 'Failed to delegate claim approval.'
+  } finally {
+    delegatingLoading.value = false
+  }
 }
 
 async function decide(action) {
@@ -141,4 +224,7 @@ function money(value) {
 .approval-modal :deep(.document-preview) { margin: 0 24px 18px; }
 .approval-modal .action-row { padding: 0 24px 24px; }
 .danger-text { color: #b91c1c; }
+.delegation-box { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px; margin: 0 24px 20px; display: grid; gap: 12px; }
+.delegation-header h3 { margin: 0 0 4px 0; font-size: 16px; }
+.flash.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; border-radius: 6px; padding: 10px 14px; }
 </style>

@@ -224,12 +224,13 @@ import { apiGet, apiPost } from '../api/client'
 import CrmEmptyState from '../components/CrmEmptyState.vue'
 import CrmPageHeader from '../components/CrmPageHeader.vue'
 import CrmTableSkeleton from '../components/CrmTableSkeleton.vue'
+import { useDebouncedRef } from '../utils/debounce'
 
 const router = useRouter()
 const customers = ref([])
 const statuses = ref([])
 const loading = ref(true)
-const search = ref('')
+const search = useDebouncedRef('', 300)
 const status = ref('')
 const sortKey = ref('updated_at')
 const sortDir = ref('desc')

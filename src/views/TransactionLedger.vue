@@ -331,10 +331,9 @@ const filters = reactive({
 const currencySymbols = reactive({ USD: '$', INR: '₹', EUR: '€', GBP: '£' })
 
 onMounted(async () => {
-  await loadTransactions()
-  if (canPostSalary.value) await loadSalaryPostingData()
-  await loadExchangeRates()
-  await loadCurrencies()
+  const tasks = [loadTransactions(), loadExchangeRates(), loadCurrencies()]
+  if (canPostSalary.value) tasks.push(loadSalaryPostingData())
+  await Promise.all(tasks)
   if (route.query.new === '1') {
     showTransactionModal.value = true
   }
@@ -350,8 +349,10 @@ async function loadTransactions() {
   loading.value = true
   error.value = ''
   try {
-    const data = await apiGet('/api/finance/transactions')
-    const salaryData = canPostSalary.value ? await apiGet('/api/hr/salary-transactions') : { transactions: [] }
+    const [data, salaryData] = await Promise.all([
+      apiGet('/api/finance/transactions'),
+      canPostSalary.value ? apiGet('/api/hr/salary-transactions') : Promise.resolve({ transactions: [] })
+    ])
     transactions.value = [...(data.transactions || []), ...(salaryData.transactions || [])]
   } catch (err) {
     transactions.value = []

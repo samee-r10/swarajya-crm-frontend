@@ -203,6 +203,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet, apiPost } from '../api/client'
+import { useDebouncedRef } from '../utils/debounce'
 
 const router = useRouter()
 const opportunities = ref([])
@@ -210,7 +211,7 @@ const stages = ref([])
 const customers = ref([])
 const currencies = ref([])
 const stage = ref('')
-const search = ref('')
+const search = useDebouncedRef('', 300)
 const showNewModal = ref(false)
 const newForm = reactive({ customer_id: '', country: '', title: '', opportunity_number: '', value: 0, currency: 'INR', stage: 'Draft', expected_close: '', requirements: '', next_action: '' })
 

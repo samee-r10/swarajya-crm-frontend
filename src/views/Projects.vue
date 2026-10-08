@@ -217,6 +217,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet, apiPost } from '../api/client'
+import { useDebouncedRef } from '../utils/debounce'
 
 const router = useRouter()
 const projects = ref([])
@@ -224,7 +225,7 @@ const statuses = ref([])
 const customers = ref([])
 const opportunities = ref([])
 const status = ref('')
-const search = ref('')
+const search = useDebouncedRef('', 300)
 const showNewModal = ref(false)
 const newForm = reactive({ customer_id: '', opportunity_id: '', project_name: '', status: 'Planning', client_requirements: '', delivery_timeline: '', product_delivery_status: '', owner: '', last_update: '' })
 

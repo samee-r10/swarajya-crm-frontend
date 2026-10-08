@@ -171,19 +171,34 @@ const stageSummary = computed(() => {
   return entries.map(([name, count]) => ({ name, count, percent: Math.max(12, Math.round((count / max) * 100)) }))
 })
 
+let lastLoadedTime = 0
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'visible' && Date.now() - lastLoadedTime > 45000) {
+    loadDashboard()
+  }
+}
+
 onMounted(() => {
   loadDashboard()
-  refreshTimer = window.setInterval(loadDashboard, 30000)
+  refreshTimer = window.setInterval(() => {
+    if (document.visibilityState === 'visible') {
+      loadDashboard()
+    }
+  }, 60000)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onUnmounted(() => {
   if (refreshTimer) window.clearInterval(refreshTimer)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 
 async function loadDashboard() {
   try {
-    const dashboardData = await apiGet('/api/dashboard')
+    const dashboardData = await apiGet('/api/dashboard', { bypassCache: true })
     Object.assign(data, dashboardData)
+    lastLoadedTime = Date.now()
   } catch (error) {
     console.error('Failed to load dashboard', error)
   } finally {

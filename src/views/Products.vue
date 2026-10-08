@@ -214,18 +214,27 @@ async function loadData() {
   const safe = async (fn) => {
     try { return await fn() } catch { return null }
   }
-  const productData = await safe(() => apiGet('/api/products'))
-  if (productData?.products) {
-    await syncLocalProductsToBackend(productData.products)
+  const [productData, options, txData, invoiceData, customerData] = await Promise.all([
+    safe(() => apiGet('/api/products')),
+    safe(() => apiGet('/api/options')),
+    safe(() => apiGet('/api/finance/transactions')),
+    safe(() => apiGet('/api/finance/invoices')),
+    safe(() => apiGet('/api/customers'))
+  ])
+
+  let finalProducts = productData?.products || []
+  if (finalProducts.length) {
+    const local = loadLocalProducts()
+    if (local.length) {
+      await syncLocalProductsToBackend(finalProducts)
+      const refreshed = await safe(() => apiGet('/api/products', { bypassCache: true }))
+      if (refreshed?.products) finalProducts = refreshed.products
+    }
   }
-  const refreshedProductData = productData?.products ? await safe(() => apiGet('/api/products')) : null
-  const options = await safe(() => apiGet('/api/options'))
-  products.value = mergeProducts(refreshedProductData?.products || productData?.products || options?.products || [], productData?.products ? [] : loadLocalProducts())
-  const txData = await safe(() => apiGet('/api/finance/transactions'))
+
+  products.value = mergeProducts(finalProducts.length ? finalProducts : (options?.products || []), finalProducts.length ? [] : loadLocalProducts())
   transactions.value = txData?.transactions || []
-  const invoiceData = await safe(() => apiGet('/api/finance/invoices'))
   invoices.value = invoiceData?.invoices || []
-  const customerData = await safe(() => apiGet('/api/customers'))
   customers.value = customerData?.customers || []
 }
 

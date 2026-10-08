@@ -1,46 +1,47 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Dashboard from './views/Dashboard.vue'
-import CustomerDetail from './views/CustomerDetail.vue'
-import CustomerForm from './views/CustomerForm.vue'
-import Customers from './views/Customers.vue'
-import FinanceDashboard from './views/FinanceDashboard.vue'
-import Login from './views/Login.vue'
-import Opportunities from './views/Opportunities.vue'
-import OpportunityDetail from './views/OpportunityDetail.vue'
-import OpportunityForm from './views/OpportunityForm.vue'
-import ProjectDetail from './views/ProjectDetail.vue'
-import ProjectForm from './views/ProjectForm.vue'
-import Projects from './views/Projects.vue'
-import Products from './views/Products.vue'
-import Setup from './views/Setup.vue'
-import TransactionDetail from './views/TransactionDetail.vue'
-import TransactionForm from './views/TransactionForm.vue'
-import TransactionLedger from './views/TransactionLedger.vue'
-import Profile from './views/Profile.vue'
-import VendorDetail from './views/VendorDetail.vue'
-import VendorForm from './views/VendorForm.vue'
-import Vendors from './views/Vendors.vue'
-import Invoices from './views/Invoices.vue'
-import InvoiceForm from './views/InvoiceForm.vue'
-import InvoiceDetail from './views/InvoiceDetail.vue'
-import ObjectDetail from './views/ObjectDetail.vue'
-import GLReport from './views/GLReport.vue'
-import CustomerLedgerReport from './views/CustomerLedgerReport.vue'
-import VendorLedgerReport from './views/VendorLedgerReport.vue'
-import Treasury from './views/Treasury.vue'
-import CompanyBankAccounts from './views/CompanyBankAccounts.vue'
-import FundTransfers from './views/FundTransfers.vue'
-import Vault from './views/Vault.vue'
-import ForceChangePassword from './views/ForceChangePassword.vue'
-import ChartOfAccounts from './views/ChartOfAccounts.vue'
-import ExpenseClaims from './views/ExpenseClaims.vue'
-import LoanManagement from './views/LoanManagement.vue'
-import PendingClaimApprovals from './views/PendingClaimApprovals.vue'
-import ApprovalCenter from './views/ApprovalCenter.vue'
-import StakeholderPayouts from './views/StakeholderPayouts.vue'
-import Payables from './views/Payables.vue'
-import HRManagement from './views/HRManagement.vue'
 import { hasHrPermission, loadHrSettings } from './utils/hrStorage'
+
+const Dashboard = () => import('./views/Dashboard.vue')
+const CustomerDetail = () => import('./views/CustomerDetail.vue')
+const CustomerForm = () => import('./views/CustomerForm.vue')
+const Customers = () => import('./views/Customers.vue')
+const FinanceDashboard = () => import('./views/FinanceDashboard.vue')
+const Login = () => import('./views/Login.vue')
+const Opportunities = () => import('./views/Opportunities.vue')
+const OpportunityDetail = () => import('./views/OpportunityDetail.vue')
+const OpportunityForm = () => import('./views/OpportunityForm.vue')
+const ProjectDetail = () => import('./views/ProjectDetail.vue')
+const ProjectForm = () => import('./views/ProjectForm.vue')
+const Projects = () => import('./views/Projects.vue')
+const Products = () => import('./views/Products.vue')
+const Setup = () => import('./views/Setup.vue')
+const TransactionDetail = () => import('./views/TransactionDetail.vue')
+const TransactionForm = () => import('./views/TransactionForm.vue')
+const TransactionLedger = () => import('./views/TransactionLedger.vue')
+const Profile = () => import('./views/Profile.vue')
+const VendorDetail = () => import('./views/VendorDetail.vue')
+const VendorForm = () => import('./views/VendorForm.vue')
+const Vendors = () => import('./views/Vendors.vue')
+const Invoices = () => import('./views/Invoices.vue')
+const InvoiceForm = () => import('./views/InvoiceForm.vue')
+const InvoiceDetail = () => import('./views/InvoiceDetail.vue')
+const ObjectDetail = () => import('./views/ObjectDetail.vue')
+const GLReport = () => import('./views/GLReport.vue')
+const CustomerLedgerReport = () => import('./views/CustomerLedgerReport.vue')
+const VendorLedgerReport = () => import('./views/VendorLedgerReport.vue')
+const Treasury = () => import('./views/Treasury.vue')
+const CompanyBankAccounts = () => import('./views/CompanyBankAccounts.vue')
+const FundTransfers = () => import('./views/FundTransfers.vue')
+const Vault = () => import('./views/Vault.vue')
+const ForceChangePassword = () => import('./views/ForceChangePassword.vue')
+const ChartOfAccounts = () => import('./views/ChartOfAccounts.vue')
+const ExpenseClaims = () => import('./views/ExpenseClaims.vue')
+const LoanManagement = () => import('./views/LoanManagement.vue')
+const PendingClaimApprovals = () => import('./views/PendingClaimApprovals.vue')
+const ApprovalCenter = () => import('./views/ApprovalCenter.vue')
+const StakeholderPayouts = () => import('./views/StakeholderPayouts.vue')
+const Payables = () => import('./views/Payables.vue')
+const HRManagement = () => import('./views/HRManagement.vue')
 
 
 

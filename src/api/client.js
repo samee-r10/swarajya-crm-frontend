@@ -2,11 +2,67 @@
 // In production this is set in .env.production to the Vercel backend URL.
 export const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
-export async function apiGet(path) {
-  return apiRequest(path)
+// In-flight GET request deduplication map: path -> Promise
+const inFlightRequests = new Map()
+
+// Short TTL memory cache for static / master lookup endpoints
+const memoryCache = new Map()
+
+// Paths safe for short-lived client caching (e.g. 60 seconds)
+const CACHEABLE_PREFIXES = [
+  '/api/options',
+  '/api/settings/',
+  '/api/setup/objects',
+  '/api/setup/fields',
+  '/api/company',
+  '/api/approvals/eligible-delegates'
+]
+
+function isCacheable(path) {
+  return CACHEABLE_PREFIXES.some(prefix => path.startsWith(prefix))
+}
+
+export function clearApiCache() {
+  memoryCache.clear()
+}
+
+export async function apiGet(path, options = {}) {
+  const bypassCache = options.bypassCache === true
+  const now = Date.now()
+
+  if (!bypassCache && isCacheable(path)) {
+    const cached = memoryCache.get(path)
+    if (cached && cached.expiry > now) {
+      return JSON.parse(JSON.stringify(cached.data))
+    }
+  }
+
+  // Deduplicate identical in-flight GET requests
+  if (inFlightRequests.has(path)) {
+    return inFlightRequests.get(path)
+  }
+
+  const reqPromise = (async () => {
+    try {
+      const data = await apiRequest(path, options)
+      if (isCacheable(path)) {
+        memoryCache.set(path, {
+          data,
+          expiry: Date.now() + 60000 // 60 seconds TTL
+        })
+      }
+      return data
+    } finally {
+      inFlightRequests.delete(path)
+    }
+  })()
+
+  inFlightRequests.set(path, reqPromise)
+  return reqPromise
 }
 
 export async function apiPost(path, body = {}) {
+  clearApiCache()
   return apiRequest(path, {
     method: 'POST',
     body: JSON.stringify(body)
@@ -14,6 +70,7 @@ export async function apiPost(path, body = {}) {
 }
 
 export async function apiPut(path, body = {}) {
+  clearApiCache()
   return apiRequest(path, {
     method: 'PUT',
     body: JSON.stringify(body)
@@ -21,12 +78,14 @@ export async function apiPut(path, body = {}) {
 }
 
 export async function apiDelete(path) {
+  clearApiCache()
   return apiRequest(path, {
     method: 'DELETE'
   })
 }
 
 export async function apiUploadFile(path, file, extraFields = {}) {
+  clearApiCache()
   const formData = new FormData()
   formData.append('file', file)
   Object.entries(extraFields).forEach(([key, value]) => {

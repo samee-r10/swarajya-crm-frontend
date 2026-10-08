@@ -76,10 +76,14 @@
             <td>{{ approval.payout.payout_type }}</td>
             <td class="right">{{ money(approval.payout.amount) }}</td>
             <td>{{ approval.approval_sequence }}</td>
-            <td><span class="pill status-warning">{{ approval.payout.status }}</span></td>
             <td>
-              <button v-if="approval.can_act" class="button secondary small" type="button" @click="openApproval(approval)">Review</button>
-              <span v-else class="muted text-xs">Assigned to {{ approval.stakeholder_name || 'approver' }}</span>
+              <span class="pill status-warning">{{ approval.payout.status }}</span>
+              <div v-if="approval.delegated_from_name" class="delegated-note">
+                <small class="muted">Delegated from {{ approval.delegated_from_name }}</small>
+              </div>
+            </td>
+            <td>
+              <button class="button secondary small" type="button" @click="openApproval(approval)">Review</button>
             </td>
           </tr>
           <tr v-if="approvals.length === 0"><td colspan="8" class="empty-state">No payout approvals pending for you.</td></tr>
@@ -163,7 +167,10 @@
     <div v-if="selectedApproval" class="modal-overlay" @click.self="selectedApproval = null">
       <div class="modal-content approval-modal">
         <div class="modal-header">
-          <h2>{{ selectedApproval.payout.payout_number }}</h2>
+          <div>
+            <p class="eyebrow">Approval Review</p>
+            <h2>{{ selectedApproval.payout.payout_number }}</h2>
+          </div>
           <button class="modal-close" type="button" @click="selectedApproval = null">&times;</button>
         </div>
         <section class="detail-grid">
@@ -173,13 +180,53 @@
           <div><span>Amount</span><strong>{{ money(selectedApproval.payout.amount) }}</strong></div>
           <div><span>Date</span><strong>{{ formatDate(selectedApproval.payout.payout_date) }}</strong></div>
         </section>
-        <p v-if="!selectedApproval.can_act" class="flash warning">This approval is assigned to {{ selectedApproval.stakeholder_name || 'another approver' }}.</p>
-        <label v-else>Approval Remarks<textarea v-model="approvalRemarks" rows="3"></textarea></label>
-        <div class="action-row">
-          <button class="button secondary" type="button" @click="selectedApproval = null">Close</button>
-          <button v-if="selectedApproval.can_act" class="button secondary danger-text" type="button" @click="decideApproval('reject')">Reject</button>
-          <button v-if="selectedApproval.can_act" class="button" type="button" @click="decideApproval('approve')">Approve</button>
+
+        <div v-if="selectedApproval.delegated_from_name" class="flash info" style="margin-bottom: 14px;">
+          <strong>ℹ️ Delegated Approval:</strong> Delegated from {{ selectedApproval.delegated_from_name }}
+          <span v-if="selectedApproval.delegation_remarks"> &mdash; "{{ selectedApproval.delegation_remarks }}"</span>
         </div>
+
+        <div v-if="isDelegating" class="delegation-box">
+          <div class="delegation-header">
+            <h3>Delegate Approval</h3>
+            <p class="muted">Reassign this pending approval to another authorized user or stakeholder.</p>
+          </div>
+          <label>Assign Approval To:
+            <select v-model="delegateUserId" required>
+              <option value="">Select a user...</option>
+              <option
+                v-for="u in eligibleDelegates"
+                :key="u.id"
+                :value="u.id"
+                :disabled="u.id === selectedApproval.linked_user_id"
+              >
+                {{ u.full_name }} ({{ u.email }}){{ u.is_stakeholder ? ' · Stakeholder' : '' }}
+              </option>
+            </select>
+          </label>
+          <label>Delegation Reason / Remarks:
+            <textarea v-model="delegateRemarks" rows="2" placeholder="e.g. Delegating review while on leave / requested proxy"></textarea>
+          </label>
+          <p v-if="error" class="flash warning">{{ error }}</p>
+          <div class="action-row" style="margin-top: 14px;">
+            <button class="button secondary" type="button" :disabled="delegatingLoading" @click="isDelegating = false">Cancel</button>
+            <button class="button" type="button" :disabled="!delegateUserId || delegatingLoading" @click="submitDelegation">
+              {{ delegatingLoading ? 'Delegating...' : 'Confirm Delegation' }}
+            </button>
+          </div>
+        </div>
+
+        <template v-else>
+          <p v-if="!selectedApproval.can_act" class="flash warning">This approval is assigned to {{ selectedApproval.stakeholder_name || 'another approver' }}.</p>
+          <label v-if="selectedApproval.can_act">Approval Remarks<textarea v-model="approvalRemarks" rows="3" placeholder="Add remarks for approval or rejection"></textarea></label>
+          <p v-if="error" class="flash warning">{{ error }}</p>
+          <div class="action-row">
+            <button class="button secondary" type="button" @click="selectedApproval = null">Close</button>
+            <button v-if="selectedApproval.can_delegate || selectedApproval.can_act" class="button secondary" type="button" @click="startDelegating">Delegate Approval</button>
+            <button v-if="selectedApproval.can_act" class="button secondary danger-text" type="button" @click="decideApproval('reject')">Reject</button>
+            <button v-if="selectedApproval.can_act" class="button" type="button" @click="decideApproval('approve')">Approve</button>
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -205,6 +252,11 @@ const showPayoutModal = ref(false)
 const selectedPayout = ref(null)
 const selectedApproval = ref(null)
 const approvalRemarks = ref('')
+const eligibleDelegates = ref([])
+const isDelegating = ref(false)
+const delegateUserId = ref('')
+const delegateRemarks = ref('')
+const delegatingLoading = ref(false)
 const error = ref('')
 const loadError = ref('')
 const form = reactive(defaultForm())
@@ -236,12 +288,13 @@ function defaultForm() {
 async function loadAll() {
   loadError.value = ''
   try {
-    const [payoutData, approvalData, stakeholderData, partnerData, options] = await Promise.all([
+    const [payoutData, approvalData, stakeholderData, partnerData, options, delegateData] = await Promise.all([
       apiGet('/api/treasury/stakeholder-payouts'),
       apiGet('/api/treasury/stakeholder-payout-approvals/pending'),
       apiGet('/api/treasury/stakeholders'),
       apiGet('/api/treasury/channel-partners'),
       apiGet('/api/options'),
+      apiGet('/api/approvals/eligible-delegates').catch(() => ({ delegates: [] })),
     ])
     payouts.value = payoutData.payouts || []
     companyFundAvailable.value = payoutData.company_fund_available || 0
@@ -249,7 +302,9 @@ async function loadAll() {
     approvals.value = (approvalData.approvals || []).map(approval => ({
       ...approval,
       can_act: approval.can_act ?? approval.linked_user_id === currentUser.id,
+      can_delegate: approval.can_delegate ?? (approval.can_act || approval.linked_user_id === currentUser.id),
     }))
+    eligibleDelegates.value = delegateData.delegates || []
     if (approvals.value.length === 0) {
       approvals.value = await pendingApprovalsFromPayoutDetails(payouts.value)
     }
@@ -383,6 +438,36 @@ async function payoutAction(action) {
 function openApproval(approval) {
   selectedApproval.value = approval
   approvalRemarks.value = ''
+  isDelegating.value = false
+  delegateUserId.value = ''
+  delegateRemarks.value = ''
+  error.value = ''
+}
+
+function startDelegating() {
+  isDelegating.value = true
+  delegateUserId.value = ''
+  delegateRemarks.value = ''
+  error.value = ''
+}
+
+async function submitDelegation() {
+  if (!delegateUserId.value) return
+  delegatingLoading.value = true
+  error.value = ''
+  try {
+    await apiPost(`/api/treasury/stakeholder-payout-approvals/${selectedApproval.value.id}/delegate`, {
+      delegate_to_user_id: delegateUserId.value,
+      remarks: delegateRemarks.value,
+    })
+    isDelegating.value = false
+    selectedApproval.value = null
+    await loadAll()
+  } catch (err) {
+    error.value = err.message || 'Failed to delegate approval.'
+  } finally {
+    delegatingLoading.value = false
+  }
 }
 
 async function decideApproval(action) {
@@ -428,4 +513,8 @@ function statusClass(status) {
 .detail-grid div { border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
 .detail-grid span { display: block; color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
 .danger-text { color: #b91c1c; }
+.delegation-box { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 16px; display: grid; gap: 12px; }
+.delegation-header h3 { margin: 0 0 4px 0; font-size: 15px; }
+.delegated-note { margin-top: 3px; font-size: 11px; }
+.flash.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; border-radius: 6px; padding: 10px 14px; }
 </style>
