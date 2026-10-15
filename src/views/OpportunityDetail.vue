@@ -513,7 +513,7 @@ async function deleteDoc(doc, idx) {
     }
   } catch (err) {
     console.error('Failed to delete document:', err)
-    alert(err.message || 'Failed to delete document.')
+    uploadError.value = err.message || 'Failed to delete document.'
   }
 }
 

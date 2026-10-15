@@ -42,12 +42,15 @@ const ApprovalCenter = () => import('./views/ApprovalCenter.vue')
 const StakeholderPayouts = () => import('./views/StakeholderPayouts.vue')
 const Payables = () => import('./views/Payables.vue')
 const HRManagement = () => import('./views/HRManagement.vue')
+const TaskManagement = () => import('./views/TaskManagement.vue')
 
 
 
 const routes = [
   { path: '/login', name: 'login', component: Login },
   { path: '/', name: 'dashboard', component: Dashboard },
+  { path: '/tasks', name: 'tasks', component: TaskManagement },
+  { path: '/tasks/:id', name: 'task-detail', component: TaskManagement, props: true },
   { path: '/customers', name: 'customers', component: Customers },
   { path: '/customers/new', name: 'customer-new', component: CustomerForm },
   { path: '/customers/:id', name: 'customer-detail', component: CustomerDetail, props: true },

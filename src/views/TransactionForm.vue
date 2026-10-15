@@ -1,264 +1,613 @@
 <template>
-  <section class="page-header"><div><p class="eyebrow">Finance</p><h1>{{ isEditing ? `Edit Transaction #${displayTransactionId(props.id)}` : 'New Transaction' }}</h1></div></section>
-  <form class="form-grid record-card" @submit.prevent="openPreview">
-    <label>
-      Posting Date
-      <select v-model="postingDateOption">
-        <option value="today">Today</option>
-        <option value="yesterday">Yesterday</option>
-        <option value="custom">Custom date</option>
-      </select>
-    </label>
-    <label v-if="postingDateOption === 'custom'">
-      Custom Posting Date
-      <input v-model="form.transaction_date" type="date" required>
-    </label>
-    <label>Type<select v-model="form.type"><option>Income</option><option>Expense</option></select></label>
-    <label>Account<select v-model="form.account_id" required><option value="">Select Account</option><option v-for="account in filteredAccountsForDropdown" :key="account.id" :value="account.id">{{ accountLabel(account) }}</option></select></label>
-    <label>Product
-      <select v-model="form.product_id">
-        <option value="">No Product</option>
-        <option v-for="product in activeProducts" :key="product.id || product.product_code" :value="product.id || product.product_code">{{ productName(product) }}</option>
-      </select>
-    </label>
-    <label v-if="isEmployeeClaimsAccount">Approved Claim
-      <select v-model="form.expense_claim_id" required>
-        <option value="">Select approved claim</option>
-        <option v-for="claim in approvedClaims" :key="claim.id" :value="claim.id">
-          {{ claim.employee_name }} - {{ money(claim.amount || claim.total_claim_amount) }}
-        </option>
-      </select>
-      <span class="field-hint">Only approved, unposted claims are available for GL 7010 - Employee Claims.</span>
-    </label>
-    <label v-if="form.type === 'Income'">Customer<select v-model="form.customer_id"><option value="">Select Customer</option><option v-for="customer in customers" :key="customer.id" :value="customer.id">{{ customer.company_name }}</option></select></label>
-    <label v-if="isSalesRevenueReceipt">Invoice Number
-      <select v-model="form.invoice_id" :disabled="!form.customer_id || invoiceLoading" required>
-        <option value="">{{ invoiceSelectPlaceholder }}</option>
-        <option v-for="invoice in receivableInvoices" :key="invoice.id" :value="invoice.id">
-          {{ invoiceLabel(invoice) }}
-        </option>
-      </select>
-      <span v-if="invoiceHint" class="field-hint">{{ invoiceHint }}</span>
-    </label>
-    <label v-if="form.type === 'Income'">Associated Project<select v-model="form.project_id"><option value="">Select Project</option><option v-for="project in filteredProjects" :key="project.id" :value="project.id">{{ project.project_name }}</option></select></label>
-    <label v-else>Vendor<select v-model="form.vendor_id"><option value="">Select Vendor</option><option v-for="vendor in vendors" :key="vendor.id" :value="vendor.id">{{ vendor.name }}</option></select></label>
-    <label>Currency<select v-model="form.currency"><option v-for="currency in currencies" :key="currency.code" :value="currency.code">{{ currency.code }}</option></select></label>
-    <label>Amount<input v-model="form.amount" type="number" step="0.01" required @input="onAmountInput"></label>
-    <label>CGST %<input v-model="form.cgst_percent" type="number" step="0.01"></label>
-    <label>IGST %<input v-model="form.igst_percent" type="number" step="0.01"></label>
-    <label>TDS %<input v-model="form.tds_percent" type="number" step="0.01"></label>
-    <label>Additional Charges %<input v-model="form.additional_charges_percent" type="number" step="0.01" @input="onAdditionalChargesPercentInput" placeholder="e.g. 2"></label>
-    <label>Additional Charges ({{ currentCurrencySymbol }})<input v-model="form.additional_charges" type="number" step="0.01" @input="onAdditionalChargesAmountInput" placeholder="e.g. 10.00"></label>
-    <label>Platform Charges %<input v-model="form.platform_fee_percent" type="number" step="0.01" @input="onPlatformFeePercentInput" placeholder="e.g. 1"></label>
-    <label>Platform Charges ({{ currentCurrencySymbol }})<input v-model="form.platform_fee_amount" type="number" step="0.01" @input="onPlatformFeeAmountInput" placeholder="e.g. 0.50"></label>
-    <label>Category<select v-model="form.category"><option value="">Select Category</option><option>Item</option><option>Service</option><option>Fixed Assets</option><option>Loan Disbursement</option><option>Loan Repayment</option></select></label>
-    <label v-if="requiresLoanAccount">Loan Account
-      <select v-model="form.loan_account_id" required>
-        <option value="">Select Loan Account</option>
-        <option v-for="loan in loans" :key="loan.id" :value="loan.id">{{ loan.loan_account_number }} · {{ loan.provider_name }}</option>
-      </select>
-    </label>
-    <label v-if="form.category === 'Loan Repayment'">Repayment Schedule
-      <select v-model="form.loan_schedule_id" required>
-        <option value="">Select Schedule Line</option>
-        <option v-for="schedule in selectedLoanSchedules" :key="schedule.id" :value="schedule.id">
-          #{{ schedule.installment_number }} · {{ schedule.due_date }} · {{ money(schedule.total_amount) }}
-        </option>
-      </select>
-    </label>
-    <label v-if="form.category === 'Fixed Assets'">
-      Current / Depreciated Value
-      <input v-model="form.depreciation_value" type="number" step="0.01" placeholder="Enter current or depreciated value">
-      <span class="field-hint">The present/book value of this asset after depreciation</span>
-    </label>
-    <label class="span-2">Description<textarea v-model="form.description" rows="5"></textarea></label>
-    <label class="span-2">Supporting Documents
-      <input type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" :disabled="uploadingDocument" multiple @change="handleTransactionDocuments">
-      <span v-if="uploadingDocument" class="field-hint">Uploading document...</span>
-      <span v-else class="field-hint">Attach invoices, receipts, payment proof, or supporting files for this entry.</span>
-    </label>
-    <div v-if="form.attachments.length" class="span-2 attached-documents">
-      <DocumentPreview :documents="form.attachments" label="Transaction Documents" />
-    </div>
-    <label
-      v-for="field in customTransactionFields"
-      :key="field.api_name"
-      :class="isSpan2(field) ? 'span-2' : ''"
-    >
-      {{ field.label }} <span v-if="field.is_required" style="color: #dc2626; margin-left: 2px;">*</span>
+  <div class="transaction-form-view">
+    <!-- Page Header (Only when not inside modal) -->
+    <header v-if="!props.isModal" class="form-header">
+      <div>
+        <p class="eyebrow">Finance Module</p>
+        <h1>{{ isEditing ? `Edit Transaction #${displayTransactionId(props.id)}` : 'Create Transaction' }}</h1>
+        <p class="muted">Post standard double-entry accounting records to the General Ledger.</p>
+      </div>
 
-      <textarea
-        v-if="field.field_type === 'Long Text'"
-        v-model="form[field.api_name]"
-        :required="field.is_required"
-        rows="3"
-        :placeholder="'Enter ' + field.label.toLowerCase() + '...'"
-      ></textarea>
+      <!-- Type Switcher Pill -->
+      <div class="type-toggle-group">
+        <button 
+          type="button" 
+          class="type-btn" 
+          :class="{ active: form.type === 'Income' }" 
+          @click="form.type = 'Income'"
+        >
+          <span class="dot income-dot"></span>
+          Inflow (Income)
+        </button>
+        <button 
+          type="button" 
+          class="type-btn" 
+          :class="{ active: form.type === 'Expense' }" 
+          @click="form.type = 'Expense'"
+        >
+          <span class="dot expense-dot"></span>
+          Outflow (Expense)
+        </button>
+      </div>
+    </header>
 
-      <select
-        v-else-if="field.field_type === 'Dropdown'"
-        v-model="form[field.api_name]"
-        :required="field.is_required"
-      >
-        <option value="">Select {{ field.label }}</option>
-        <option v-for="opt in parseOptions(field.picklist_options)" :key="opt" :value="opt">{{ opt }}</option>
-      </select>
-
-      <input
-        v-else-if="field.field_type === 'Checkbox'"
-        type="checkbox"
-        v-model="form[field.api_name]"
-      >
-
-      <input
-        v-else-if="field.field_type === 'Number'"
-        type="number"
-        v-model="form[field.api_name]"
-        :required="field.is_required"
-        :placeholder="'Enter ' + field.label.toLowerCase() + '...'"
-      >
-
-      <input
-        v-else-if="field.field_type === 'Date'"
-        type="date"
-        v-model="form[field.api_name]"
-        :required="field.is_required"
-      >
-
-      <input
-        v-else
-        type="text"
-        v-model="form[field.api_name]"
-        :required="field.is_required"
-        :placeholder="'Enter ' + field.label.toLowerCase() + '...'"
-      >
-    </label>
-    <p v-if="error" class="span-2 flash warning">{{ error }}</p>
-    <div class="span-2 action-row">
-      <button v-if="props.isModal" class="button secondary btn-animate" type="button" @click="emit('cancel')">
-        Cancel
-      </button>
-      <button class="button btn-animate" type="submit">{{ isEditing ? 'Preview Changes' : 'Preview Posting' }}</button>
-    </div>
-  </form>
-
-  <!-- Full-page Posting Preview Modal -->
-  <transition name="fade">
-    <div v-if="showPreviewModal" class="preview-modal-overlay" @click.self="showPreviewModal = false">
-      <div class="preview-modal-content">
-        <header class="modal-header">
-          <div>
-            <p class="eyebrow">Finance · Posting Preview</p>
-            <h2>Simulated Journal Voucher</h2>
-          </div>
-          <button type="button" class="close-btn" @click="showPreviewModal = false">×</button>
-        </header>
-
-        <main class="modal-body">
-          <!-- Overview -->
-          <div class="overview-grid">
-            <div class="overview-item"><span>Posting Date</span><strong>{{ form.transaction_date }}</strong></div>
-            <div class="overview-item"><span>Type</span><strong>{{ form.type }}</strong></div>
-            <div class="overview-item"><span>Account</span><strong>{{ selectedAccountName }}</strong></div>
-            <div class="overview-item"><span>Product</span><strong>{{ selectedProductName }}</strong></div>
-            <div class="overview-item" v-if="form.type === 'Income'"><span>Customer Name</span><strong>{{ selectedPartyName }}</strong></div>
-            <div class="overview-item" v-if="selectedInvoice"><span>Invoice Number</span><strong>{{ selectedInvoice.invoice_number }}</strong></div>
-            <div class="overview-item" v-if="form.type !== 'Income'"><span>Vendor Name</span><strong>{{ selectedPartyName }}</strong></div>
-            <div class="overview-item" v-if="form.category"><span>Category</span><strong>{{ form.category }}</strong></div>
-            <div class="overview-item" v-if="form.attachments.length"><span>Documents</span><strong>{{ form.attachments.length }} attached</strong></div>
-            <div class="overview-item" v-if="form.category === 'Fixed Assets' && form.depreciation_value"><span>Current Value</span><strong>{{ money(form.depreciation_value) }}</strong></div>
-            <div class="overview-item"><span>Currency</span><strong>{{ form.currency }}</strong></div>
-            <div
-              v-for="field in customTransactionPreviewFields"
-              :key="field.api_name"
-              class="overview-item"
-            >
-              <span>{{ field.label }}</span><strong>{{ formatCustomFieldValue(field) }}</strong>
-            </div>
-          </div>
-
-          <!-- Amount Breakdown -->
-          <div class="breakdown-card">
-            <h3>Calculated Entry Amounts</h3>
-            <div class="breakdown-row"><span>Base Amount</span><strong>{{ money(form.amount) }}</strong></div>
-            <div class="breakdown-row" v-if="computedCGST > 0"><span>CGST ({{ form.cgst_percent }}%)</span><strong>+ {{ money(computedCGST) }}</strong></div>
-            <div class="breakdown-row" v-if="computedIGST > 0"><span>IGST ({{ form.igst_percent }}%)</span><strong>+ {{ money(computedIGST) }}</strong></div>
-            <div class="breakdown-row" v-if="computedAdditionalCharges > 0"><span>Additional Charges ({{ form.additional_charges_percent || 0 }}%)</span><strong>+ {{ money(computedAdditionalCharges) }}</strong></div>
-            <div class="breakdown-row" v-if="computedTDS > 0"><span>TDS ({{ form.tds_percent }}%)</span><strong class="negative">- {{ money(computedTDS) }}</strong></div>
-            <div class="breakdown-row" v-if="computedPlatformFee > 0">
-              <span>Platform Charges / Gateway Fee ({{ form.platform_fee_percent || 0 }}%)</span>
-              <strong :class="form.type === 'Income' ? 'negative' : ''">{{ form.type === 'Income' ? '-' : '+' }} {{ money(computedPlatformFee) }}</strong>
-            </div>
-            <div class="breakdown-row grand-total"><span>Total Net Posting Amount</span><strong>{{ money(computedTotal) }}</strong></div>
-          </div>
-
-          <!-- Double Entry Ledger simulated table -->
-          <div class="ledger-preview-card">
-            <div class="preview-card-header">
-              <div>
-                <span class="preview-eyebrow">General Ledger Allocation</span>
-                <h3 style="margin: 0;">Simulated GL Postings</h3>
-              </div>
-              <span class="balanced-badge" :class="simulatedLedgerTotals.isBalanced ? 'balanced-ok' : 'balanced-err'">
-                {{ simulatedLedgerTotals.isBalanced ? '✓ Journal Balanced' : `⚠ Unbalanced (${money(simulatedLedgerTotals.difference)})` }}
-              </span>
-            </div>
-            <table class="preview-ledger-table">
-              <thead>
-                <tr>
-                  <th style="width: 85px;">GL Code</th>
-                  <th>Account Name</th>
-                  <th style="width: 90px;">Type</th>
-                  <th class="right" style="width: 125px;">Debit (Dr)</th>
-                  <th class="right" style="width: 125px;">Credit (Cr)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="entry in simulatedLedger" :key="entry.gl_code + entry.account" :class="entry.debit ? 'debit-row' : 'credit-row'">
-                  <td><span class="gl-code-pill">{{ entry.gl_code }}</span></td>
-                  <td>
-                    <strong>{{ entry.account }}</strong>
-                    <small class="entry-sub-desc" v-if="entry.description">{{ entry.description }}</small>
-                  </td>
-                  <td>
-                    <span class="preview-type-pill" :class="entry.type.toLowerCase()">{{ entry.type }}</span>
-                  </td>
-                  <td class="right mono debit-col"><span v-if="entry.debit">{{ money(entry.debit) }}</span><span v-else class="muted">—</span></td>
-                  <td class="right mono credit-col"><span v-if="entry.credit">{{ money(entry.credit) }}</span><span v-else class="muted">—</span></td>
-                </tr>
-              </tbody>
-              <tfoot>
-                <tr class="preview-total-row">
-                  <td colspan="3"><strong>TOTAL JOURNAL POSTING</strong></td>
-                  <td class="right mono debit-col"><strong>{{ money(simulatedLedgerTotals.totalDebit) }}</strong></td>
-                  <td class="right mono credit-col"><strong>{{ money(simulatedLedgerTotals.totalCredit) }}</strong></td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </main>
-
-        <footer class="modal-footer">
-          <button type="button" class="button secondary" :disabled="isPosting" @click="showPreviewModal = false">Cancel / Edit</button>
-          <button type="button" class="button" :disabled="isPosting" @click="confirmAndPost">
-            <span v-if="isPosting" class="btn-spinner"></span>
-            {{ isPosting ? (isEditing ? 'Saving...' : 'Posting...') : (isEditing ? 'Confirm & Save Changes' : 'Confirm & Post Entry') }}
-          </button>
-        </footer>
+    <!-- Modal Header (When rendered inside modal) -->
+    <div v-else class="modal-form-header">
+      <div>
+        <h2 class="modal-title">{{ isEditing ? `Edit Transaction #${displayTransactionId(props.id)}` : 'New Transaction Entry' }}</h2>
+        <span class="muted small">Record dual-entry financial movement.</span>
+      </div>
+      <div class="type-toggle-group compact">
+        <button 
+          type="button" 
+          class="type-btn" 
+          :class="{ active: form.type === 'Income' }" 
+          @click="form.type = 'Income'"
+        >
+          Income
+        </button>
+        <button 
+          type="button" 
+          class="type-btn" 
+          :class="{ active: form.type === 'Expense' }" 
+          @click="form.type = 'Expense'"
+        >
+          Expense
+        </button>
       </div>
     </div>
-  </transition>
+
+    <!-- Main Form -->
+    <form class="transaction-main-form" @submit.prevent="openPreview">
+      
+      <!-- Section 1: Transaction & Timing Information -->
+      <section class="form-section-card">
+        <div class="section-head">
+          <span class="section-step-num">1</span>
+          <div>
+            <h3>Transaction Information</h3>
+            <span class="section-sub">Posting date, currency, and reference identifiers</span>
+          </div>
+        </div>
+
+        <div class="form-row-grid">
+          <div class="form-field">
+            <label>Posting Date Option</label>
+            <select v-model="postingDateOption" class="form-control">
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="custom">Custom Date</option>
+            </select>
+          </div>
+
+          <div class="form-field" v-if="postingDateOption === 'custom'">
+            <label>Custom Posting Date <span class="req">*</span></label>
+            <input v-model="form.transaction_date" type="date" required class="form-control" :class="{ 'input-error': isPeriodLocked }">
+          </div>
+
+          <div class="form-field">
+            <label>Currency</label>
+            <select v-model="form.currency" class="form-control">
+              <option v-for="c in currencies" :key="c.code" :value="c.code">{{ c.code }} ({{ currencySymbolsMap[c.code] || '$' }})</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label>Reference Number</label>
+            <input v-model="form.reference" type="text" placeholder="e.g. INV-9902 or Bank UTR" class="form-control">
+          </div>
+        </div>
+
+        <!-- Locked Period Alert in Section 1 -->
+        <div v-if="isPeriodLocked" class="locked-period-callout">
+          <div class="lock-callout-icon">🔒</div>
+          <div class="lock-callout-content">
+            <h4 class="lock-callout-title">Posting Blocked: Accounting Period is Locked ({{ lockedPeriodName }})</h4>
+            <p class="lock-callout-desc">{{ lockedPeriodWarning }}</p>
+            <p class="lock-callout-hint">To maintain regulatory and financial integrity, transactions cannot be posted to closed periods. Please select an open date or contact an administrator to reopen this period in <strong>Settings → Accounting Periods</strong>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: Business & Allocation Details -->
+      <section class="form-section-card">
+        <div class="section-head">
+          <span class="section-step-num">2</span>
+          <div>
+            <h3>Commercial & Account Allocation</h3>
+            <span class="section-sub">Select counterpart entity, GL posting account, and product</span>
+          </div>
+        </div>
+
+        <div class="form-row-grid">
+          <!-- Primary Account -->
+          <div class="form-field span-2">
+            <label>GL Posting Account <span class="req">*</span></label>
+            <select v-model="form.account_id" required class="form-control highlight-select">
+              <option value="">Select Account</option>
+              <option v-for="acc in filteredAccountsForDropdown" :key="acc.id" :value="acc.id">
+                {{ accountLabel(acc) }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Customer (If Income) -->
+          <div class="form-field" v-if="form.type === 'Income'">
+            <label>Customer</label>
+            <select v-model="form.customer_id" class="form-control">
+              <option value="">Select Customer</option>
+              <option v-for="cust in customers" :key="cust.id" :value="cust.id">{{ cust.company_name }}</option>
+            </select>
+          </div>
+
+          <!-- Invoice Selector (If Sales Revenue Receipt) -->
+          <div class="form-field" v-if="isSalesRevenueReceipt">
+            <label>Linked Receivable Invoice <span class="req">*</span></label>
+            <select v-model="form.invoice_id" :disabled="!form.customer_id || invoiceLoading" required class="form-control">
+              <option value="">{{ invoiceSelectPlaceholder }}</option>
+              <option v-for="inv in receivableInvoices" :key="inv.id" :value="inv.id">
+                {{ invoiceLabel(inv) }}
+              </option>
+            </select>
+            <span v-if="invoiceHint" class="field-hint">{{ invoiceHint }}</span>
+          </div>
+
+          <!-- Associated Project (If Income) -->
+          <div class="form-field" v-if="form.type === 'Income'">
+            <label>Associated Project</label>
+            <select v-model="form.project_id" class="form-control">
+              <option value="">Select Project</option>
+              <option v-for="p in filteredProjects" :key="p.id" :value="p.id">{{ p.project_name }}</option>
+            </select>
+          </div>
+
+          <!-- Vendor (If Expense) -->
+          <div class="form-field" v-if="form.type === 'Expense'">
+            <label>Vendor / Supplier</label>
+            <select v-model="form.vendor_id" class="form-control">
+              <option value="">Select Vendor</option>
+              <option v-for="vend in vendors" :key="vend.id" :value="vend.id">{{ vend.name }}</option>
+            </select>
+          </div>
+
+          <!-- Approved Claim (If GL 7010 Employee Claims) -->
+          <div class="form-field span-2" v-if="isEmployeeClaimsAccount">
+            <label>Approved Employee Claim <span class="req">*</span></label>
+            <select v-model="form.expense_claim_id" required class="form-control">
+              <option value="">Select approved claim</option>
+              <option v-for="claim in approvedClaims" :key="claim.id" :value="claim.id">
+                {{ claim.claim_number || 'Claim' }} · {{ claim.employee_name }} - {{ money(claim.amount || claim.total_claim_amount) }}
+              </option>
+            </select>
+            <span class="field-hint">Only approved, unposted claims are eligible for GL 7010 - Employee Claims.</span>
+          </div>
+
+          <!-- Product / Service -->
+          <div class="form-field">
+            <label>Product / Service</label>
+            <select v-model="form.product_id" class="form-control">
+              <option value="">No Product</option>
+              <option v-for="prod in activeProducts" :key="prod.id || prod.product_code" :value="prod.id || prod.product_code">
+                {{ productName(prod) }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Category -->
+          <div class="form-field">
+            <label>Transaction Category</label>
+            <select v-model="form.category" class="form-control">
+              <option value="">Select Category</option>
+              <option>Item</option>
+              <option>Service</option>
+              <option>Fixed Assets</option>
+              <option>Loan Disbursement</option>
+              <option>Loan Repayment</option>
+            </select>
+          </div>
+
+          <!-- Loan Account & Schedule -->
+          <div class="form-field" v-if="requiresLoanAccount">
+            <label>Loan Account <span class="req">*</span></label>
+            <select v-model="form.loan_account_id" required class="form-control">
+              <option value="">Select Loan Account</option>
+              <option v-for="loan in loans" :key="loan.id" :value="loan.id">
+                {{ loan.loan_account_number }} · {{ loan.provider_name }}
+              </option>
+            </select>
+          </div>
+
+          <div class="form-field" v-if="form.category === 'Loan Repayment'">
+            <label>Repayment Schedule Line <span class="req">*</span></label>
+            <select v-model="form.loan_schedule_id" required class="form-control">
+              <option value="">Select Schedule Line</option>
+              <option v-for="sched in selectedLoanSchedules" :key="sched.id" :value="sched.id">
+                #{{ sched.installment_number }} · {{ sched.due_date }} · {{ money(sched.total_amount) }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Fixed Assets Current Value -->
+          <div class="form-field" v-if="form.category === 'Fixed Assets'">
+            <label>Current / Book Value</label>
+            <input v-model="form.depreciation_value" type="number" step="0.01" placeholder="Book value after depreciation" class="form-control">
+            <span class="field-hint">The asset's present book value on the balance sheet.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 3: Financial Details & Statutory Breakdown -->
+      <section class="form-section-card">
+        <div class="section-head">
+          <span class="section-step-num">3</span>
+          <div>
+            <h3>Financial Breakdown & Taxes</h3>
+            <span class="section-sub">Enter base amount, applicable GST, withholding TDS, and fees</span>
+          </div>
+        </div>
+
+        <div class="form-row-grid">
+          <!-- Base Amount -->
+          <div class="form-field span-2 base-amount-wrap">
+            <label>Base Transaction Amount <span class="req">*</span></label>
+            <div class="amount-input-group">
+              <span class="curr-prefix">{{ currentCurrencySymbol }}</span>
+              <input 
+                v-model="form.amount" 
+                type="number" 
+                step="0.01" 
+                min="0.01" 
+                required 
+                @input="onAmountInput" 
+                placeholder="0.00"
+                class="form-control amount-input"
+              >
+            </div>
+          </div>
+
+          <!-- CGST % -->
+          <div class="form-field">
+            <label>CGST (%)</label>
+            <div class="tax-input-group">
+              <input v-model="form.cgst_percent" type="number" step="0.01" min="0" placeholder="0" class="form-control">
+              <span class="tax-computed" v-if="computedCGST > 0">+{{ money(computedCGST) }}</span>
+            </div>
+          </div>
+
+          <!-- IGST % -->
+          <div class="form-field">
+            <label>IGST (%)</label>
+            <div class="tax-input-group">
+              <input v-model="form.igst_percent" type="number" step="0.01" min="0" placeholder="0" class="form-control">
+              <span class="tax-computed" v-if="computedIGST > 0">+{{ money(computedIGST) }}</span>
+            </div>
+          </div>
+
+          <!-- TDS % -->
+          <div class="form-field">
+            <label>TDS Withheld (%)</label>
+            <div class="tax-input-group">
+              <input v-model="form.tds_percent" type="number" step="0.01" min="0" placeholder="0" class="form-control">
+              <span class="tax-computed negative" v-if="computedTDS > 0">-{{ money(computedTDS) }}</span>
+            </div>
+          </div>
+
+          <!-- Additional Charges -->
+          <div class="form-field">
+            <label>Additional Charges ({{ currentCurrencySymbol }})</label>
+            <input 
+              v-model="form.additional_charges" 
+              type="number" 
+              step="0.01" 
+              @input="onAdditionalChargesAmountInput" 
+              placeholder="e.g. 10.00" 
+              class="form-control"
+            >
+          </div>
+
+          <!-- Platform / Gateway Fee -->
+          <div class="form-field">
+            <label>Platform / Gateway Fee ({{ currentCurrencySymbol }})</label>
+            <input 
+              v-model="form.platform_fee_amount" 
+              type="number" 
+              step="0.01" 
+              @input="onPlatformFeeAmountInput" 
+              placeholder="e.g. 1.40" 
+              class="form-control"
+            >
+          </div>
+
+          <!-- Payment / Settlement Mode -->
+          <div class="form-field">
+            <label>Counterpart Settlement</label>
+            <select v-model="form.payment_status" class="form-control">
+              <option value="Paid">Immediate Bank Disbursement / Receipt</option>
+              <option value="Unpaid">Unpaid (Book to Accounts Payable / Receivable)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Grand Total Calculation Box -->
+        <div class="grand-total-summary-card" :class="form.type === 'Income' ? 'income-card' : 'expense-card'">
+          <div class="total-breakdown-details">
+            <span class="total-label">Total Calculated Net Movement:</span>
+            <div class="calc-chips">
+              <span>Base: {{ money(form.amount || 0) }}</span>
+              <span v-if="computedCGST > 0">CGST: +{{ money(computedCGST) }}</span>
+              <span v-if="computedIGST > 0">IGST: +{{ money(computedIGST) }}</span>
+              <span v-if="computedAdditionalCharges > 0">Charges: +{{ money(computedAdditionalCharges) }}</span>
+              <span v-if="computedTDS > 0" class="neg">TDS: -{{ money(computedTDS) }}</span>
+              <span v-if="computedPlatformFee > 0" class="neg">Platform: {{ form.type === 'Income' ? '-' : '+' }}{{ money(computedPlatformFee) }}</span>
+            </div>
+          </div>
+          <div class="total-amount-display">
+            <span class="net-val-label">{{ form.type === 'Income' ? 'Net Bank Inflow' : 'Net Bank Outflow' }}</span>
+            <strong class="net-val">{{ form.type === 'Income' ? '+' : '-' }} {{ money(computedTotal) }}</strong>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 4: LIVE ACCOUNTING PREVIEW (PART C) -->
+      <section class="form-section-card preview-section-card">
+        <div class="section-head preview-toggle-head" @click="showLivePreview = !showLivePreview">
+          <div class="head-title-wrap">
+            <span class="section-step-num special">4</span>
+            <div>
+              <div class="preview-badge-row">
+                <h3>Accounting Preview — Debit & Credit</h3>
+                <span class="simulated-pill">Simulated Preview (Unposted)</span>
+                <span v-if="isPeriodLocked" class="period-locked-pill">🔒 Period Locked</span>
+                <span class="balance-tag" :class="simulatedLedgerTotals.isBalanced ? 'pass' : 'fail'">
+                  {{ simulatedLedgerTotals.isBalanced ? '✓ Balanced (Dr = Cr)' : `⚠ Out of Balance` }}
+                </span>
+              </div>
+              <span class="section-sub">Real-time simulation of the double-entry journal lines generated upon posting</span>
+            </div>
+          </div>
+          <button type="button" class="preview-toggle-btn">
+            {{ showLivePreview ? 'Collapse ▲' : 'Expand Preview ▼' }}
+          </button>
+        </div>
+
+        <!-- Collapsible Content -->
+        <transition name="expand">
+          <div v-if="showLivePreview" class="preview-section-body">
+            <!-- Locked Period Notification in Simulated Preview -->
+            <div v-if="isPeriodLocked" class="preview-period-locked-notice">
+              <span class="lock-notice-icon">🔒</span>
+              <div>
+                <strong>Posting will be rejected:</strong> {{ lockedPeriodWarning }} Double-entry ledger journal lines cannot be committed while this period is locked.
+              </div>
+            </div>
+
+            <div class="preview-disclaimer">
+              <span class="info-icon">ℹ️</span>
+              <span><strong>Pre-posting validation:</strong> Official General Ledger entries are validated and posted to the database upon submission. No unposted entries affect financial reports.</span>
+            </div>
+
+            <!-- Simulated Journal Table -->
+            <div class="table-responsive">
+              <table class="simulated-gl-table">
+                <thead>
+                  <tr>
+                    <th style="width: 85px;">GL Code</th>
+                    <th style="width: 190px;">Account Name</th>
+                    <th style="width: 95px;">Type</th>
+                    <th>Line Purpose / Description</th>
+                    <th class="right" style="width: 125px;">Debit (Dr)</th>
+                    <th class="right" style="width: 125px;">Credit (Cr)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(entry, idx) in simulatedLedger" :key="idx" :class="entry.debit ? 'dr-row' : 'cr-row'">
+                    <td class="mono font-bold text-primary">{{ entry.gl_code }}</td>
+                    <td><strong>{{ entry.account }}</strong></td>
+                    <td>
+                      <span class="type-pill-sm" :class="entry.type.toLowerCase()">{{ entry.type }}</span>
+                    </td>
+                    <td class="muted small">{{ entry.description }}</td>
+                    <td class="right mono debit-col">
+                      <span v-if="entry.debit && Number(entry.debit) > 0">+{{ money(entry.debit) }}</span>
+                      <span v-else class="muted">—</span>
+                    </td>
+                    <td class="right mono credit-col">
+                      <span v-if="entry.credit && Number(entry.credit) > 0">-{{ money(entry.credit) }}</span>
+                      <span v-else class="muted">—</span>
+                    </td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr class="simulated-footer-row">
+                    <td colspan="4">
+                      <strong>SIMULATED JOURNAL TOTAL</strong>
+                    </td>
+                    <td class="right mono debit-col">
+                      <strong>+{{ money(simulatedLedgerTotals.totalDebit) }}</strong>
+                    </td>
+                    <td class="right mono credit-col">
+                      <strong>-{{ money(simulatedLedgerTotals.totalCredit) }}</strong>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <!-- Dynamic Accounting Explanation -->
+            <div class="dynamic-explanation-callout">
+              <div class="exp-icon">💡</div>
+              <div class="exp-text">
+                <strong>Accounting Impact:</strong> {{ liveAccountingExplanation }}
+              </div>
+            </div>
+          </div>
+        </transition>
+      </section>
+
+      <!-- Section 5: Description & Supporting Documents -->
+      <section class="form-section-card">
+        <div class="section-head">
+          <span class="section-step-num">5</span>
+          <div>
+            <h3>Description & Supporting Documents</h3>
+            <span class="section-sub">Add transaction remarks and attach invoices, bills, or receipts</span>
+          </div>
+        </div>
+
+        <div class="form-row-grid">
+          <div class="form-field span-2">
+            <label>Description / Remarks</label>
+            <textarea v-model="form.description" rows="3" placeholder="Provide notes, business rationale, or invoice description..." class="form-control"></textarea>
+          </div>
+
+          <!-- Attachments -->
+          <div class="form-field span-2">
+            <label>Supporting Documents</label>
+            <div class="file-upload-dropzone">
+              <input 
+                type="file" 
+                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" 
+                :disabled="uploadingDocument" 
+                multiple 
+                @change="handleTransactionDocuments" 
+                id="doc-upload" 
+                class="hidden-file-input"
+              >
+              <label for="doc-upload" class="dropzone-label">
+                <svg viewBox="0 0 24 24" width="28" height="28" class="upload-icon"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z" fill="currentColor"/></svg>
+                <span class="dropzone-text">
+                  <strong v-if="uploadingDocument">Uploading files...</strong>
+                  <strong v-else>Click to upload documents</strong>
+                  <small>PDF, PNG, JPG, Excel, Word (up to 10MB each)</small>
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div v-if="form.attachments.length" class="form-field span-2">
+            <DocumentPreview :documents="form.attachments" label="Attached Files" />
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 6: Custom Fields (If present) -->
+      <section class="form-section-card" v-if="customTransactionFields.length">
+        <div class="section-head">
+          <span class="section-step-num">6</span>
+          <div>
+            <h3>Additional Attributes</h3>
+            <span class="section-sub">Configured custom CRM fields</span>
+          </div>
+        </div>
+
+        <div class="form-row-grid">
+          <div 
+            v-for="field in customTransactionFields" 
+            :key="field.api_name" 
+            class="form-field"
+            :class="isSpan2(field) ? 'span-2' : ''"
+          >
+            <label>{{ field.label }} <span v-if="field.is_required" class="req">*</span></label>
+            
+            <textarea
+              v-if="field.field_type === 'Long Text'"
+              v-model="form[field.api_name]"
+              :required="field.is_required"
+              rows="3"
+              class="form-control"
+            ></textarea>
+
+            <select
+              v-else-if="field.field_type === 'Dropdown'"
+              v-model="form[field.api_name]"
+              :required="field.is_required"
+              class="form-control"
+            >
+              <option value="">Select {{ field.label }}</option>
+              <option v-for="opt in parseOptions(field.picklist_options)" :key="opt" :value="opt">{{ opt }}</option>
+            </select>
+
+            <label v-else-if="field.field_type === 'Checkbox'" class="checkbox-label">
+              <input type="checkbox" v-model="form[field.api_name]">
+              <span>{{ field.label }}</span>
+            </label>
+
+            <input
+              v-else-if="field.field_type === 'Number'"
+              type="number"
+              v-model="form[field.api_name]"
+              :required="field.is_required"
+              class="form-control"
+            >
+
+            <input
+              v-else-if="field.field_type === 'Date'"
+              type="date"
+              v-model="form[field.api_name]"
+              :required="field.is_required"
+              class="form-control"
+            >
+
+            <input
+              v-else
+              type="text"
+              v-model="form[field.api_name]"
+              :required="field.is_required"
+              class="form-control"
+            >
+          </div>
+        </div>
+      </section>
+
+      <!-- Error banner if validation fails -->
+      <div v-if="error" class="form-error-banner">
+        <span class="err-icon">⚠️</span>
+        <span>{{ error }}</span>
+      </div>
+
+      <!-- Action Footer -->
+      <footer class="form-actions-footer">
+        <button 
+          v-if="props.isModal" 
+          class="button secondary" 
+          type="button" 
+          @click="emit('cancel')"
+        >
+          Cancel
+        </button>
+        <RouterLink 
+          v-else 
+          class="button secondary" 
+          to="/finance/transactions"
+        >
+          Cancel
+        </RouterLink>
+
+        <button 
+          class="button primary-submit-btn" 
+          :class="{ 'blocked-btn': isPeriodLocked }"
+          type="submit"
+          :disabled="isPosting || isPeriodLocked"
+          :title="isPeriodLocked ? lockedPeriodWarning : ''"
+        >
+          <span v-if="isPosting" class="btn-spinner"></span>
+          <span v-else-if="isPeriodLocked">🔒 Period Locked (Posting Blocked)</span>
+          <span v-else>{{ isPosting ? 'Posting to Ledger...' : (isEditing ? 'Save Changes' : 'Confirm & Post Entry') }}</span>
+        </button>
+      </footer>
+    </form>
+  </div>
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, watch, computed } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet, apiPost, apiPut, apiUploadFile } from '../api/client'
 import DocumentPreview from '../components/DocumentPreview.vue'
 
 const props = defineProps({
   id: {
-    type: [String, Number],
+    type: String,
     default: null
   },
   isModal: {
@@ -266,36 +615,60 @@ const props = defineProps({
     default: false
   }
 })
-const emit = defineEmits(['save-success', 'cancel'])
+
+const emit = defineEmits(['cancel', 'save-success'])
 const router = useRouter()
+
+const isEditing = computed(() => Boolean(props.id))
 const accounts = ref([])
 const customers = ref([])
 const vendors = ref([])
 const products = ref([])
-const loans = ref([])
-const approvedClaims = ref([])
 const currencies = ref([])
 const projects = ref([])
+const loans = ref([])
+const approvedClaims = ref([])
 const receivableInvoices = ref([])
 const invoiceLoading = ref(false)
 const transactionFields = ref([])
-const error = ref('')
-const form = reactive({ transaction_date: new Date().toISOString().slice(0, 10), type: 'Income', account_id: '', product_id: '', customer_id: '', project_id: '', vendor_id: '', invoice_id: '', invoice_number: '', expense_claim_id: '', loan_account_id: '', loan_schedule_id: '', currency: 'INR', amount: '', cgst_percent: 0, igst_percent: 0, tds_percent: 0, additional_charges_percent: '', additional_charges: '', platform_fee_percent: '', platform_fee_amount: '', category: '', depreciation_value: '', description: '', attachments: [] })
-const postingDateOption = ref('today')
 const uploadingDocument = ref(false)
-const isEditing = computed(() => !!props.id)
-const LOCAL_PRODUCTS_KEY = 'crm_products_fallback'
-
-const showPreviewModal = ref(false)
 const isPosting = ref(false)
-const currencySymbolsMap = { USD: '$', INR: '₹', EUR: '€', GBP: '£' }
+const error = ref('')
+const postingDateOption = ref('today')
+const showLivePreview = ref(true)
 
-function displayTransactionId(value) {
-  const text = String(value || '').trim()
-  const txMatch = text.match(/^TXN(\d+)$/i)
-  if (txMatch) return `TXN${String(Number(txMatch[1])).padStart(3, '0')}`
-  if (/^\d+$/.test(text)) return `TXN${String(Number(text)).padStart(3, '0')}`
-  return text
+const isPeriodLocked = ref(false)
+const lockedPeriodName = ref('')
+const lockedPeriodWarning = ref('')
+
+async function checkDatePeriodLock(date) {
+  if (!date) {
+    isPeriodLocked.value = false
+    lockedPeriodName.value = ''
+    lockedPeriodWarning.value = ''
+    return
+  }
+  try {
+    const res = await apiGet(`/api/settings/accounting-periods/check?date=${date}`)
+    if (res?.is_locked) {
+      isPeriodLocked.value = true
+      lockedPeriodName.value = res.period_name || ''
+      lockedPeriodWarning.value = res.message || 'This accounting period is locked.'
+    } else {
+      isPeriodLocked.value = false
+      lockedPeriodName.value = ''
+      lockedPeriodWarning.value = ''
+    }
+  } catch (err) {
+    console.error('Error checking accounting period lock:', err)
+  }
+}
+
+const currencySymbolsMap = {
+  USD: '$',
+  INR: '₹',
+  EUR: '€',
+  GBP: '£'
 }
 
 function offsetDate(days) {
@@ -304,52 +677,47 @@ function offsetDate(days) {
   return date.toISOString().slice(0, 10)
 }
 
-watch(postingDateOption, (option) => {
-  if (option === 'today') {
-    form.transaction_date = offsetDate(0)
-  } else if (option === 'yesterday') {
-    form.transaction_date = offsetDate(-1)
-  }
+const form = reactive({
+  transaction_date: offsetDate(0),
+  type: 'Expense',
+  account_id: '',
+  product_id: '',
+  customer_id: '',
+  project_id: '',
+  vendor_id: '',
+  invoice_id: '',
+  invoice_number: '',
+  expense_claim_id: '',
+  loan_account_id: '',
+  loan_schedule_id: '',
+  currency: 'INR',
+  amount: '',
+  cgst_percent: 0,
+  cgst_amount: 0,
+  igst_percent: 0,
+  igst_amount: 0,
+  tds_percent: 0,
+  tds_amount: 0,
+  additional_charges_percent: '',
+  additional_charges: '',
+  platform_fee_percent: '',
+  platform_fee_amount: '',
+  payment_status: 'Paid',
+  category: '',
+  depreciation_value: '',
+  description: '',
+  reference: '',
+  attachments: []
 })
 
-const customTransactionFields = computed(() => {
-  return transactionFields.value.filter(field => !field.is_native)
+watch(() => form.transaction_date, (newDate) => {
+  checkDatePeriodLock(newDate)
+}, { immediate: true })
+
+watch(postingDateOption, (opt) => {
+  if (opt === 'today') form.transaction_date = offsetDate(0)
+  else if (opt === 'yesterday') form.transaction_date = offsetDate(-1)
 })
-
-const customTransactionPreviewFields = computed(() => {
-  return customTransactionFields.value.filter(field => {
-    const value = form[field.api_name]
-    return field.field_type === 'Checkbox' || value !== undefined && value !== null && value !== ''
-  })
-})
-
-function initialiseCustomFields(fields) {
-  fields.forEach(field => {
-    if (!(field.api_name in form)) {
-      form[field.api_name] = field.field_type === 'Checkbox' ? false : ''
-    }
-  })
-}
-
-function isSpan2(field) {
-  return field.field_type === 'Long Text'
-}
-
-function parseOptions(options) {
-  if (!options) return []
-  try {
-    const parsed = JSON.parse(options)
-    return Array.isArray(parsed) ? parsed : [options]
-  } catch (e) {
-    return options.split(',').map(s => s.trim()).filter(Boolean)
-  }
-}
-
-function formatCustomFieldValue(field) {
-  const value = form[field.api_name]
-  if (field.field_type === 'Checkbox') return value ? 'Yes' : 'No'
-  return value || '—'
-}
 
 watch(() => form.type, (newType) => {
   if (newType === 'Income') {
@@ -392,40 +760,72 @@ watch(() => form.loan_account_id, () => {
   form.loan_schedule_id = ''
 })
 
+const customTransactionFields = computed(() => {
+  return transactionFields.value.filter(f => !f.is_native)
+})
+
+function initialiseCustomFields(fields) {
+  fields.forEach(field => {
+    if (!(field.api_name in form)) {
+      form[field.api_name] = field.field_type === 'Checkbox' ? false : ''
+    }
+  })
+}
+
+function isSpan2(field) {
+  return field.field_type === 'Long Text'
+}
+
+function parseOptions(options) {
+  if (!options) return []
+  try {
+    const parsed = JSON.parse(options)
+    return Array.isArray(parsed) ? parsed : [options]
+  } catch {
+    return options.split(',').map(s => s.trim()).filter(Boolean)
+  }
+}
+
 const filteredProjects = computed(() => {
   if (!form.customer_id) return projects.value
   let list = projects.value.filter(p => p.customer_id === parseInt(form.customer_id))
-  if (form.product_id) {
-    const mapped = list.filter(projectMatchesSelectedProduct)
-    if (mapped.length) list = mapped
-  }
   return list
 })
 
 onMounted(async () => {
-  const options = await apiGet('/api/options')
-  accounts.value = (options.accounts || []).filter(a => a.name !== 'Bank Account' && a.name !== 'Cash on Hand')
-  customers.value = options.customers || []
-  vendors.value = options.vendors || []
-  products.value = mergeProducts(options.products || [], loadLocalProducts())
-  currencies.value = options.currencies || []
-  projects.value = options.projects || []
+  try {
+    const options = await apiGet('/api/options')
+    accounts.value = (options.accounts || []).filter(a => a.name !== 'Bank Account' && a.name !== 'Cash on Hand')
+    customers.value = options.customers || []
+    vendors.value = options.vendors || []
+    products.value = options.products || []
+    currencies.value = options.currencies || []
+    projects.value = options.projects || []
+  } catch (err) {
+    console.error(err)
+  }
+
   try {
     const loanData = await apiGet('/api/treasury/loans')
     loans.value = loanData.loans || []
-  } catch (err) {
+  } catch {
     loans.value = []
   }
+
   try {
     const claimData = await apiGet('/api/finance/expense-claims/approved-unposted')
     approvedClaims.value = claimData.claims || []
-  } catch (err) {
+  } catch {
     approvedClaims.value = []
   }
 
-  const transactionData = await apiGet('/api/finance/transactions')
-  transactionFields.value = transactionData.fields || []
-  initialiseCustomFields(customTransactionFields.value)
+  try {
+    const transactionData = await apiGet('/api/finance/transactions')
+    transactionFields.value = transactionData.fields || []
+    initialiseCustomFields(customTransactionFields.value)
+  } catch (err) {
+    console.error(err)
+  }
 
   if (isEditing.value) {
     await loadExistingTransaction()
@@ -439,10 +839,6 @@ const requiresLoanAccount = computed(() => ['Loan Disbursement', 'Loan Repayment
 const selectedLoanSchedules = computed(() => {
   const loan = loans.value.find(item => Number(item.id) === Number(form.loan_account_id))
   return loan?.schedules || []
-})
-
-const selectedLoan = computed(() => {
-  return loans.value.find(item => Number(item.id) === Number(form.loan_account_id)) || null
 })
 
 const currentCurrencySymbol = computed(() => currencySymbolsMap[form.currency] || '$')
@@ -521,27 +917,13 @@ const computedTotal = computed(() => {
   }
 })
 
-const selectedAccountName = computed(() => {
-  if (!form.account_id) return 'Not Selected'
-  const acc = accounts.value.find(a => a.id === parseInt(form.account_id))
-  return acc ? acc.name : 'Unknown'
-})
-
 const selectedAccount = computed(() => {
   if (!form.account_id) return null
   return accounts.value.find(a => a.id === parseInt(form.account_id)) || null
 })
 
 const activeProducts = computed(() => {
-  return products.value.filter(product => !['Inactive', 'Archived'].includes(product.product_status || product.status || 'Active'))
-})
-
-const selectedProduct = computed(() => {
-  return products.value.find(product => String(product.id || product.product_code) === String(form.product_id)) || null
-})
-
-const selectedProductName = computed(() => {
-  return selectedProduct.value ? productName(selectedProduct.value) : 'Not Selected'
+  return products.value.filter(p => !['Inactive', 'Archived'].includes(p.status || 'Active'))
 })
 
 const isEmployeeClaimsAccount = computed(() => {
@@ -556,63 +938,37 @@ const isSalesRevenueReceipt = computed(() => {
 
 const selectedInvoice = computed(() => {
   if (!form.invoice_id) return null
-  return receivableInvoices.value.find(invoice => Number(invoice.id) === Number(form.invoice_id)) || null
+  return receivableInvoices.value.find(inv => Number(inv.id) === Number(form.invoice_id)) || null
 })
 
 const invoiceSelectPlaceholder = computed(() => {
   if (!form.customer_id) return 'Select customer first'
-  if (invoiceLoading.value) return 'Loading invoice records...'
-  if (receivableInvoices.value.length === 0) return 'No outstanding invoices found'
+  if (invoiceLoading.value) return 'Loading invoices...'
+  if (receivableInvoices.value.length === 0) return 'No unpaid invoices found'
   return 'Select invoice'
 })
 
 const invoiceHint = computed(() => {
   if (!isSalesRevenueReceipt.value) return ''
-  if (!form.customer_id) return 'Select a customer to load outstanding invoices.'
+  if (!form.customer_id) return 'Select a customer to load open invoices.'
   if (!invoiceLoading.value && receivableInvoices.value.length === 0) {
-    return 'Only outstanding (Approved and Partially Paid) invoices with remaining balance are shown.'
+    return 'Only outstanding invoices with remaining balance are shown.'
   }
   return ''
 })
 
-function accountLabel(account) {
-  return account.gl_code ? `${account.gl_code} - ${account.name}` : account.name
+function accountLabel(acc) {
+  return acc.gl_code ? `${acc.gl_code} - ${acc.name}` : acc.name
 }
 
-function productName(product) {
-  const code = product.product_code || product.code
-  const name = product.product_name || product.name
+function productName(prod) {
+  const code = prod.product_code || prod.code
+  const name = prod.product_name || prod.name
   return code ? `${code} - ${name}` : name
 }
 
-function loadLocalProducts() {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(LOCAL_PRODUCTS_KEY) || '[]')
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-function mergeProducts(primary, fallback) {
-  const merged = []
-  const seen = new Set()
-  ;[...primary, ...fallback].forEach(product => {
-    const key = String(product.id || product.product_id || product.product_code || product.code || '')
-    if (!key || seen.has(key)) return
-    seen.add(key)
-    merged.push(product)
-  })
-  return merged
-}
-
-function projectMatchesSelectedProduct(project) {
-  if (!form.product_id) return true
-  return [project.product_id, project.product_code, project.product_name].some(value => value !== undefined && value !== null && String(value) === String(form.product_id))
-}
-
-function invoiceLabel(invoice) {
-  return `${invoice.invoice_number} - ${invoice.currency} ${Number(invoice.balance_due || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} due`
+function invoiceLabel(inv) {
+  return `${inv.invoice_number} - ${inv.currency} ${Number(inv.balance_due || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} due`
 }
 
 function clearInvoiceSelection() {
@@ -629,15 +985,9 @@ async function loadReceivableInvoices() {
       customer_id: form.customer_id,
       account_id: form.account_id
     })
-    if (props.id && form.invoice_id) {
-      params.append('include_invoice_id', form.invoice_id)
-    }
+    if (props.id && form.invoice_id) params.append('include_invoice_id', form.invoice_id)
     const data = await apiGet(`/api/finance/invoices/receivable?${params}`)
-    const list = data.invoices || []
-    receivableInvoices.value = list.filter(invoice => {
-      const isCurrentTxInvoice = props.id && Number(invoice.id) === Number(form.invoice_id)
-      return isCurrentTxInvoice || (invoice.status !== 'Paid' && Number(invoice.balance_due || 0) > 0)
-    })
+    receivableInvoices.value = data.invoices || []
   } catch (err) {
     error.value = err.message || 'Unable to load invoice records.'
   } finally {
@@ -649,18 +999,16 @@ async function loadExistingTransaction() {
   try {
     const data = await apiGet(`/api/finance/transactions/${props.id}`)
     const tx = data.transaction || {}
-    const invoiceId = tx.invoice_id || ''
-    const invoiceNumber = tx.invoice_number || ''
     Object.assign(form, {
-      transaction_date: tx.transaction_date || tx.date || new Date().toISOString().slice(0, 10),
-      type: tx.type || 'Income',
+      transaction_date: tx.transaction_date || tx.date || offsetDate(0),
+      type: tx.type || 'Expense',
       account_id: tx.account_id || '',
       product_id: tx.product_id || '',
       customer_id: tx.customer_id || '',
       project_id: tx.project_id || '',
       vendor_id: tx.vendor_id || '',
-      invoice_id: invoiceId,
-      invoice_number: invoiceNumber,
+      invoice_id: tx.invoice_id || '',
+      invoice_number: tx.invoice_number || '',
       expense_claim_id: tx.expense_claim_id || '',
       loan_account_id: tx.loan_account_id || '',
       loan_schedule_id: tx.loan_schedule_id || '',
@@ -673,76 +1021,42 @@ async function loadExistingTransaction() {
       additional_charges: tx.additional_charges ?? tx.additional_charges_amount ?? '',
       platform_fee_percent: tx.platform_fee_percent ?? '',
       platform_fee_amount: tx.platform_fee_amount ?? tx.platform_charges ?? '',
+      payment_status: tx.payment_status || 'Paid',
       category: tx.category || '',
       depreciation_value: tx.depreciation_value ?? '',
       description: tx.description || '',
+      reference: tx.reference || '',
       attachments: Array.isArray(tx.attachments) ? tx.attachments : []
     })
-    customTransactionFields.value.forEach(field => {
-      if (tx[field.api_name] !== undefined) form[field.api_name] = tx[field.api_name]
-    })
     postingDateOption.value = 'custom'
-    if (isSalesRevenueReceipt.value && form.customer_id && form.account_id) {
-      await loadReceivableInvoices()
-      form.invoice_id = invoiceId
-      form.invoice_number = invoiceNumber
-    }
   } catch (err) {
-    error.value = err.message || 'Unable to load this transaction for editing.'
+    error.value = err.message || 'Unable to load transaction.'
   }
 }
 
-watch(selectedInvoice, (invoice) => {
-  form.invoice_number = invoice?.invoice_number || ''
-  if (invoice?.project_id && !form.project_id) {
-    form.project_id = invoice.project_id
-  }
-  if (invoice?.currency) {
-    form.currency = invoice.currency
-  }
-})
-
 watch(() => form.expense_claim_id, (claimId) => {
-  const claim = approvedClaims.value.find(item => Number(item.id) === Number(claimId))
+  const claim = approvedClaims.value.find(c => Number(c.id) === Number(claimId))
   if (!claim) return
-  const claimAmount = Number(claim.total_claim_amount || claim.amount || 0)
-  form.amount = claimAmount || ''
+  const claimAmt = Number(claim.total_claim_amount || claim.amount || 0)
+  form.amount = claimAmt || ''
   form.cgst_percent = 0
   form.igst_percent = 0
   form.tds_percent = 0
   form.category = claim.expense_category || 'Employee Claim'
   form.description = `Employee claim ${claim.claim_number} - ${claim.employee_name || ''}`.trim()
-  form.attachments = claim.attachment ? [claim.attachment] : []
 })
 
 const filteredAccountsForDropdown = computed(() => {
-  if (form.type === 'Income') {
-    return accounts.value.filter(account => accountAvailableFor(account, 'Income'))
-  } else {
-    return accounts.value.filter(account => accountAvailableFor(account, 'Expense'))
-  }
+  return accounts.value.filter(a => {
+    if (!a || a.is_active === 0 || a.is_active === false) return false
+    if (form.type === 'Income') {
+      return a.show_in_income === 1 || a.show_in_income === true || (a.show_in_income === undefined && a.type === 'Revenue')
+    }
+    return a.show_in_expense === 1 || a.show_in_expense === true || (a.show_in_expense === undefined && a.type === 'Expense')
+  })
 })
 
-function accountAvailableFor(account, transactionType) {
-  if (!account || account.is_active === 0 || account.is_active === false) return false
-  if (transactionType === 'Income') {
-    return account.show_in_income === 1 || account.show_in_income === true || (account.show_in_income === undefined && account.type === 'Revenue')
-  }
-  return account.show_in_expense === 1 || account.show_in_expense === true || (account.show_in_expense === undefined && account.type === 'Expense')
-}
-
-const selectedPartyName = computed(() => {
-  if (form.type === 'Income') {
-    if (!form.customer_id) return 'Generic Customer'
-    const cust = customers.value.find(c => c.id === parseInt(form.customer_id))
-    return cust ? cust.company_name : 'Unknown'
-  } else {
-    if (!form.vendor_id) return 'General Vendor'
-    const vend = vendors.value.find(v => v.id === parseInt(form.vendor_id))
-    return vend ? vend.name : 'Unknown'
-  }
-})
-
+/* Simulated Ledger calculation */
 const simulatedLedger = computed(() => {
   const amt = parseFloat(form.amount) || 0
   const addCharges = computedAdditionalCharges.value
@@ -750,33 +1064,34 @@ const simulatedLedger = computed(() => {
   const cgst = computedCGST.value
   const igst = computedIGST.value
   const tds = computedTDS.value
-  const netBank = computedTotal.value
+  const netTotal = computedTotal.value
+  const isUnpaid = form.payment_status === 'Unpaid'
   const ledger = []
-  
+
   if (form.type === 'Income') {
-    // 1. Bank Account (Debit)
-    if (netBank > 0) {
+    // 1. Bank Receipt or AR
+    if (netTotal > 0) {
       ledger.push({
-        gl_code: '1010',
-        account: 'Bank Account',
+        gl_code: isUnpaid ? '1050' : '1010',
+        account: isUnpaid ? 'Accounts Receivable' : 'Bank Account',
         type: 'Asset',
-        description: 'Net Settlement Received in Bank',
-        debit: netBank,
+        description: isUnpaid ? 'Receivable Claim Due from Customer' : 'Net Settlement Received in Bank',
+        debit: netTotal,
         credit: 0
       })
     }
-    // 2. Payment Gateway & Platform Fees (Debit)
+    // 2. Gateway Fee
     if (platformFee > 0) {
       ledger.push({
         gl_code: '5040',
         account: 'Payment Gateway & Platform Fees',
         type: 'Expense',
-        description: `Payment Gateway / Platform Fee (${form.platform_fee_percent || 0}%)`,
+        description: `Payment Gateway Fee (${form.platform_fee_percent || 0}%)`,
         debit: platformFee,
         credit: 0
       })
     }
-    // 3. TDS Receivable (Debit)
+    // 3. TDS Receivable
     if (tds > 0) {
       ledger.push({
         gl_code: '1040',
@@ -787,151 +1102,164 @@ const simulatedLedger = computed(() => {
         credit: 0
       })
     }
-    // 4. Primary Revenue Account (Credit)
-    const selectedAcc = selectedAccount.value
-    const revGl = selectedAcc?.gl_code || '4000'
-    const revName = selectedAcc?.name || (revGl === '4010' ? 'Subscription Revenue' : 'Sales Revenue')
+    // 4. Primary Revenue
+    const acc = selectedAccount.value
+    const revGl = acc?.gl_code || '4000'
+    const revName = acc?.name || (revGl === '4010' ? 'Subscription Revenue' : 'Sales Revenue')
     ledger.push({
       gl_code: revGl,
       account: revName,
       type: 'Revenue',
-      description: form.description || (revGl === '4010' ? 'Gross Subscription Revenue' : `Gross Revenue (${revName})`),
+      description: form.description || `Gross Revenue (${revName})`,
       debit: 0,
       credit: amt
     })
-    // 5. Additional Charges Income (Credit)
+    // 5. Additional Charges
     if (addCharges > 0) {
       ledger.push({
         gl_code: '4020',
         account: 'Additional Charges Income',
         type: 'Revenue',
-        description: `Additional Charges Income (${form.additional_charges_percent || 0}%)`,
+        description: 'Additional Charges Income',
         debit: 0,
         credit: addCharges
       })
     }
-    // 6. CGST Output Tax (Credit)
+    // 6. Taxes
     if (cgst > 0) {
       ledger.push({
         gl_code: '2010',
         account: 'CGST Output Tax Payable',
         type: 'Liability',
-        description: `CGST Output Tax Payable (${form.cgst_percent || 0}%)`,
+        description: `CGST Output Tax (${form.cgst_percent}%)`,
         debit: 0,
         credit: cgst
       })
     }
-    // 7. IGST Output Tax (Credit)
     if (igst > 0) {
       ledger.push({
         gl_code: '2020',
         account: 'IGST Output Tax Payable',
         type: 'Liability',
-        description: `IGST Output Tax Payable (${form.igst_percent || 0}%)`,
+        description: `IGST Output Tax (${form.igst_percent}%)`,
         debit: 0,
         credit: igst
       })
     }
-  } else { // Expense
-    // 1. Primary Operating Expense Account (Debit)
-    const selectedAcc = selectedAccount.value
-    const expGl = selectedAcc?.gl_code || '5000'
-    const expName = selectedAcc?.name || 'Operating Expenses'
+  } else {
+    // Expense
+    // 1. Primary Expense
+    const acc = selectedAccount.value
+    const expGl = acc?.gl_code || '5000'
+    const expName = acc?.name || 'Operating Expenses'
     ledger.push({
       gl_code: expGl,
       account: expName,
       type: 'Expense',
-      description: form.description || `Base Operating Expense (${expName})`,
+      description: form.description || `Operating Expense (${expName})`,
       debit: amt,
       credit: 0
     })
-    // 2. Additional Charges Expense (Debit)
+    // 2. Additional Charges
     if (addCharges > 0) {
       ledger.push({
         gl_code: '5050',
         account: 'Additional Charges Expense',
         type: 'Expense',
-        description: `Additional Charges Expense (${form.additional_charges_percent || 0}%)`,
+        description: 'Additional Charges Expense',
         debit: addCharges,
         credit: 0
       })
     }
-    // 3. Payment Gateway & Platform Fees (Debit)
+    // 3. Platform Fee
     if (platformFee > 0) {
       ledger.push({
         gl_code: '5040',
         account: 'Payment Gateway & Platform Fees',
         type: 'Expense',
-        description: `Payment Gateway / Platform Fee (${form.platform_fee_percent || 0}%)`,
+        description: 'Platform Processing Fee',
         debit: platformFee,
         credit: 0
       })
     }
-    // 4. CGST Input Tax Credit (Debit)
+    // 4. Taxes
     if (cgst > 0) {
       ledger.push({
         gl_code: '1020',
         account: 'CGST Input Tax Credit',
         type: 'Asset',
-        description: `CGST Input Tax Credit (${form.cgst_percent || 0}%)`,
+        description: `CGST Input Tax Credit (${form.cgst_percent}%)`,
         debit: cgst,
         credit: 0
       })
     }
-    // 5. IGST Input Tax Credit (Debit)
     if (igst > 0) {
       ledger.push({
         gl_code: '1030',
         account: 'IGST Input Tax Credit',
         type: 'Asset',
-        description: `IGST Input Tax Credit (${form.igst_percent || 0}%)`,
+        description: `IGST Input Tax Credit (${form.igst_percent}%)`,
         debit: igst,
         credit: 0
       })
     }
-    // 6. TDS Payable (Credit)
+    // 5. TDS Payable
     if (tds > 0) {
       ledger.push({
         gl_code: '2030',
         account: 'TDS Payable',
         type: 'Liability',
-        description: `TDS Payable Liability (${form.tds_percent || 0}%)`,
+        description: `TDS Payable Liability (${form.tds_percent}%)`,
         debit: 0,
         credit: tds
       })
     }
-    // 7. Bank Account Outflow (Credit)
-    if (netBank > 0) {
+    // 6. Counterpart: Bank Account or Accounts Payable
+    if (netTotal > 0) {
       ledger.push({
-        gl_code: '1010',
-        account: 'Bank Account',
-        type: 'Asset',
-        description: 'Net Cash Outflow from Bank',
+        gl_code: isUnpaid ? '2000' : '1010',
+        account: isUnpaid ? 'Accounts Payable' : 'Bank Account',
+        type: isUnpaid ? 'Liability' : 'Asset',
+        description: isUnpaid ? 'Accounts Payable Liability' : 'Net Cash Outflow from Bank',
         debit: 0,
-        credit: netBank
+        credit: netTotal
       })
     }
   }
+
   return ledger
 })
 
 const simulatedLedgerTotals = computed(() => {
-  const dr = simulatedLedger.value.reduce((sum, item) => sum + (parseFloat(item.debit) || 0), 0)
-  const cr = simulatedLedger.value.reduce((sum, item) => sum + (parseFloat(item.credit) || 0), 0)
+  const dr = simulatedLedger.value.reduce((s, i) => s + (parseFloat(i.debit) || 0), 0)
+  const cr = simulatedLedger.value.reduce((s, i) => s + (parseFloat(i.credit) || 0), 0)
   const diff = Math.abs(dr - cr)
   return {
-    totalDebit: dr,
-    totalCredit: cr,
-    difference: diff,
+    totalDebit: Number(dr.toFixed(2)),
+    totalCredit: Number(cr.toFixed(2)),
+    difference: Number(diff.toFixed(2)),
     isBalanced: diff < 0.01
   }
 })
 
-function openPreview() {
-  error.value = ''
-  if (!validateBeforePosting()) return
-  showPreviewModal.value = true
-}
+const liveAccountingExplanation = computed(() => {
+  const sym = currentCurrencySymbol.value
+  const isUnpaid = form.payment_status === 'Unpaid'
+  const amt = parseFloat(form.amount) || 0
+  const accName = selectedAccount.value?.name || (form.type === 'Income' ? 'Sales Revenue' : 'Operating Expenses')
+
+  if (form.type === 'Income') {
+    if (computedPlatformFee.value > 0) {
+      return `Gross Revenue of ${sym}${amt.toFixed(2)} recognized through credit. Platform Fee of ${sym}${computedPlatformFee.value.toFixed(2)} recognized as debit. Bank receives net deposit of ${sym}${computedTotal.value.toFixed(2)}.`
+    }
+    return `Revenue account (${accName}) increased by ${sym}${amt.toFixed(2)} through a credit. ${isUnpaid ? 'Accounts Receivable asset' : 'Bank Account'} debited with net amount ${sym}${computedTotal.value.toFixed(2)}.`
+  } else {
+    if (isUnpaid) {
+      return `${accName} expense increased by ${sym}${amt.toFixed(2)} through a debit. Accounts Payable liability increased by ${sym}${computedTotal.value.toFixed(2)} through a credit. No bank movement has occurred yet.`
+    }
+    return `${accName} expense increased by ${sym}${amt.toFixed(2)} through a debit. Bank Account decreased by ${sym}${computedTotal.value.toFixed(2)} through a credit disbursement.`
+  }
+})
 
 async function handleTransactionDocuments(event) {
   const files = Array.from(event.target.files || [])
@@ -944,7 +1272,7 @@ async function handleTransactionDocuments(event) {
       form.attachments.push(data.document)
     }
   } catch (err) {
-    error.value = err.message || 'Unable to upload transaction document.'
+    error.value = err.message || 'Unable to upload document.'
   } finally {
     uploadingDocument.value = false
     event.target.value = ''
@@ -952,12 +1280,16 @@ async function handleTransactionDocuments(event) {
 }
 
 function validateBeforePosting() {
+  if (isPeriodLocked.value) {
+    error.value = lockedPeriodWarning.value || 'Cannot post transaction into a closed/locked accounting period.'
+    return false
+  }
   if (!form.transaction_date || !form.account_id || !form.amount) {
-    error.value = 'Please fill out all required fields (Date, Account, Amount) before previewing.'
+    error.value = 'Please fill out all required fields: Date, Account, and Amount.'
     return false
   }
   if (Number(form.amount || 0) <= 0) {
-    error.value = 'Amount must be greater than zero.'
+    error.value = 'Base amount must be greater than zero.'
     return false
   }
   if (isSalesRevenueReceipt.value && !form.invoice_id) {
@@ -965,42 +1297,16 @@ function validateBeforePosting() {
     return false
   }
   if (isEmployeeClaimsAccount.value && !form.expense_claim_id) {
-    error.value = 'Please select an approved employee claim for GL 7010 - Employee Claims.'
+    error.value = 'Please select an approved employee claim for GL 7010.'
     return false
   }
-  if (isEmployeeClaimsAccount.value) {
-    const claim = approvedClaims.value.find(item => Number(item.id) === Number(form.expense_claim_id))
-    const claimTotal = Number(claim?.total_claim_amount || claim?.amount || 0)
-    if (claimTotal > 0 && Math.abs(computedTotal.value - claimTotal) > 0.01) {
-      error.value = `Base amount plus tax must equal the approved claim total (${money(claimTotal)}).`
-      return false
-    }
-  }
-  if (form.category === 'Loan Disbursement') {
-    if (form.type !== 'Income') {
-      error.value = 'Loan disbursement must be posted as an Income transaction.'
-      return false
-    }
-    if (!form.loan_account_id) {
-      error.value = 'Please select the Loan Account Number for this disbursement.'
-      return false
-    }
-  }
-  if (form.category === 'Loan Repayment') {
-    if (form.type !== 'Expense') {
-      error.value = 'Loan repayment must be posted as an Expense transaction.'
-      return false
-    }
-    if (!form.loan_account_id) {
-      error.value = 'Please select the Loan Account Number for this repayment.'
-      return false
-    }
-    if (!form.loan_schedule_id) {
-      error.value = 'Please select the repayment schedule line before posting.'
-      return false
-    }
-  }
   return true
+}
+
+async function openPreview() {
+  error.value = ''
+  if (!validateBeforePosting()) return
+  await confirmAndPost()
 }
 
 async function confirmAndPost() {
@@ -1011,7 +1317,6 @@ async function confirmAndPost() {
     const data = isEditing.value
       ? await apiPut(`/api/finance/transactions/${props.id}`, form)
       : await apiPost('/api/finance/transactions', form)
-    showPreviewModal.value = false
     isPosting.value = false
     if (props.isModal) {
       emit('save-success', data.id || props.id)
@@ -1020,417 +1325,683 @@ async function confirmAndPost() {
     }
   } catch (err) {
     isPosting.value = false
-    error.value = err.message
-    showPreviewModal.value = false
+    error.value = err.message || 'Failed to post transaction.'
   }
 }
 
 function money(amount) {
-  const sym = currencySymbolsMap[form.currency] || '$'
+  const sym = currentCurrencySymbol.value
   const number = Number(amount || 0)
-  return `${sym}${number.toLocaleString(undefined, {
+  return `${sym}${number.toLocaleString('en-IN', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   })}`
 }
 
-async function save() {
-  error.value = ''
-  if (!validateBeforePosting()) return
-  try {
-    const data = await apiPost('/api/finance/transactions', form)
-    if (props.isModal) {
-      emit('save-success', data.id)
-    } else {
-      router.replace(`/finance/transactions/${data.id}`)
-    }
-  } catch (err) {
-    error.value = err.message
-  }
+function displayTransactionId(id) {
+  return String(id || '').toUpperCase()
 }
 </script>
 
 <style scoped>
-.btn-animate {
+.transaction-form-view {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding-bottom: 80px;
+}
+
+/* Header */
+.form-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+  background: #ffffff;
+  padding: 24px 28px;
+  border-radius: 16px;
+  border: 1px solid var(--line, #e2e8f0);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  flex-wrap: wrap;
+}
+
+.modal-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0;
+  color: #0f172a;
+}
+
+/* Type Toggle Buttons */
+.type-toggle-group {
+  display: flex;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+}
+
+.type-btn {
+  border: none;
+  background: transparent;
+  padding: 8px 18px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 7px;
+  transition: all 0.2s;
 }
 
-.btn-animate:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.15);
+.type-btn.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
-.btn-animate.secondary:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.income-dot { background: #16a34a; }
+.expense-dot { background: #dc2626; }
+
+/* Main Form Structure */
+.transaction-main-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Section Cards */
+.form-section-card {
+  background: #ffffff;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 16px;
+  padding: 24px 28px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.section-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.section-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: #f1f5f9;
+  color: #0f172a;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.section-step-num.special {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.section-head h3 {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 2px;
+}
+
+.section-sub {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* Field Grid */
+.form-row-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px 20px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field.span-2 {
+  grid-column: span 2;
+}
+
+.form-field label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.req { color: #dc2626; }
+
+.form-control {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  color: #0f172a;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12);
+}
+
+.highlight-select {
+  border-color: #93c5fd;
+  background: #f8fafc;
+  font-weight: 600;
 }
 
 .field-hint {
-  display: block;
   font-size: 11px;
-  color: var(--muted);
-  margin-top: 4px;
+  color: #64748b;
   font-style: italic;
 }
 
-.attached-documents {
-  display: grid;
-  gap: 12px;
-}
-
-.preview-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--surface, #ffffff);
-  z-index: 9999;
-}
-
-.preview-modal-content {
-  background: var(--surface);
-  min-height: 100vh;
-  width: 100%;
-  height: 100vh;
+/* Amount Input Group */
+.amount-input-group {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
   overflow: hidden;
-  animation: slideIn 0.22s ease-out;
-}
-
-@keyframes slideIn {
-  from { transform: translateY(10px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 22px clamp(20px, 4vw, 56px);
-  border-bottom: 1px solid var(--line);
   background: #ffffff;
-  flex-shrink: 0;
 }
 
-.modal-header h2 {
-  font-size: 20px;
+.amount-input-group:focus-within {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12);
+}
+
+.curr-prefix {
+  padding: 0 16px;
+  font-size: 18px;
   font-weight: 800;
-  margin: 4px 0 0;
-  color: var(--text);
+  color: #64748b;
+  background: #f8fafc;
+  border-right: 1px solid #e2e8f0;
 }
 
-.close-btn {
+.amount-input {
+  border: none !important;
+  font-size: 18px;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  box-shadow: none !important;
+}
+
+/* Tax Input Group */
+.tax-input-group {
+  position: relative;
+  display: flex;
   align-items: center;
-  background: var(--surface-soft, #f8fafc);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  color: var(--muted);
-  cursor: pointer;
-  display: inline-flex;
-  font-size: 24px;
-  height: 40px;
-  justify-content: center;
-  line-height: 1;
-  transition: color 0.2s;
-  width: 40px;
 }
 
-.close-btn:hover {
-  background: #fff7ed;
-  border-color: var(--primary);
-  color: var(--primary);
+.tax-computed {
+  position: absolute;
+  right: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #16a34a;
+  background: #dcfce7;
+  padding: 2px 6px;
+  border-radius: 4px;
+  pointer-events: none;
 }
 
-.modal-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 28px clamp(20px, 4vw, 56px) 96px;
-  display: grid;
-  grid-template-columns: minmax(280px, 0.8fr) minmax(420px, 1.2fr);
-  align-content: start;
-  gap: 24px;
-  background: var(--surface-soft, #f8fafc);
+.tax-computed.negative {
+  color: #991b1b;
+  background: #fee2e2;
 }
 
-/* Overview grid */
-.overview-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-  background: var(--surface);
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  align-self: start;
+/* Grand Total Summary Box */
+.grand-total-summary-card {
+  margin-top: 20px;
+  padding: 18px 22px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-.overview-item {
+.income-card {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.expense-card {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.total-breakdown-details {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 13px;
+  gap: 6px;
 }
 
-.overview-item span {
-  color: var(--muted);
+.total-label {
+  font-size: 11.5px;
+  font-weight: 800;
   text-transform: uppercase;
-  font-size: 10px;
-  font-weight: 700;
+  color: #475569;
   letter-spacing: 0.5px;
 }
 
-.overview-item strong {
-  color: var(--text);
-  overflow-wrap: anywhere;
-}
-
-/* Breakdown Card */
-.breakdown-card {
-  border: 1px solid var(--line);
-  background: var(--surface);
-  border-radius: 8px;
-  padding: 22px;
-  align-self: start;
-}
-
-.breakdown-card h3, .ledger-preview-card h3 {
-  font-size: 13px;
-  color: var(--muted);
-  text-transform: uppercase;
-  margin: 0 0 14px;
-  letter-spacing: 0.8px;
-}
-
-.breakdown-row {
+.calc-chips {
   display: flex;
-  justify-content: space-between;
-  padding: 8px 0;
-  font-size: 14px;
-  border-bottom: 1px dashed var(--line);
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.breakdown-row:last-of-type {
+.calc-chips span {
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #1e293b;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.calc-chips .neg { color: #dc2626; }
+
+.total-amount-display {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.net-val-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.net-val {
+  font-size: 24px;
+  font-weight: 900;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.income-card .net-val { color: #16a34a; }
+.expense-card .net-val { color: #dc2626; }
+
+/* Section 4: Live Accounting Preview */
+.preview-section-card {
+  border-color: #bae6fd;
+}
+
+.preview-toggle-head {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0;
+  padding-bottom: 0;
   border-bottom: none;
 }
 
-.breakdown-row.grand-total {
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--primary);
-  border-top: 1.5px solid var(--line);
-  padding-top: 12px;
+.head-title-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
 }
 
-.negative {
-  color: #dc2626 !important;
+.preview-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-/* Ledger Preview Table */
-.ledger-preview-card {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 22px;
-  background: var(--surface);
-  grid-column: 1 / -1;
-}
-
-.preview-ledger-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.preview-ledger-table th {
-  padding: 10px 12px;
-  font-size: 10px;
+.simulated-pill {
+  font-size: 10.5px;
   font-weight: 800;
   text-transform: uppercase;
-  color: var(--muted);
-  border-bottom: 2px solid var(--line);
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.balance-tag {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.balance-tag.pass { background: #dcfce7; color: #166534; }
+.balance-tag.fail { background: #fee2e2; color: #991b1b; }
+
+.preview-toggle-btn {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #0284c7;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.preview-section-body {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #e0f2fe;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.preview-disclaimer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #0369a1;
+}
+
+.simulated-gl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.simulated-gl-table th {
+  background: #f8fafc;
+  padding: 8px 12px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #475569;
+  text-transform: uppercase;
+  border-bottom: 1px solid #e2e8f0;
   text-align: left;
 }
 
-.preview-ledger-table td {
-  padding: 12px;
-  font-size: 13.5px;
-  border-bottom: 1px solid var(--line);
+.simulated-gl-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
-.preview-ledger-table tr:last-child td {
-  border-bottom: none;
-}
-
-.preview-ledger-table th.right, .preview-ledger-table td.right {
-  text-align: right;
-}
-
-.mono {
-  font-family: 'JetBrains Mono', monospace;
-}
-
-.debit-col {
-  color: #16a34a;
-  font-weight: 700;
-}
-
-.credit-col {
-  color: #dc2626;
-  font-weight: 700;
-}
-
-.debit-row td:first-child {
-  border-left: 4px solid #16a34a;
-}
-
-.credit-row td:first-child {
-  border-left: 4px solid #dc2626;
-}
-
-.preview-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-}
-
-.preview-eyebrow {
-  font-size: 10px;
+.type-pill-sm {
+  font-size: 9.5px;
   font-weight: 800;
-  text-transform: uppercase;
-  color: var(--muted);
-  letter-spacing: 0.5px;
-  display: block;
-}
-
-.balanced-badge {
-  font-size: 11px;
-  font-weight: 800;
-  padding: 4px 10px;
-  border-radius: 999px;
-  text-transform: uppercase;
-}
-
-.balanced-ok {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.balanced-err {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.gl-code-pill {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  font-weight: 800;
-  color: #0369a1;
-  background: #e0f2fe;
-  padding: 3px 8px;
-  border-radius: 4px;
-  display: inline-block;
-}
-
-.entry-sub-desc {
-  display: block;
-  font-size: 11px;
-  color: var(--muted);
-  margin-top: 2px;
-}
-
-.preview-type-pill {
-  font-size: 10px;
-  font-weight: 800;
-  padding: 2px 7px;
+  padding: 2px 6px;
   border-radius: 4px;
   text-transform: uppercase;
 }
 
-.preview-type-pill.asset {
-  background: #e0f2fe;
-  color: #0369a1;
-}
+.type-pill-sm.asset { background: #e0f2fe; color: #0369a1; }
+.type-pill-sm.liability { background: #fef3c7; color: #92400e; }
+.type-pill-sm.expense { background: #fee2e2; color: #991b1b; }
+.type-pill-sm.revenue { background: #dcfce7; color: #166534; }
 
-.preview-type-pill.expense {
-  background: #fef3c7;
-  color: #92400e;
-}
+.debit-col { color: #16a34a; font-weight: 700; }
+.credit-col { color: #dc2626; font-weight: 700; }
 
-.preview-type-pill.revenue {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.preview-type-pill.liability {
-  background: #fce7f3;
-  color: #9d174d;
-}
-
-.preview-total-row td {
+.simulated-footer-row td {
   background: #f8fafc;
-  font-weight: 800;
-  border-top: 2px solid var(--line);
-  border-bottom: 2px solid var(--line);
-  padding: 12px;
+  border-top: 2px solid #e2e8f0;
+  padding: 11px 12px;
 }
 
-.modal-footer {
+.dynamic-explanation-callout {
   display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  color: #334155;
+  line-height: 1.5;
+}
+
+/* Dropzone */
+.file-upload-dropzone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  background: #f8fafc;
+  transition: all 0.2s;
+}
+
+.file-upload-dropzone:hover {
+  border-color: #0284c7;
+  background: #f0f9ff;
+}
+
+.hidden-file-input { display: none; }
+
+.dropzone-label {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.upload-icon { color: #0284c7; }
+
+.dropzone-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dropzone-text strong {
+  font-size: 13.5px;
+  color: #0f172a;
+}
+
+.dropzone-text small {
+  font-size: 11.5px;
+  color: #64748b;
+}
+
+/* Form Error Banner */
+.form-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Action Footer */
+.form-actions-footer {
+  display: flex;
+  align-items: center;
   justify-content: flex-end;
-  gap: 12px;
-  padding: 18px clamp(20px, 4vw, 56px);
-  border-top: 1px solid var(--line);
-  background: #ffffff;
-  box-shadow: 0 -10px 30px rgba(15, 23, 42, 0.08);
-  flex-shrink: 0;
+  gap: 14px;
+  padding: 20px 0;
 }
 
-@media (max-width: 900px) {
-  .modal-body {
-    grid-template-columns: 1fr;
-    padding-bottom: 116px;
-  }
-
-  .ledger-preview-card {
-    grid-column: auto;
-  }
-
-  .modal-header,
-  .modal-footer {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-
-  .modal-footer {
-    align-items: stretch;
-    flex-direction: column-reverse;
-  }
+.primary-submit-btn {
+  background: #0284c7 !important;
+  color: white !important;
+  font-weight: 800;
+  font-size: 14px;
+  padding: 12px 28px;
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.25);
+  transition: all 0.2s;
 }
 
-/* Fade animation */
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
+.primary-submit-btn:hover {
+  background: #0369a1 !important;
+  transform: translateY(-1px);
 }
 
 .btn-spinner {
   display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  width: 14px;
+  height: 14px;
+  border: 2px solid white;
+  border-top-color: transparent;
   border-radius: 50%;
-  border-top-color: #fff;
   animation: spin 0.8s linear infinite;
-  margin-right: 8px;
+  margin-right: 6px;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.mono { font-family: 'JetBrains Mono', monospace; }
+.right { text-align: right; }
+
+@media (max-width: 768px) {
+  .form-row-grid {
+    grid-template-columns: 1fr;
+  }
+  .form-field.span-2 {
+    grid-column: span 1;
+  }
+  .form-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .form-actions-footer {
+    flex-direction: column-reverse;
+  }
+  .form-actions-footer .button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Period Locked Callouts & Blocked Submit States */
+.locked-period-callout {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-top: 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 4px solid #ef4444;
+  border-radius: 10px;
+  padding: 14px 18px;
+}
+
+.lock-callout-icon {
+  font-size: 20px;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.lock-callout-content {
+  flex: 1;
+}
+
+.lock-callout-title {
+  margin: 0 0 4px;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #991b1b;
+}
+
+.lock-callout-desc {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.lock-callout-hint {
+  margin: 0;
+  font-size: 11.5px;
+  color: #7f1d1d;
+  line-height: 1.4;
+}
+
+.period-locked-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.preview-period-locked-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff1f2;
+  border: 1px solid #ffe4e6;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 12px;
+  color: #be123c;
+}
+
+.lock-notice-icon {
+  font-size: 16px;
+}
+
+.primary-submit-btn.blocked-btn {
+  background: #94a3b8 !important;
+  color: #f1f5f9 !important;
+  box-shadow: none !important;
+  cursor: not-allowed;
+}
+
+.input-error {
+  border-color: #ef4444 !important;
+  background: #fff5f5 !important;
 }
 </style>

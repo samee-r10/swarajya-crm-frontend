@@ -37,47 +37,6 @@
       </div>
     </section>
 
-    <section v-if="metrics" class="metric-grid">
-      <div class="metric-card">
-        <span class="label">Total Revenue</span>
-        <strong class="value">
-          {{ viewCurrency === 'USD' ? money(metrics.total_revenue, 'USD') : money(metrics.total_revenue_inr, 'INR') }}
-        </strong>
-        <span class="sub-value">
-          {{ viewCurrency === 'USD' ? money(metrics.total_revenue_inr, 'INR') : money(metrics.total_revenue, 'USD') }}
-        </span>
-        <span class="trend pos">↑ 12% vs last month</span>
-      </div>
-      <div class="metric-card">
-        <span class="label">Total Expenses</span>
-        <strong class="value">
-          {{ viewCurrency === 'USD' ? money(metrics.total_expenses, 'USD') : money(metrics.total_expenses_inr, 'INR') }}
-        </strong>
-        <span class="sub-value">
-          {{ viewCurrency === 'USD' ? money(metrics.total_expenses_inr, 'INR') : money(metrics.total_expenses, 'USD') }}
-        </span>
-        <span class="trend neg">↓ 5% vs last month</span>
-      </div>
-      <div class="metric-card">
-        <span class="label">Bank Balance</span>
-        <strong class="value">
-          {{ viewCurrency === 'USD' ? money(metrics.bank_balance, 'USD') : money(metrics.bank_balance_inr, 'INR') }}
-        </strong>
-        <span class="sub-value">
-          {{ viewCurrency === 'USD' ? money(metrics.bank_balance_inr, 'INR') : money(metrics.bank_balance, 'USD') }}
-        </span>
-        <span class="muted small font-semibold">Across all accounts</span>
-      </div>
-      <div class="metric-card highlight">
-        <span class="label">Cash On Hand</span>
-        <strong class="value">
-          {{ viewCurrency === 'USD' ? money(metrics.cash_on_hand, 'USD') : money(metrics.cash_on_hand_inr, 'INR') }}
-        </strong>
-        <span class="sub-value">
-          {{ viewCurrency === 'USD' ? money(metrics.cash_on_hand_inr, 'INR') : money(metrics.cash_on_hand, 'USD') }}
-        </span>
-      </div>
-    </section>
 
     <section class="modules-grid">
       <RouterLink class="module-tile" to="/finance/invoices">

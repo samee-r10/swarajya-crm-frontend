@@ -325,6 +325,7 @@ const mobileNavOpen = ref(false)
 let searchTimer = null
 const launcherItems = [
   { label: 'Dashboard', type: 'App', to: '/' },
+  { label: 'Task Management', type: 'Module', to: '/tasks' },
   { label: 'Customers', type: 'Standard Object', to: '/customers' },
   { label: 'Opportunities', type: 'Standard Object', to: '/opportunities' },
   { label: 'Projects', type: 'Module', to: '/projects' },
@@ -356,6 +357,7 @@ const launcherItems = [
 ]
 const navItems = [
   { label: 'Dashboard', to: '/', match: ['/'], icon: '<svg viewBox="0 0 24 24"><path d="M4 13h7V4H4v9Zm0 7h7v-5H4v5Zm9 0h7v-9h-7v9Zm0-16v5h7V4h-7Z" fill="currentColor"/></svg>' },
+  { label: 'Task Management', to: '/tasks', match: ['/tasks'], icon: '<svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H7v-2h5v2zm5-4H7v-2h10v2zm0-4H7V7h10v2z" fill="currentColor"/></svg>' },
   { label: 'Customers', to: '/customers', match: ['/customers'], icon: '<svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3ZM8 11c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z" fill="currentColor"/></svg>' },
   { label: 'Opportunities', to: '/opportunities', match: ['/opportunities'], icon: '<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10h-2a8 8 0 1 1-8-8V2Zm1 1v9l6.4 6.4 1.4-1.4-5-5H22A9 9 0 0 0 13 3Z" fill="currentColor"/></svg>' },
   { label: 'Projects', to: '/projects', match: ['/projects'], icon: '<svg viewBox="0 0 24 24"><path d="M10 4h4v3h-4V4ZM4 9h16v11H4V9Zm2 2v7h12v-7H6Zm10-7h2a2 2 0 0 1 2 2v1h-2V6h-2V4ZM6 4h2v2H6v1H4V6a2 2 0 0 1 2-2Z" fill="currentColor"/></svg>' },
@@ -418,6 +420,7 @@ const breadcrumbs = computed(() => {
 })
 
 const breadcrumbLabels = {
+  '/tasks': 'Task Management',
   '/customers': 'Customers',
   '/opportunities': 'Opportunities',
   '/projects': 'Projects',

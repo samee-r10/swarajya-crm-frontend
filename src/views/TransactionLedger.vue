@@ -114,6 +114,7 @@
             <th class="right">Base Amount</th>
             <th class="right">Tax/TDS</th>
             <th class="right">Total Amount</th>
+            <th width="150" class="center">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -151,9 +152,37 @@
             <td class="right money-cell total-col" :class="amountClass(transaction)">
               {{ transaction.type === 'Income' ? '+' : '-' }} {{ money(viewCurrency, convertAmount(transaction.total_amount || transaction.amount, transaction.currency, transaction.transaction_date)) }}
             </td>
+            <td class="center actions-cell" @click.stop>
+              <div class="row-action-pills">
+                <button
+                  type="button"
+                  class="action-pill-btn gl-pill-btn"
+                  title="View General Ledger Journal Entries"
+                  @click="openGlDrawer(transaction.id)"
+                >
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                    <line x1="8" y1="7" x2="16" y2="7"/>
+                    <line x1="8" y1="11" x2="14" y2="11"/>
+                  </svg>
+                  <span>GL Entries</span>
+                </button>
+                <RouterLink
+                  :to="`/finance/transactions/${transaction.id}`"
+                  class="action-pill-btn view-pill-btn"
+                  title="View Details"
+                >
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  </svg>
+                </RouterLink>
+              </div>
+            </td>
           </tr>
           <tr v-if="filteredTransactions.length === 0">
-            <td colspan="8" class="empty-row">No transactions match your filters.</td>
+            <td colspan="9" class="empty-row">No transactions match your filters.</td>
           </tr>
         </tbody>
       </table>
@@ -210,7 +239,11 @@
           </div>
         </div>
         <div class="mobile-card-actions" @click.stop>
-          <RouterLink :to="`/finance/transactions/${transaction.id}`" class="button secondary">View Details</RouterLink>
+          <button type="button" class="button secondary" style="font-size: 12px; padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px;" @click="openGlDrawer(transaction.id)">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            GL Entries
+          </button>
+          <RouterLink :to="`/finance/transactions/${transaction.id}`" class="button secondary" style="font-size: 12px; padding: 6px 12px;">View Details</RouterLink>
         </div>
       </div>
       <div v-if="filteredTransactions.length === 0" class="empty-state" style="text-align: center; padding: 24px;">No transactions match your filters.</div>
@@ -285,6 +318,13 @@
         </div>
       </div>
     </div>
+
+    <!-- GL Entries Drawer for complete double-entry inspection -->
+    <GlEntriesDrawer
+      :is-open="showGlDrawer"
+      :transaction-id="selectedTxnId"
+      @close="showGlDrawer = false"
+    />
   </div>
 </template>
 
@@ -293,6 +333,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { apiGet, apiPost } from '../api/client'
 import TransactionForm from './TransactionForm.vue'
+import GlEntriesDrawer from '../components/GlEntriesDrawer.vue'
 import {
   buildSalaryTransaction,
   hasHrPermission
@@ -308,6 +349,13 @@ const loading = ref(true)
 const error = ref('')
 const showTransactionModal = ref(false)
 const showSalaryPaymentModal = ref(false)
+const showGlDrawer = ref(false)
+const selectedTxnId = ref('')
+
+function openGlDrawer(id) {
+  selectedTxnId.value = String(id || '')
+  showGlDrawer.value = true
+}
 const salaryPostError = ref('')
 const canPostSalary = computed(() => hasHrPermission('post_salary_to_ledger'))
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -936,6 +984,69 @@ function roundAmount(value) {
 }
 
 .tax-info .negative { color: #dc2626; }
+
+.center { text-align: center; }
+.actions-cell {
+  padding: 10px 16px !important;
+  vertical-align: middle;
+}
+
+.row-action-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+
+.action-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 750;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: #1e293b;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.action-pill-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.gl-pill-btn {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #e2e8f0;
+}
+
+.gl-pill-btn:hover {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.gl-pill-btn svg {
+  color: #2563eb;
+}
+
+.view-pill-btn {
+  padding: 5px 8px;
+  color: #64748b;
+}
+
+.view-pill-btn:hover {
+  color: #0f172a;
+  border-color: #94a3b8;
+  background: #f1f5f9;
+}
 
 .empty-row {
   padding: 48px !important;

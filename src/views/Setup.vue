@@ -13,6 +13,7 @@
       <button :class="{ active: activeTab === 'roles' }" @click="activeTab = 'roles'">Profiles (Roles)</button>
       <button :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'">User Management</button>
       <button :class="{ active: activeTab === 'company' }" @click="activeTab = 'company'">Company Information</button>
+      <button :class="{ active: activeTab === 'periods' }" @click="activeTab = 'periods'">Accounting Periods</button>
       <button :class="{ active: activeTab === 'masters' }" @click="activeTab = 'masters'">Master Data</button>
       <button :class="{ active: activeTab === 'rates' }" @click="activeTab = 'rates'">Exchange Rates</button>
       <button :class="{ active: activeTab === 'logs' }" @click="activeTab = 'logs'">Activity Logs</button>
@@ -114,6 +115,201 @@
               <button type="submit" class="button">Save Company Information</button>
             </div>
           </form>
+        </div>
+      </section>
+
+      <!-- Accounting Periods & Period Closing Tab -->
+      <section v-if="activeTab === 'periods'" class="periods-setup">
+        <div class="record-card shadow-premium periods-card">
+          <div class="card-section-title periods-header">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <h2 style="font-size: 18px; font-weight: 800; color: #0f172a; margin: 0;">Financial Accounting Periods & Closing</h2>
+                <span class="period-badge-sub">Fiscal Period Lock</span>
+              </div>
+              <p class="muted small" style="margin: 4px 0 0 0;">
+                Set accounting periods (e.g. 1st Jan to 31st Dec). Locking an accounting period completely prevents new transactions, modifications, and reversals from posting to the Transaction Ledger and General Ledger.
+              </p>
+            </div>
+            <div class="header-btns">
+              <button type="button" class="button" @click="openNewPeriodModal">
+                <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 6px;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/></svg>
+                Set New Period
+              </button>
+            </div>
+          </div>
+
+          <!-- Periods KPI Summary -->
+          <div class="periods-summary-grid">
+            <div class="p-summary-box">
+              <span class="p-summary-label">Total Periods</span>
+              <strong class="p-summary-val">{{ accountingPeriods.length }}</strong>
+              <span class="p-summary-sub">Configured Fiscal Calendars</span>
+            </div>
+            <div class="p-summary-box open">
+              <span class="p-summary-label">Open Periods</span>
+              <strong class="p-summary-val text-success">{{ openPeriodsCount }}</strong>
+              <span class="p-summary-sub">Accepting Ledger Postings</span>
+            </div>
+            <div class="p-summary-box locked">
+              <span class="p-summary-label">Closed / Locked Periods</span>
+              <strong class="p-summary-val text-danger">{{ lockedPeriodsCount }}</strong>
+              <span class="p-summary-sub">Postings Strictly Blocked</span>
+            </div>
+          </div>
+
+          <!-- Periods List Table -->
+          <div v-if="loadingPeriods" class="state-box" style="padding: 40px; text-align: center;">
+            <p>Loading accounting periods...</p>
+          </div>
+          <div v-else-if="accountingPeriods.length === 0" class="empty-state muted" style="padding: 32px; text-align: center;">
+            No accounting periods found. Click "Set New Period" to configure fiscal periods.
+          </div>
+          <div v-else class="table-responsive" style="margin-top: 16px;">
+            <table class="data-table periods-table">
+              <thead>
+                <tr>
+                  <th style="width: 140px;">Period Name</th>
+                  <th style="width: 100px;">Fiscal Year</th>
+                  <th style="width: 230px;">Accounting Date Range</th>
+                  <th style="width: 150px;">Status</th>
+                  <th>Audit & Lock Details</th>
+                  <th style="width: 220px;" class="right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="period in accountingPeriods" :key="period.id" :class="{ 'row-locked': period.status === 'Locked' || period.status === 'Closed' }">
+                  <td>
+                    <strong style="font-size: 14px; color: #0f172a;">{{ period.name }}</strong>
+                    <div v-if="period.notes" class="small muted">{{ period.notes }}</div>
+                  </td>
+                  <td>
+                    <span class="fiscal-year-tag">{{ period.fiscal_year || '—' }}</span>
+                  </td>
+                  <td>
+                    <div class="date-range-display">
+                      <span class="mono">{{ formatDateStr(period.start_date) }}</span>
+                      <span class="arrow-sep">→</span>
+                      <span class="mono">{{ formatDateStr(period.end_date) }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span 
+                      class="period-status-pill" 
+                      :class="period.status === 'Locked' || period.status === 'Closed' ? 'status-locked' : 'status-open'"
+                    >
+                      <svg v-if="period.status === 'Locked' || period.status === 'Closed'" viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                      <svg v-else viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10z"/></svg>
+                      {{ period.status === 'Locked' || period.status === 'Closed' ? 'Locked / Closed' : 'Open' }}
+                    </span>
+                  </td>
+                  <td>
+                    <div v-if="period.status === 'Locked' || period.status === 'Closed'" class="lock-audit-meta">
+                      <span class="locked-text">🔒 Posting Blocked</span>
+                      <small class="muted" v-if="period.locked_by" style="display: block;">by {{ period.locked_by }} on {{ formatDateStr(period.locked_at) }}</small>
+                    </div>
+                    <div v-else class="open-audit-meta">
+                      <span class="text-success small font-bold">✓ Active ledger entries permitted</span>
+                    </div>
+                  </td>
+                  <td class="right actions-cell">
+                    <div style="display: inline-flex; align-items: center; gap: 8px; justify-content: flex-end;">
+                      <!-- Lock / Unlock Toggle Button -->
+                      <button 
+                        v-if="period.status === 'Open'" 
+                        type="button" 
+                        class="button danger small lock-btn" 
+                        title="Close and lock period to prevent any posting"
+                        @click="togglePeriodLock(period)"
+                      >
+                        🔒 Lock Period
+                      </button>
+                      <button 
+                        v-else 
+                        type="button" 
+                        class="button secondary small unlock-btn" 
+                        title="Reopen accounting period to permit posting"
+                        @click="togglePeriodLock(period)"
+                      >
+                        🔓 Reopen
+                      </button>
+
+                      <button 
+                        type="button" 
+                        class="button secondary small" 
+                        @click="openEditPeriodModal(period)"
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        type="button" 
+                        class="button secondary small text-danger" 
+                        @click="deletePeriod(period)"
+                        title="Delete period"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Period Modal (Create / Edit) -->
+        <div v-if="showPeriodModal" class="modal-overlay" @click.self="showPeriodModal = false">
+          <div class="modal-content period-modal-shell">
+            <div class="modal-header">
+              <div>
+                <p class="eyebrow">Finance Settings</p>
+                <h2>{{ isEditingPeriod ? 'Edit Accounting Period' : 'Set Accounting Period' }}</h2>
+              </div>
+              <button type="button" class="modal-close" @click="showPeriodModal = false">&times;</button>
+            </div>
+            
+            <form class="setup-form period-form" @submit.prevent="savePeriod">
+              <div class="quick-presets-row" v-if="!isEditingPeriod">
+                <span class="preset-label">Quick Presets:</span>
+                <button type="button" class="preset-btn" @click="applyPeriodPreset('2026')">Calendar 2026 (1 Jan - 31 Dec)</button>
+                <button type="button" class="preset-btn" @click="applyPeriodPreset('2025')">Calendar 2025 (1 Jan - 31 Dec)</button>
+                <button type="button" class="preset-btn" @click="applyPeriodPreset('fy26')">Indian FY 2026-27 (1 Apr - 31 Mar)</button>
+              </div>
+
+              <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+                <label>Period Label / Name <span class="req">*</span>
+                  <input v-model="periodForm.name" placeholder="e.g. FY 2026 or Calendar Year 2026" required>
+                </label>
+                <label>Fiscal Year Reference
+                  <input v-model="periodForm.fiscal_year" placeholder="e.g. 2026">
+                </label>
+                <label>Period Start Date <span class="req">*</span>
+                  <input type="date" v-model="periodForm.start_date" required>
+                </label>
+                <label>Period End Date <span class="req">*</span>
+                  <input type="date" v-model="periodForm.end_date" required>
+                </label>
+                <label class="span-2">Period Status
+                  <select v-model="periodForm.status">
+                    <option value="Open">Open (Transactions can be posted)</option>
+                    <option value="Locked">Locked / Closed (Transactions will be strictly blocked)</option>
+                  </select>
+                </label>
+                <label class="span-2">Notes & Remarks
+                  <textarea v-model="periodForm.notes" rows="2" placeholder="e.g. Calendar year 2026 fiscal closing period..."></textarea>
+                </label>
+              </div>
+
+              <p v-if="periodError" class="flash warning" style="margin-top: 14px;">{{ periodError }}</p>
+
+              <div class="form-actions mt-24" style="display: flex; justify-content: flex-end; gap: 12px;">
+                <button type="button" class="button secondary" @click="showPeriodModal = false">Cancel</button>
+                <button type="submit" class="button" :disabled="savingPeriod">
+                  {{ savingPeriod ? 'Saving...' : 'Save Accounting Period' }}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </section>
 
@@ -318,7 +514,8 @@
             <thead>
               <tr>
                 <th>Full Name</th>
-                <th>Email</th>
+                <th>Login Email</th>
+                <th>Task Notification Email</th>
                 <th>Role</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -328,6 +525,10 @@
               <tr v-for="u in users" :key="u.id">
                 <td><strong>{{ u.full_name }}</strong></td>
                 <td>{{ u.email }}</td>
+                <td>
+                  <span v-if="u.notification_email" style="color: #2563eb; font-weight: 600;">{{ u.notification_email }}</span>
+                  <span v-else class="muted small">Same as login</span>
+                </td>
                 <td>{{ u.role_name }}</td>
                 <td><span class="pill" :class="u.is_active ? 'status-success' : 'status-muted'">{{ u.is_active ? 'Active' : 'Inactive' }}</span></td>
                 <td class="table-actions">
@@ -509,7 +710,11 @@
           <form class="modal-form p-24" @submit.prevent="saveUser">
             <div class="form-grid single-column">
               <label>Full Name<input v-model="userForm.full_name" required></label>
-              <label>Email<input v-model="userForm.email" type="email" required></label>
+              <label>Login Email<input v-model="userForm.email" type="email" required></label>
+              <label>Task Notification Email (Optional)
+                <input v-model="userForm.notification_email" type="email" placeholder="e.g. personal@gmail.com - tasks/alerts will be sent here">
+                <small class="muted" style="font-size: 11px; margin-top: 2px;">If set, task assignment emails will be sent here instead of login email.</small>
+              </label>
               <label v-if="!userForm.id">Password<input v-model="userForm.password" type="password" required minlength="6"></label>
               <label>Role
                 <select v-model="userForm.role_id">
@@ -708,13 +913,33 @@ const showAddMonthly = ref(false)
 const newOverrideMonth = ref('')
 const newOverrideRate = ref(95.0)
 
+// Accounting Periods state
+const accountingPeriods = ref([])
+const loadingPeriods = ref(false)
+const showPeriodModal = ref(false)
+const isEditingPeriod = ref(false)
+const savingPeriod = ref(false)
+const periodError = ref('')
+const periodForm = reactive({
+  id: null,
+  name: '',
+  fiscal_year: '',
+  start_date: '',
+  end_date: '',
+  status: 'Open',
+  notes: ''
+})
+
+const openPeriodsCount = computed(() => accountingPeriods.value.filter(p => p.status === 'Open').length)
+const lockedPeriodsCount = computed(() => accountingPeriods.value.filter(p => p.status === 'Locked' || p.status === 'Closed').length)
+
 // New Role
 const showNewRoleModal = ref(false)
 const newRole = reactive({ id: null, name: '', description: '' })
 
 // User Modal
 const showUserModal = ref(false)
-const userForm = reactive({ id: null, full_name: '', email: '', password: '', role_id: '', is_active: true, has_treasury_access: false, has_finance_access: false, has_hr_access: false, hr_permissions: defaultHrPermissions(), has_vault_access: false, has_vault_access_code: false, vault_access_code: '' })
+const userForm = reactive({ id: null, full_name: '', email: '', notification_email: '', password: '', role_id: '', is_active: true, has_treasury_access: false, has_finance_access: false, has_hr_access: false, hr_permissions: defaultHrPermissions(), has_vault_access: false, has_vault_access_code: false, vault_access_code: '' })
 const vaultCodePlaceholder = computed(() => {
   if (!userForm.id) return 'Set access code'
   return userForm.has_vault_access_code ? 'Leave blank to keep existing code' : 'Set access code'
@@ -869,8 +1094,130 @@ function formatJSON(val) {
   }
 }
 
+async function loadAccountingPeriods() {
+  loadingPeriods.value = true
+  try {
+    const data = await apiGet('/api/settings/accounting-periods')
+    accountingPeriods.value = data.periods || []
+  } catch (err) {
+    console.error('Failed to load accounting periods:', err)
+  } finally {
+    loadingPeriods.value = false
+  }
+}
+
+function openNewPeriodModal() {
+  isEditingPeriod.value = false
+  periodError.value = ''
+  periodForm.id = null
+  periodForm.name = 'FY 2026'
+  periodForm.fiscal_year = '2026'
+  periodForm.start_date = '2026-01-01'
+  periodForm.end_date = '2026-12-31'
+  periodForm.status = 'Open'
+  periodForm.notes = ''
+  showPeriodModal.value = true
+}
+
+function openEditPeriodModal(period) {
+  isEditingPeriod.value = true
+  periodError.value = ''
+  periodForm.id = period.id
+  periodForm.name = period.name
+  periodForm.fiscal_year = period.fiscal_year
+  periodForm.start_date = period.start_date
+  periodForm.end_date = period.end_date
+  periodForm.status = period.status
+  periodForm.notes = period.notes || ''
+  showPeriodModal.value = true
+}
+
+function applyPeriodPreset(preset) {
+  if (preset === '2026') {
+    periodForm.name = 'FY 2026'
+    periodForm.fiscal_year = '2026'
+    periodForm.start_date = '2026-01-01'
+    periodForm.end_date = '2026-12-31'
+  } else if (preset === '2025') {
+    periodForm.name = 'FY 2025'
+    periodForm.fiscal_year = '2025'
+    periodForm.start_date = '2025-01-01'
+    periodForm.end_date = '2025-12-31'
+  } else if (preset === 'fy26') {
+    periodForm.name = 'FY 2026-27'
+    periodForm.fiscal_year = '2026-2027'
+    periodForm.start_date = '2026-04-01'
+    periodForm.end_date = '2027-03-31'
+  }
+}
+
+async function savePeriod() {
+  periodError.value = ''
+  if (!periodForm.name || !periodForm.start_date || !periodForm.end_date) {
+    periodError.value = 'Name, start date, and end date are required.'
+    return
+  }
+  if (periodForm.start_date > periodForm.end_date) {
+    periodError.value = 'Start date cannot be after end date.'
+    return
+  }
+  savingPeriod.value = true
+  try {
+    if (isEditingPeriod.value) {
+      await apiPut(`/api/settings/accounting-periods/${periodForm.id}`, periodForm)
+    } else {
+      await apiPost('/api/settings/accounting-periods', periodForm)
+    }
+    showPeriodModal.value = false
+    await loadAccountingPeriods()
+  } catch (err) {
+    periodError.value = err.message || 'Failed to save accounting period.'
+  } finally {
+    savingPeriod.value = false
+  }
+}
+
+async function togglePeriodLock(period) {
+  const isClosing = period.status === 'Open'
+  const actionText = isClosing ? 'lock & close' : 'reopen'
+  const confirmMsg = isClosing 
+    ? `Are you sure you want to lock the '${period.name}' period (${period.start_date} to ${period.end_date})?\n\nOnce locked, NO transactions or journals can be posted, modified, or reversed in this date range.`
+    : `Are you sure you want to reopen '${period.name}'?\n\nLedger postings will once again be permitted for this date range.`
+  
+  if (!confirm(confirmMsg)) return
+
+  try {
+    await apiPost(`/api/settings/accounting-periods/${period.id}/toggle-lock`)
+    await loadAccountingPeriods()
+  } catch (err) {
+    alert(err.message || `Failed to ${actionText} accounting period.`)
+  }
+}
+
+async function deletePeriod(period) {
+  if (!confirm(`Are you sure you want to delete period '${period.name}'?`)) return
+  try {
+    await apiDelete(`/api/settings/accounting-periods/${period.id}`)
+    await loadAccountingPeriods()
+  } catch (err) {
+    alert(err.message || 'Failed to delete accounting period.')
+  }
+}
+
+function formatDateStr(dateStr) {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr)
+  return isNaN(d) ? dateStr : d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+}
+
 onMounted(async () => {
   loadData()
+})
+
+watch(activeTab, (tab) => {
+  if (tab === 'periods') {
+    loadAccountingPeriods()
+  }
 })
 
 async function loadData() {
@@ -906,6 +1253,7 @@ async function loadData() {
     console.error("Failed to load exchange rates", err)
   }
 
+  await loadAccountingPeriods()
   await loadMasterOptions()
 }
 
@@ -1002,7 +1350,7 @@ async function deleteRole(role) {
 }
 
 function openNewUserModal() {
-  Object.assign(userForm, { id: null, full_name: '', email: '', password: '', role_id: '', is_active: true, has_treasury_access: false, has_finance_access: false, has_hr_access: false, hr_permissions: defaultHrPermissions(), has_vault_access: false, has_vault_access_code: false, vault_access_code: '' })
+  Object.assign(userForm, { id: null, full_name: '', email: '', notification_email: '', password: '', role_id: '', is_active: true, has_treasury_access: false, has_finance_access: false, has_hr_access: false, hr_permissions: defaultHrPermissions(), has_vault_access: false, has_vault_access_code: false, vault_access_code: '' })
   showUserModal.value = true
 }
 
@@ -1011,6 +1359,7 @@ function openEditUserModal(user) {
     id: user.id,
     full_name: user.full_name,
     email: user.email,
+    notification_email: user.notification_email || '',
     password: '',
     role_id: user.role_id || '',
     is_active: !!user.is_active,
@@ -1034,6 +1383,7 @@ async function saveUser() {
     id: userForm.id,
     full_name: userForm.full_name,
     email: userForm.email,
+    notification_email: (userForm.notification_email || '').trim(),
     password: userForm.password,
     role_id: userForm.role_id,
     is_active: accessFlag(userForm.is_active),
@@ -1497,5 +1847,229 @@ async function saveRates() {
   .company-logo-uploader {
     grid-template-columns: 1fr;
   }
+}
+
+/* ── Accounting Periods Setup ── */
+.periods-card {
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  padding: 24px;
+}
+
+.periods-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 18px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.period-badge-sub {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.periods-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 800px) {
+  .periods-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.p-summary-box {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.p-summary-box.open {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.p-summary-box.locked {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.p-summary-label {
+  font-size: 11.5px;
+  font-weight: 750;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.p-summary-val {
+  font-size: 26px;
+  font-weight: 850;
+  color: #0f172a;
+}
+
+.p-summary-sub {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.periods-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.periods-table th {
+  background: #f8fafc;
+  padding: 14px 16px;
+  font-size: 11.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+}
+
+.periods-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.row-locked {
+  background: #fffafa;
+}
+
+.fiscal-year-tag {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #334155;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.date-range-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.arrow-sep {
+  color: var(--muted);
+}
+
+.period-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.4px;
+}
+
+.period-status-pill.status-open {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.period-status-pill.status-locked {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
+
+.lock-audit-meta .locked-text {
+  font-size: 12px;
+  font-weight: 750;
+  color: #dc2626;
+  display: block;
+}
+
+.lock-btn {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  border-color: #b91c1c !important;
+}
+
+.lock-btn:hover {
+  background: #b91c1c !important;
+}
+
+.unlock-btn {
+  background: #f0fdf4 !important;
+  color: #15803d !important;
+  border-color: #86efac !important;
+}
+
+.unlock-btn:hover {
+  background: #dcfce7 !important;
+}
+
+.period-modal-shell {
+  max-width: 620px;
+  width: min(620px, calc(100vw - 32px));
+  padding: 24px;
+}
+
+.quick-presets-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 14px;
+  flex-wrap: wrap;
+}
+
+.preset-label {
+  font-size: 12px;
+  font-weight: 750;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.preset-btn {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #1e293b;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.preset-btn:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
 }
 </style>

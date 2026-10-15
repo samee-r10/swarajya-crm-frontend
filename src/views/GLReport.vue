@@ -115,133 +115,6 @@
       </div>
     </section>
 
-    <!-- Cross-Module Financial Audit & Reconciliation Diagnostic Panel -->
-    <section v-if="report && report.reconciliation" class="reconciliation-panel card no-print">
-      <div class="reconciliation-header" @click="showReconPanel = !showReconPanel">
-        <div class="recon-title-wrap">
-          <div class="recon-status-badge" :class="report.reconciliation.revenue_reconciled && report.reconciliation.bank_reconciled ? 'pass' : 'warn'">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-              <path v-if="report.reconciliation.revenue_reconciled && report.reconciliation.bank_reconciled" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-              <path v-else d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-            </svg>
-            {{ report.reconciliation.revenue_reconciled && report.reconciliation.bank_reconciled ? 'RECONCILIATION AUDIT: PASS' : 'RECONCILIATION ATTENTION' }}
-          </div>
-          <h4>Cross-Module Financial Audit & Reconciliation</h4>
-          <span class="recon-subtitle">Reconciles Finance Transaction Ledger, Treasury Revenue Log, Bank Movement, and General Ledger</span>
-        </div>
-        <button type="button" class="recon-toggle-btn">
-          {{ showReconPanel ? 'Hide Audit Details ▲' : 'View Audit Breakdown ▼' }}
-        </button>
-      </div>
-
-      <div v-show="showReconPanel" class="reconciliation-body">
-        <div class="recon-grid">
-          <!-- Item 1: Revenue / Inflow -->
-          <div class="recon-card">
-            <div class="recon-card-header">
-              <span class="recon-card-title">1. Revenue / Inflow Reconciliation</span>
-              <span class="badge pass">✓ 100% RECONCILED</span>
-            </div>
-            <div class="recon-metrics">
-              <div class="metric-row">
-                <span>Transaction Ledger Inflow:</span>
-                <strong>{{ money(convertSummary(report.reconciliation.tl_inflow / 95.0)) }}</strong>
-              </div>
-              <div class="metric-row">
-                <span>Treasury Revenue Log:</span>
-                <strong>{{ money(convertSummary(report.reconciliation.rev_log_income / 95.0)) }}</strong>
-              </div>
-              <div class="metric-row">
-                <span>General Ledger Net Inflow:</span>
-                <strong class="text-success">{{ money(convertSummary(report.reconciliation.gl_operational_revenue / 95.0)) }}</strong>
-              </div>
-              <div class="metric-row sub-metric">
-                <span>↳ Gross Revenue:</span>
-                <span>{{ money(convertSummary(report.reconciliation.gl_gross_revenue / 95.0)) }}</span>
-              </div>
-              <div class="metric-row sub-metric">
-                <span>↳ Payment Gateway Fee (TXN052):</span>
-                <span>-{{ money(convertSummary(report.reconciliation.gl_gateway_fees / 95.0)) }}</span>
-              </div>
-              <div class="recon-result">
-                <span>Inflow Variance:</span>
-                <strong class="text-success">₹0.00 (PERFECT MATCH)</strong>
-              </div>
-            </div>
-          </div>
-
-          <!-- Item 2: Outflow / Expenses -->
-          <div class="recon-card">
-            <div class="recon-card-header">
-              <span class="recon-card-title">2. Outflow & Expense Audit</span>
-              <span class="badge pass">✓ RECONCILED</span>
-            </div>
-            <div class="recon-metrics">
-              <div class="metric-row">
-                <span>Transaction Ledger Outflow:</span>
-                <strong>{{ money(convertSummary(report.reconciliation.tl_outflow / 95.0)) }}</strong>
-              </div>
-              <div class="metric-row">
-                <span>Bank Disbursed Outflow:</span>
-                <strong>{{ money(convertSummary(report.reconciliation.bank_outflow / 95.0)) }}</strong>
-              </div>
-              <div class="metric-row">
-                <span>General Ledger Total Outflows:</span>
-                <strong class="text-danger">{{ money(convertSummary(report.reconciliation.gl_expenses / 95.0)) }}</strong>
-              </div>
-              <div class="metric-row sub-metric">
-                <span>↳ Operational Purchases & Claims:</span>
-                <span>{{ money(convertSummary((report.reconciliation.gl_expenses - 2000.0 - report.reconciliation.gl_gateway_fees) / 95.0)) }}</span>
-              </div>
-              <div class="metric-row sub-metric">
-                <span>↳ HR Salary Disbursements:</span>
-                <span>{{ money(convertSummary(2000.0 / 95.0)) }}</span>
-              </div>
-              <div class="recon-result">
-                <span>Cash Outflow Variance:</span>
-                <strong class="text-success">₹0.00 (MATCH)</strong>
-              </div>
-            </div>
-          </div>
-
-          <!-- Item 3: Bank Movement & Treasury Position -->
-          <div class="recon-card">
-            <div class="recon-card-header">
-              <span class="recon-card-title">3. Bank Movements (GL 1010)</span>
-              <span class="badge pass">✓ RECONCILED</span>
-            </div>
-            <div class="recon-metrics">
-              <div class="metric-row">
-                <span>Bank Receipts (Inflow):</span>
-                <strong>+{{ money(convertSummary(report.reconciliation.bank_inflow / 95.0)) }}</strong>
-              </div>
-              <div class="metric-row">
-                <span>Bank Payments (Outflow):</span>
-                <strong>-{{ money(convertSummary(report.reconciliation.bank_outflow / 95.0)) }}</strong>
-              </div>
-              <div class="metric-row">
-                <span>Net Cash Movement:</span>
-                <strong class="text-success">{{ money(convertSummary(report.reconciliation.bank_net_balance / 95.0)) }}</strong>
-              </div>
-              <div class="recon-result">
-                <span>Bank vs Treasury Status:</span>
-                <strong class="text-success">MATCH (100% Reconciled)</strong>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Callout on TXN052 Gateway Fee Handling -->
-        <div class="gateway-audit-note">
-          <div class="note-icon">💡</div>
-          <div class="note-text">
-            <strong>Accounting Standard Alignment (TXN052 Gateway Settlement):</strong>
-            Gross Subscription Revenue is <strong>₹59.00</strong>, Payment Gateway Fee is <strong>₹1.40</strong> (GL 5040 Expense), and Net Bank Deposit is <strong>₹57.60</strong> (GL 1010 Bank Asset). The ₹57.60 is recognized strictly as the net bank receipt after fee deduction, never duplicated as additional revenue.
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- Loading State -->
     <div v-if="loading" class="state-box">
       <div class="spinner"></div>
@@ -256,6 +129,22 @@
 
     <!-- GL Journal Table -->
     <section v-else-if="report" class="table-wrap">
+      <!-- Active Transaction Drill-Down Banner -->
+      <div v-if="filters.search" class="filter-active-banner no-print">
+        <div class="banner-content">
+          <span class="banner-icon">🔍</span>
+          <span>Filtered to transaction reference: <strong>{{ filters.search }}</strong> (showing all counterpart journal legs)</span>
+        </div>
+        <div class="banner-actions">
+          <RouterLink v-if="returnTransactionId" :to="`/finance/transactions/${returnTransactionId}`" class="banner-btn primary">
+            ← Return to Transaction #{{ returnTransactionId }}
+          </RouterLink>
+          <button type="button" class="banner-btn secondary" @click="clearSearchFilter">
+            Clear Filter
+          </button>
+        </div>
+      </div>
+
       <table class="gl-table">
         <thead>
           <tr>
@@ -333,13 +222,20 @@
 
           <!-- Closing Balance / Totals Row -->
           <tr class="closing-row">
-            <td colspan="8"><strong>TOTAL / CLOSING BALANCE</strong></td>
-            <td class="right mono"><strong>{{ money(convertSummary(report.total_debits)) }}</strong></td>
-            <td class="right mono"><strong>{{ money(convertSummary(report.total_credits)) }}</strong></td>
-            <td class="right mono amount-cell" :class="((report.total_credits || 0) - (report.total_debits || 0)) >= 0 ? 'positive' : 'negative'" title="Net Operational Movement">
-              <strong>{{ formatSignedMoney(convertSummary((report.total_credits || 0) - (report.total_debits || 0))) }}</strong>
+            <td colspan="8">
+              <div class="footer-totals-label">
+                <strong>TOTAL / CLOSING BALANCE</strong>
+                <span class="sub-label">
+                  Journal Turnover: {{ money(convertSummary(report.total_debits)) }} (Dr = Cr Balanced) &bull; Net Movement: {{ formatSignedMoney(convertSummary(filters.account_id ? ((report.total_debits || 0) - (report.total_credits || 0)) : (report.summary?.net_result || 0))) }}
+                </span>
+              </div>
             </td>
-            <td class="right mono" :class="report.closing_balance >= 0 ? 'positive' : 'negative'">
+            <td class="right mono" title="Total Debit Journal Turnover"><strong>{{ money(convertSummary(report.total_debits)) }}</strong></td>
+            <td class="right mono" title="Total Credit Journal Turnover"><strong>{{ money(convertSummary(report.total_credits)) }}</strong></td>
+            <td class="right mono amount-cell" :class="(filters.account_id ? ((report.total_debits || 0) - (report.total_credits || 0)) : (report.summary?.net_result || 0)) >= 0 ? 'positive' : 'negative'" title="Net Operational Movement">
+              <strong>{{ formatSignedMoney(convertSummary(filters.account_id ? ((report.total_debits || 0) - (report.total_credits || 0)) : (report.summary?.net_result || 0))) }}</strong>
+            </td>
+            <td class="right mono" :class="report.closing_balance >= 0 ? 'positive' : 'negative'" title="Closing Balance">
               <strong>{{ money(convertSummary(report.closing_balance)) }}</strong>
             </td>
           </tr>
@@ -352,8 +248,12 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { apiGet } from '../api/client'
 import ReportHeaderTabs from '../components/ReportHeaderTabs.vue'
+
+const route = useRoute()
+const router = useRouter()
 
 // ── State ──────────────────────────────────────────────────────────
 const loading = ref(false)
@@ -362,7 +262,6 @@ const accounts = ref([])
 const viewCurrency = ref('INR')
 const currencySymbols = reactive({ USD: '$', INR: '₹', EUR: '€', GBP: '£' })
 const exchangeRates = ref({ INR: { default: 95.0, monthly: {} } })
-const showReconPanel = ref(true)
 
 const now = new Date()
 const startOfYear = `${now.getFullYear()}-01-01`
@@ -376,6 +275,19 @@ const filters = reactive({
   search: ''
 })
 
+const returnTransactionId = computed(() => {
+  if (route.query.search) return String(route.query.search)
+  if (filters.search && /^TXN\d+$/i.test(filters.search.trim())) return filters.search.trim()
+  return ''
+})
+
+function clearSearchFilter() {
+  filters.search = ''
+  if (route.query.search) {
+    router.replace({ path: '/finance/reports/general-ledger' })
+  }
+}
+
 const visibleEntries = computed(() => {
   if (!report.value?.entries) return []
   let list = report.value.entries
@@ -385,7 +297,9 @@ const visibleEntries = computed(() => {
   if (filters.search) {
     const q = filters.search.trim().toLowerCase()
     list = list.filter(e => {
-      const text = `${e.reference || ''} ${e.description || ''} ${e.customer_name || ''} ${e.vendor_name || ''} ${e.gl_account_name || ''} ${e.category || ''} ${e.entry_type || ''}`.toLowerCase()
+      const txDisplay = displayTransactionId(e).toLowerCase()
+      const rawId = String(e.id || e.transaction_id || '').toLowerCase()
+      const text = `${txDisplay} ${rawId} ${e.reference || ''} ${e.description || ''} ${e.customer_name || ''} ${e.vendor_name || ''} ${e.gl_account_name || ''} ${e.gl_account_number || ''} ${e.category || ''} ${e.entry_type || ''}`.toLowerCase()
       return text.includes(q)
     })
   }
@@ -394,6 +308,13 @@ const visibleEntries = computed(() => {
 
 // ── Lifecycle ──────────────────────────────────────────────────────
 onMounted(async () => {
+  if (route.query.search) {
+    filters.search = String(route.query.search).trim()
+    // Relax start date and clear specific account so full dual-entry journal appears
+    filters.start_date = ''
+    filters.account_id = ''
+  }
+
   // Load accounts for filter dropdown
   try {
     const opts = await apiGet('/api/options')
@@ -436,10 +357,11 @@ async function loadReport() {
 function getEntryType(entry) {
   if (entry.entry_type) return entry.entry_type
   const code = String(entry.gl_account_number || entry.gl_code || '')
-  if (code.startsWith('4')) return 'Revenue'
-  if (code === '5040') return 'Gateway Fee'
-  if (code === '1010') return 'Bank Movement'
-  if (code === '7010' || entry.category === 'Employee Claim') return 'Expense'
+  const name = String(entry.gl_account_name || entry.account_name || '').toLowerCase()
+  if (code === '1010' || String(entry.leg_id || '').includes('bank')) return 'Bank Movement'
+  if (code === '5040' || name.includes('fee')) return 'Gateway Fee'
+  if (code === '7010' || entry.category === 'Employee Claim' || name.includes('expense') || entry.type === 'Expense') return 'Expense'
+  if (code.startsWith('4') || entry.type === 'Income') return 'Revenue'
   if (code.startsWith('5') || code.startsWith('6') || code.startsWith('7')) return 'Expense'
   if (code.startsWith('2')) return 'Tax / TDS'
   return entry.type === 'Income' ? 'Revenue' : 'Expense'
@@ -492,7 +414,7 @@ function getEntryAmount(entry) {
   const hasDebit = entry.debit != null && entry.debit !== ''
   const c = hasCredit ? convertAmt(entry.credit, entry.currency, entry.transaction_date) : 0
   const d = hasDebit ? convertAmt(entry.debit, entry.currency, entry.transaction_date) : 0
-  return c - d
+  return d - c
 }
 
 function formatSignedMoney(amount) {
@@ -548,7 +470,7 @@ function productLabel(entry) {
 function rowClass(entry) {
   if (entry.status === 'Reversed') return 'reversed-row'
   const amt = getEntryAmount(entry)
-  return amt >= 0 ? 'positive-row credit-row' : 'negative-row debit-row'
+  return amt >= 0 ? 'positive-row debit-row' : 'negative-row credit-row'
 }
 
 function entryRefLabel(entry) {
@@ -727,6 +649,67 @@ function exportExcel() {
   box-shadow: 0 2px 8px rgba(249, 115, 22, 0.25);
 }
 
+/* ── Transaction Drill-down Banner ── */
+.filter-active-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 12px 18px;
+  margin-bottom: 16px;
+  font-size: 13.5px;
+  color: #1e40af;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.banner-btn {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.2;
+}
+
+.banner-btn.primary {
+  background: #2563eb;
+  color: #ffffff;
+  border: 1px solid #1d4ed8;
+}
+
+.banner-btn.primary:hover {
+  background: #1d4ed8;
+}
+
+.banner-btn.secondary {
+  background: #ffffff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.banner-btn.secondary:hover {
+  background: #dbeafe;
+}
+
 /* ── Filters ── */
 .filters-card {
   background: #fff;
@@ -816,207 +799,6 @@ function exportExcel() {
   color: var(--muted);
 }
 
-/* ── Reconciliation Diagnostic Panel ── */
-.reconciliation-panel {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  margin-bottom: 28px;
-  overflow: hidden;
-  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.05);
-}
-
-.reconciliation-header {
-  padding: 16px 24px;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  user-select: none;
-  transition: background 0.15s ease;
-}
-
-.reconciliation-header:hover {
-  background: #e2e8f0;
-}
-
-.recon-title-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.recon-title-wrap h4 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 800;
-  color: #0f172a;
-  letter-spacing: -0.2px;
-}
-
-.recon-status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 800;
-  padding: 4px 10px;
-  border-radius: 6px;
-  width: fit-content;
-  letter-spacing: 0.5px;
-  margin-bottom: 2px;
-}
-
-.recon-status-badge.pass {
-  background: #dcfce7;
-  color: #15803d;
-  border: 1px solid #bbf7d0;
-}
-
-.recon-status-badge.warn {
-  background: #fef3c7;
-  color: #b45309;
-  border: 1px solid #fde68a;
-}
-
-.recon-subtitle {
-  font-size: 12px;
-  color: #64748b;
-}
-
-.recon-toggle-btn {
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
-  padding: 6px 14px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #334155;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.recon-toggle-btn:hover {
-  background: #f8fafc;
-  border-color: #94a3b8;
-}
-
-.reconciliation-body {
-  padding: 24px;
-  background: #ffffff;
-}
-
-.recon-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  margin-bottom: 20px;
-}
-
-@media (max-width: 1024px) {
-  .recon-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.recon-card {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 16px 18px;
-  display: flex;
-  flex-direction: column;
-}
-
-.recon-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.recon-card-title {
-  font-size: 13px;
-  font-weight: 800;
-  color: #1e293b;
-}
-
-.badge.pass {
-  background: #dcfce7;
-  color: #15803d;
-  font-size: 10px;
-  font-weight: 800;
-  padding: 3px 8px;
-  border-radius: 999px;
-  border: 1px solid #bbf7d0;
-}
-
-.recon-metrics {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.metric-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12.5px;
-  color: #475569;
-}
-
-.metric-row strong {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  color: #0f172a;
-}
-
-.metric-row.sub-metric {
-  padding-left: 12px;
-  font-size: 11.5px;
-  color: #64748b;
-}
-
-.recon-result {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px dashed #cbd5e1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.gateway-audit-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 10px;
-  padding: 14px 18px;
-}
-
-.note-icon {
-  font-size: 18px;
-  line-height: 1;
-}
-
-.note-text {
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: #1e3a8a;
-}
-
-.note-text strong {
-  color: #172554;
-}
-
 /* ── Entry Type Badges ── */
 .type-badge {
   display: inline-block;
@@ -1065,12 +847,12 @@ function exportExcel() {
 }
 
 .debit-cell {
-  color: #dc2626;
+  color: #16a34a;
   font-weight: 600;
 }
 
 .credit-cell {
-  color: #16a34a;
+  color: #dc2626;
   font-weight: 600;
 }
 
@@ -1114,8 +896,8 @@ function exportExcel() {
 .gl-table tr:last-child td { border-bottom: none; }
 
 /* Row Types */
-.positive-row, .credit-row { background: #f0fdf4; }
-.negative-row, .debit-row  { background: #fff7f7; }
+.positive-row, .debit-row  { background: #f0fdf4; }
+.negative-row, .credit-row { background: #fff7f7; }
 .reversed-row { background: #f8fafc; color: #64748b; }
 .reversed-row td { text-decoration-color: rgba(100, 116, 139, 0.45); }
 
@@ -1128,6 +910,23 @@ function exportExcel() {
   border-top: 2px solid var(--line);
   border-bottom: 2px solid var(--line);
   padding: 14px 16px;
+}
+
+.footer-totals-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.footer-totals-label strong {
+  font-size: 13.5px;
+  color: var(--primary);
+}
+
+.footer-totals-label .sub-label {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #64748b;
 }
 
 /* Entry Details */
@@ -1193,8 +992,8 @@ function exportExcel() {
 .mono { font-family: 'JetBrains Mono', monospace; }
 
 .amount-cell   { font-weight: 700; font-size: 13.5px; }
-.debit-amount  { color: #dc2626; font-weight: 700; }
-.credit-amount { color: #16a34a; font-weight: 700; }
+.debit-amount  { color: #16a34a; font-weight: 700; }
+.credit-amount { color: #dc2626; font-weight: 700; }
 .positive { color: #16a34a; }
 .negative { color: #dc2626; }
 .running-balance { font-weight: 700; font-size: 14px; }
@@ -1277,8 +1076,8 @@ function exportExcel() {
     font-size: 11px;
   }
 
-  .positive-row, .credit-row { background: #f6fff8 !important; }
-  .negative-row, .debit-row  { background: #fff8f8 !important; }
+  .positive-row, .debit-row  { background: #f6fff8 !important; }
+  .negative-row, .credit-row { background: #fff8f8 !important; }
 
   tr { page-break-inside: avoid; }
 }
