@@ -1,15 +1,15 @@
 <template>
-  <div class="transaction-form-view">
+  <div ref="viewRoot" class="transaction-form-view">
     <!-- Page Header (Only when not inside modal) -->
     <header v-if="!props.isModal" class="form-header">
       <div>
         <p class="eyebrow">Finance Module</p>
-        <h1>{{ isEditing ? `Edit Transaction #${displayTransactionId(props.id)}` : 'Create Transaction' }}</h1>
-        <p class="muted">Post standard double-entry accounting records to the General Ledger.</p>
+        <h1 ref="pageHeading" tabindex="-1">{{ showPostingPreview ? 'Preview Posting' : (isEditing ? `Edit Transaction #${displayTransactionId(props.id)}` : 'Create Transaction') }}</h1>
+        <p class="muted">{{ showPostingPreview ? 'Review your transaction, then post the entry to the General Ledger.' : 'Enter transaction details, then preview the posting before confirming.' }}</p>
       </div>
 
       <!-- Type Switcher Pill -->
-      <div class="type-toggle-group">
+      <div v-if="!showPostingPreview" class="type-toggle-group">
         <button 
           type="button" 
           class="type-btn" 
@@ -34,10 +34,10 @@
     <!-- Modal Header (When rendered inside modal) -->
     <div v-else class="modal-form-header">
       <div>
-        <h2 class="modal-title">{{ isEditing ? `Edit Transaction #${displayTransactionId(props.id)}` : 'New Transaction Entry' }}</h2>
-        <span class="muted small">Record dual-entry financial movement.</span>
+        <h2 ref="modalHeading" tabindex="-1" class="modal-title">{{ showPostingPreview ? 'Preview Posting' : (isEditing ? `Edit Transaction #${displayTransactionId(props.id)}` : 'New Transaction Entry') }}</h2>
+        <span class="muted small">{{ showPostingPreview ? 'Review the posting before confirming your entry.' : 'Enter details, then preview the posting.' }}</span>
       </div>
-      <div class="type-toggle-group compact">
+      <div v-if="!showPostingPreview" class="type-toggle-group compact">
         <button 
           type="button" 
           class="type-btn" 
@@ -58,7 +58,7 @@
     </div>
 
     <!-- Main Form -->
-    <form class="transaction-main-form" @submit.prevent="openPreview">
+    <form v-show="!showPostingPreview" class="transaction-main-form" @submit.prevent="openPreview">
       
       <!-- Section 1: Transaction & Timing Information -->
       <section class="form-section-card">
@@ -348,106 +348,10 @@
         </div>
       </section>
 
-      <!-- Section 4: LIVE ACCOUNTING PREVIEW (PART C) -->
-      <section class="form-section-card preview-section-card">
-        <div class="section-head preview-toggle-head" @click="showLivePreview = !showLivePreview">
-          <div class="head-title-wrap">
-            <span class="section-step-num special">4</span>
-            <div>
-              <div class="preview-badge-row">
-                <h3>Accounting Preview — Debit & Credit</h3>
-                <span class="simulated-pill">Simulated Preview (Unposted)</span>
-                <span v-if="isPeriodLocked" class="period-locked-pill">🔒 Period Locked</span>
-                <span class="balance-tag" :class="simulatedLedgerTotals.isBalanced ? 'pass' : 'fail'">
-                  {{ simulatedLedgerTotals.isBalanced ? '✓ Balanced (Dr = Cr)' : `⚠ Out of Balance` }}
-                </span>
-              </div>
-              <span class="section-sub">Real-time simulation of the double-entry journal lines generated upon posting</span>
-            </div>
-          </div>
-          <button type="button" class="preview-toggle-btn">
-            {{ showLivePreview ? 'Collapse ▲' : 'Expand Preview ▼' }}
-          </button>
-        </div>
-
-        <!-- Collapsible Content -->
-        <transition name="expand">
-          <div v-if="showLivePreview" class="preview-section-body">
-            <!-- Locked Period Notification in Simulated Preview -->
-            <div v-if="isPeriodLocked" class="preview-period-locked-notice">
-              <span class="lock-notice-icon">🔒</span>
-              <div>
-                <strong>Posting will be rejected:</strong> {{ lockedPeriodWarning }} Double-entry ledger journal lines cannot be committed while this period is locked.
-              </div>
-            </div>
-
-            <div class="preview-disclaimer">
-              <span class="info-icon">ℹ️</span>
-              <span><strong>Pre-posting validation:</strong> Official General Ledger entries are validated and posted to the database upon submission. No unposted entries affect financial reports.</span>
-            </div>
-
-            <!-- Simulated Journal Table -->
-            <div class="table-responsive">
-              <table class="simulated-gl-table">
-                <thead>
-                  <tr>
-                    <th style="width: 85px;">GL Code</th>
-                    <th style="width: 190px;">Account Name</th>
-                    <th style="width: 95px;">Type</th>
-                    <th>Line Purpose / Description</th>
-                    <th class="right" style="width: 125px;">Debit (Dr)</th>
-                    <th class="right" style="width: 125px;">Credit (Cr)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(entry, idx) in simulatedLedger" :key="idx" :class="entry.debit ? 'dr-row' : 'cr-row'">
-                    <td class="mono font-bold text-primary">{{ entry.gl_code }}</td>
-                    <td><strong>{{ entry.account }}</strong></td>
-                    <td>
-                      <span class="type-pill-sm" :class="entry.type.toLowerCase()">{{ entry.type }}</span>
-                    </td>
-                    <td class="muted small">{{ entry.description }}</td>
-                    <td class="right mono debit-col">
-                      <span v-if="entry.debit && Number(entry.debit) > 0">+{{ money(entry.debit) }}</span>
-                      <span v-else class="muted">—</span>
-                    </td>
-                    <td class="right mono credit-col">
-                      <span v-if="entry.credit && Number(entry.credit) > 0">-{{ money(entry.credit) }}</span>
-                      <span v-else class="muted">—</span>
-                    </td>
-                  </tr>
-                </tbody>
-                <tfoot>
-                  <tr class="simulated-footer-row">
-                    <td colspan="4">
-                      <strong>SIMULATED JOURNAL TOTAL</strong>
-                    </td>
-                    <td class="right mono debit-col">
-                      <strong>+{{ money(simulatedLedgerTotals.totalDebit) }}</strong>
-                    </td>
-                    <td class="right mono credit-col">
-                      <strong>-{{ money(simulatedLedgerTotals.totalCredit) }}</strong>
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-
-            <!-- Dynamic Accounting Explanation -->
-            <div class="dynamic-explanation-callout">
-              <div class="exp-icon">💡</div>
-              <div class="exp-text">
-                <strong>Accounting Impact:</strong> {{ liveAccountingExplanation }}
-              </div>
-            </div>
-          </div>
-        </transition>
-      </section>
-
-      <!-- Section 5: Description & Supporting Documents -->
+      <!-- Section 4: Description & Supporting Documents -->
       <section class="form-section-card">
         <div class="section-head">
-          <span class="section-step-num">5</span>
+          <span class="section-step-num">4</span>
           <div>
             <h3>Description & Supporting Documents</h3>
             <span class="section-sub">Add transaction remarks and attach invoices, bills, or receipts</span>
@@ -490,10 +394,10 @@
         </div>
       </section>
 
-      <!-- Section 6: Custom Fields (If present) -->
+      <!-- Section 5: Custom Fields (If present) -->
       <section class="form-section-card" v-if="customTransactionFields.length">
         <div class="section-head">
-          <span class="section-step-num">6</span>
+          <span class="section-step-num">5</span>
           <div>
             <h3>Additional Attributes</h3>
             <span class="section-sub">Configured custom CRM fields</span>
@@ -560,7 +464,7 @@
       </section>
 
       <!-- Error banner if validation fails -->
-      <div v-if="error" class="form-error-banner">
+      <div v-if="error" class="form-error-banner" role="alert">
         <span class="err-icon">⚠️</span>
         <span>{{ error }}</span>
       </div>
@@ -587,20 +491,151 @@
           class="button primary-submit-btn" 
           :class="{ 'blocked-btn': isPeriodLocked }"
           type="submit"
-          :disabled="isPosting || isPeriodLocked"
+          :disabled="isPosting || uploadingDocument || isPeriodLocked"
           :title="isPeriodLocked ? lockedPeriodWarning : ''"
         >
           <span v-if="isPosting" class="btn-spinner"></span>
           <span v-else-if="isPeriodLocked">🔒 Period Locked (Posting Blocked)</span>
-          <span v-else>{{ isPosting ? 'Posting to Ledger...' : (isEditing ? 'Save Changes' : 'Confirm & Post Entry') }}</span>
+          <span v-else>{{ uploadingDocument ? 'Uploading documents...' : 'Preview Posting' }}</span>
         </button>
       </footer>
     </form>
+
+    <div v-if="showPostingPreview" class="posting-preview-view">
+      <section class="form-section-card">
+        <div class="section-head">
+          <div>
+            <h3>Transaction Summary</h3>
+            <span class="section-sub">Check the details before posting</span>
+          </div>
+        </div>
+        <dl class="posting-summary-grid">
+          <div v-for="item in postingSummary" :key="item.label">
+            <dt>{{ item.label }}</dt>
+            <dd>{{ item.value }}</dd>
+          </div>
+        </dl>
+        <div v-if="form.description" class="posting-description">
+          <strong>Description / Remarks</strong>
+          <p>{{ form.description }}</p>
+        </div>
+        <DocumentPreview v-if="form.attachments.length" :documents="form.attachments" label="Supporting Documents" />
+      </section>
+      <section class="form-section-card preview-section-card">
+        <div class="section-head">
+          <div class="head-title-wrap">
+            <span class="section-step-num special">✓</span>
+            <div>
+              <div class="preview-badge-row">
+                <h3>Accounting Preview — Debit & Credit</h3>
+                <span class="simulated-pill">Simulated Preview (Unposted)</span>
+                <span v-if="isPeriodLocked" class="period-locked-pill">🔒 Period Locked</span>
+                <span class="balance-tag" :class="simulatedLedgerTotals.isBalanced ? 'pass' : 'fail'">
+                  {{ simulatedLedgerTotals.isBalanced ? '✓ Balanced (Dr = Cr)' : `⚠ Out of Balance` }}
+                </span>
+              </div>
+              <span class="section-sub">Review the debit and credit entries before posting to the General Ledger</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="preview-section-body">
+          <!-- Locked Period Notification in Simulated Preview -->
+          <div v-if="isPeriodLocked" class="preview-period-locked-notice">
+            <span class="lock-notice-icon">🔒</span>
+            <div>
+              <strong>Posting will be rejected:</strong> {{ lockedPeriodWarning }} Double-entry ledger journal lines cannot be committed while this period is locked.
+            </div>
+          </div>
+
+          <div class="preview-disclaimer">
+            <span class="info-icon">ℹ️</span>
+            <span><strong>Pre-posting validation:</strong> Official General Ledger entries are validated and posted to the database upon submission. No unposted entries affect financial reports.</span>
+          </div>
+
+          <!-- Simulated Journal Table -->
+          <div class="table-responsive">
+            <table class="simulated-gl-table">
+              <thead>
+                <tr>
+                  <th style="width: 85px;">GL Code</th>
+                  <th style="width: 190px;">Account Name</th>
+                  <th style="width: 95px;">Type</th>
+                  <th>Line Purpose / Description</th>
+                  <th class="right" style="width: 125px;">Debit (Dr)</th>
+                  <th class="right" style="width: 125px;">Credit (Cr)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(entry, idx) in simulatedLedger" :key="idx" :class="entry.debit ? 'dr-row' : 'cr-row'">
+                  <td class="mono font-bold text-primary">{{ entry.gl_code }}</td>
+                  <td><strong>{{ entry.account }}</strong></td>
+                  <td>
+                    <span class="type-pill-sm" :class="entry.type.toLowerCase()">{{ entry.type }}</span>
+                  </td>
+                  <td class="muted small">{{ entry.description }}</td>
+                  <td class="right mono debit-col">
+                    <span v-if="entry.debit && Number(entry.debit) > 0">+{{ money(entry.debit) }}</span>
+                    <span v-else class="muted">—</span>
+                  </td>
+                  <td class="right mono credit-col">
+                    <span v-if="entry.credit && Number(entry.credit) > 0">-{{ money(entry.credit) }}</span>
+                    <span v-else class="muted">—</span>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="simulated-footer-row">
+                  <td colspan="4">
+                    <strong>SIMULATED JOURNAL TOTAL</strong>
+                  </td>
+                  <td class="right mono debit-col">
+                    <strong>+{{ money(simulatedLedgerTotals.totalDebit) }}</strong>
+                  </td>
+                  <td class="right mono credit-col">
+                    <strong>-{{ money(simulatedLedgerTotals.totalCredit) }}</strong>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <!-- Dynamic Accounting Explanation -->
+          <div class="dynamic-explanation-callout">
+            <div class="exp-icon">💡</div>
+            <div class="exp-text">
+              <strong>Accounting Impact:</strong> {{ liveAccountingExplanation }}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div v-if="error" class="form-error-banner" role="alert">
+        <span class="err-icon">⚠️</span>
+        <span>{{ error }}</span>
+      </div>
+      <footer class="form-actions-footer">
+        <button class="button secondary" type="button" :disabled="isPosting" @click="backToEdit">
+          Back to Edit
+        </button>
+        <button
+          class="button primary-submit-btn"
+          :class="{ 'blocked-btn': isPeriodLocked }"
+          type="button"
+          :disabled="isPosting || uploadingDocument || isPeriodLocked || !simulatedLedgerTotals.isBalanced"
+          :title="isPeriodLocked ? lockedPeriodWarning : ''"
+          @click="confirmAndPost"
+        >
+          <span v-if="isPosting" class="btn-spinner"></span>
+          <span>{{ isPosting ? 'Posting to Ledger...' : (isPeriodLocked ? '🔒 Period Locked (Posting Blocked)' : (isEditing ? 'Save Changes' : 'Post Entry')) }}</span>
+        </button>
+      </footer>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet, apiPost, apiPut, apiUploadFile } from '../api/client'
 import DocumentPreview from '../components/DocumentPreview.vue'
@@ -635,7 +670,10 @@ const uploadingDocument = ref(false)
 const isPosting = ref(false)
 const error = ref('')
 const postingDateOption = ref('today')
-const showLivePreview = ref(true)
+const showPostingPreview = ref(false)
+const viewRoot = ref(null)
+const pageHeading = ref(null)
+const modalHeading = ref(null)
 
 const isPeriodLocked = ref(false)
 const lockedPeriodName = ref('')
@@ -820,7 +858,7 @@ onMounted(async () => {
   }
 
   try {
-    const transactionData = await apiGet('/api/finance/transactions')
+    const transactionData = await apiGet('/api/finance/transactions?metadata_only=1')
     transactionFields.value = transactionData.fields || []
     initialiseCustomFields(customTransactionFields.value)
   } catch (err) {
@@ -920,6 +958,32 @@ const computedTotal = computed(() => {
 const selectedAccount = computed(() => {
   if (!form.account_id) return null
   return accounts.value.find(a => a.id === parseInt(form.account_id)) || null
+})
+
+const postingSummary = computed(() => {
+  const items = [
+    { label: 'Transaction Type', value: form.type },
+    { label: 'Posting Date', value: form.transaction_date },
+    { label: 'GL Posting Account', value: selectedAccount.value ? accountLabel(selectedAccount.value) : '—' },
+    { label: 'Currency', value: form.currency },
+    { label: 'Base Amount', value: money(form.amount) },
+    { label: 'Net Settlement Amount', value: money(computedTotal.value) },
+    { label: 'Settlement', value: form.payment_status === 'Paid' ? 'Immediate Bank Disbursement / Receipt' : 'Unpaid (Accounts Payable / Receivable)' }
+  ]
+  const party = form.type === 'Income'
+    ? customers.value.find(item => Number(item.id) === Number(form.customer_id))?.company_name
+    : vendors.value.find(item => Number(item.id) === Number(form.vendor_id))?.name
+  if (party) items.push({ label: form.type === 'Income' ? 'Customer' : 'Vendor / Supplier', value: party })
+  if (selectedInvoice.value) items.push({ label: 'Linked Invoice', value: selectedInvoice.value.invoice_number })
+  if (form.reference) items.push({ label: 'Reference Number', value: form.reference })
+  if (form.category) items.push({ label: 'Transaction Category', value: form.category })
+  customTransactionFields.value.forEach(field => {
+    const value = form[field.api_name]
+    if (value !== '' && value !== null && value !== undefined) {
+      items.push({ label: field.label, value: field.field_type === 'Checkbox' ? (value ? 'Yes' : 'No') : value })
+    }
+  })
+  return items
 })
 
 const activeProducts = computed(() => {
@@ -1280,6 +1344,10 @@ async function handleTransactionDocuments(event) {
 }
 
 function validateBeforePosting() {
+  if (uploadingDocument.value) {
+    error.value = 'Please wait for supporting documents to finish uploading.'
+    return false
+  }
   if (isPeriodLocked.value) {
     error.value = lockedPeriodWarning.value || 'Cannot post transaction into a closed/locked accounting period.'
     return false
@@ -1288,7 +1356,7 @@ function validateBeforePosting() {
     error.value = 'Please fill out all required fields: Date, Account, and Amount.'
     return false
   }
-  if (Number(form.amount || 0) <= 0) {
+  if (!Number.isFinite(Number(form.amount)) || Number(form.amount) <= 0) {
     error.value = 'Base amount must be greater than zero.'
     return false
   }
@@ -1300,19 +1368,48 @@ function validateBeforePosting() {
     error.value = 'Please select an approved employee claim for GL 7010.'
     return false
   }
+  if (requiresLoanAccount.value && !form.loan_account_id) {
+    error.value = 'Please select a loan account.'
+    return false
+  }
+  if (form.category === 'Loan Repayment' && !form.loan_schedule_id) {
+    error.value = 'Please select a repayment schedule line.'
+    return false
+  }
   return true
 }
 
+async function focusStepHeading() {
+  await nextTick()
+  const heading = props.isModal ? modalHeading.value : pageHeading.value
+  heading?.focus({ preventScroll: true })
+  viewRoot.value?.scrollIntoView({ block: 'start' })
+}
+
 async function openPreview() {
+  if (isPosting.value || showPostingPreview.value) return
   error.value = ''
   if (!validateBeforePosting()) return
-  await confirmAndPost()
+  showPostingPreview.value = true
+  await focusStepHeading()
+}
+
+async function backToEdit() {
+  if (isPosting.value) return
+  showPostingPreview.value = false
+  error.value = ''
+  await focusStepHeading()
 }
 
 async function confirmAndPost() {
-  if (isPosting.value) return
-  isPosting.value = true
+  if (isPosting.value || !showPostingPreview.value) return
   error.value = ''
+  if (!validateBeforePosting()) return
+  if (!simulatedLedgerTotals.value.isBalanced) {
+    error.value = 'The journal is out of balance. Go back to edit the transaction before posting.'
+    return
+  }
+  isPosting.value = true
   try {
     const data = isEditing.value
       ? await apiPut(`/api/finance/transactions/${props.id}`, form)
@@ -1421,10 +1518,43 @@ function displayTransactionId(id) {
 .expense-dot { background: #dc2626; }
 
 /* Main Form Structure */
-.transaction-main-form {
+.transaction-main-form,
+.posting-preview-view {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.posting-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 20px;
+  margin: 0;
+}
+
+.posting-summary-grid dt,
+.posting-description > strong {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.posting-summary-grid dd {
+  margin: 6px 0 0;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.posting-description {
+  margin-top: 20px;
+}
+
+.posting-description p {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 /* Section Cards */
@@ -1666,19 +1796,9 @@ function displayTransactionId(id) {
 .income-card .net-val { color: #16a34a; }
 .expense-card .net-val { color: #dc2626; }
 
-/* Section 4: Live Accounting Preview */
+/* Posting review */
 .preview-section-card {
   border-color: #bae6fd;
-}
-
-.preview-toggle-head {
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0;
-  padding-bottom: 0;
-  border-bottom: none;
 }
 
 .head-title-wrap {
@@ -1714,17 +1834,6 @@ function displayTransactionId(id) {
 .balance-tag.pass { background: #dcfce7; color: #166534; }
 .balance-tag.fail { background: #fee2e2; color: #991b1b; }
 
-.preview-toggle-btn {
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
-  color: #0284c7;
-  font-size: 11.5px;
-  font-weight: 700;
-  padding: 5px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
 .preview-section-body {
   margin-top: 20px;
   padding-top: 18px;
@@ -1748,8 +1857,13 @@ function displayTransactionId(id) {
 
 .simulated-gl-table {
   width: 100%;
+  min-width: 760px;
   border-collapse: collapse;
   font-size: 12.5px;
+}
+
+.preview-section-body .table-responsive {
+  overflow-x: auto;
 }
 
 .simulated-gl-table th {

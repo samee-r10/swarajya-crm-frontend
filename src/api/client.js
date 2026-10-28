@@ -10,7 +10,7 @@ function resolveApiBase(rawUrl) {
   return trimmed.replace(/\/+$/, '')
 }
 
-export const API_BASE = resolveApiBase(import.meta.env.VITE_API_BASE_URL)
+export const API_BASE = resolveApiBase(import.meta.env?.VITE_API_BASE_URL)
 
 // In-flight GET request deduplication map: path -> Promise
 const inFlightRequests = new Map()
@@ -110,7 +110,8 @@ export async function apiUploadFile(path, file, extraFields = {}) {
 
 async function apiRequest(path, options = {}, requestOptions = {}) {
   const url = `${API_BASE}${path}`
-  window.dispatchEvent(new CustomEvent('app-loading-start'))
+  const { background = false, bypassCache, ...fetchOptions } = options
+  if (!background) window.dispatchEvent(new CustomEvent('app-loading-start'))
   try {
     const headers = requestOptions.multipart
       ? { Accept: 'application/json', ...(options.headers || {}) }
@@ -122,7 +123,7 @@ async function apiRequest(path, options = {}, requestOptions = {}) {
     const response = await fetch(url, {
       credentials: 'include',
       headers,
-      ...options
+      ...fetchOptions
     })
 
     if (!response.ok) {
@@ -144,6 +145,6 @@ async function apiRequest(path, options = {}, requestOptions = {}) {
 
     return response.json()
   } finally {
-    window.dispatchEvent(new CustomEvent('app-loading-stop'))
+    if (!background) window.dispatchEvent(new CustomEvent('app-loading-stop'))
   }
 }

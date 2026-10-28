@@ -138,6 +138,7 @@
       <p>No fixed assets recorded yet.</p>
       <RouterLink class="button secondary" to="/finance/transactions?new=1">Add First Asset</RouterLink>
     </div>
+    <p v-else class="muted" role="status">Loading fixed assets...</p>
   </div>
 </template>
 
@@ -145,7 +146,6 @@
 import { onMounted, ref } from 'vue'
 import { apiGet } from '../api/client'
 
-const metrics = ref(null)
 const viewCurrency = ref('INR')
 const fixedAssets = ref([])
 const fixedAssetsSummary = ref({ total_cost: 0, total_current_value: 0 })
@@ -153,13 +153,7 @@ const assetsLoaded = ref(false)
 
 onMounted(async () => {
   try {
-    const data = await apiGet('/api/finance')
-    metrics.value = data.metrics
-  } catch (e) {
-    console.error('Failed to load finance metrics')
-  }
-  try {
-    const fa = await apiGet('/api/finance/fixed-assets')
+    const fa = await apiGet('/api/finance/fixed-assets', { background: true })
     fixedAssets.value = fa.assets || []
     fixedAssetsSummary.value = { total_cost: fa.total_cost || 0, total_current_value: fa.total_current_value || 0 }
   } catch (e) {

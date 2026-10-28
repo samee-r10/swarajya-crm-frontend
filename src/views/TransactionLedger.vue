@@ -321,6 +321,7 @@
 
     <!-- GL Entries Drawer for complete double-entry inspection -->
     <GlEntriesDrawer
+      v-if="showGlDrawer"
       :is-open="showGlDrawer"
       :transaction-id="selectedTxnId"
       @close="showGlDrawer = false"
@@ -329,15 +330,16 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { apiGet, apiPost } from '../api/client'
-import TransactionForm from './TransactionForm.vue'
-import GlEntriesDrawer from '../components/GlEntriesDrawer.vue'
 import {
   buildSalaryTransaction,
   hasHrPermission
 } from '../utils/hrStorage'
+
+const TransactionForm = defineAsyncComponent(() => import('./TransactionForm.vue'))
+const GlEntriesDrawer = defineAsyncComponent(() => import('../components/GlEntriesDrawer.vue'))
 
 const router = useRouter()
 const route = useRoute()
@@ -379,12 +381,10 @@ const filters = reactive({
 const currencySymbols = reactive({ USD: '$', INR: '₹', EUR: '€', GBP: '£' })
 
 onMounted(async () => {
-  const tasks = [loadTransactions(), loadExchangeRates(), loadCurrencies()]
-  if (canPostSalary.value) tasks.push(loadSalaryPostingData())
-  await Promise.all(tasks)
   if (route.query.new === '1') {
     showTransactionModal.value = true
   }
+  await Promise.all([loadTransactions(), loadExchangeRates(), loadCurrencies()])
 })
 
 watch(() => route.query.new, (value) => {
@@ -398,8 +398,8 @@ async function loadTransactions() {
   error.value = ''
   try {
     const [data, salaryData] = await Promise.all([
-      apiGet('/api/finance/transactions'),
-      canPostSalary.value ? apiGet('/api/hr/salary-transactions') : Promise.resolve({ transactions: [] })
+      apiGet('/api/finance/transactions?view=ledger', { background: true }),
+      canPostSalary.value ? apiGet('/api/hr/salary-transactions', { background: true }) : Promise.resolve({ transactions: [] })
     ])
     transactions.value = [...(data.transactions || []), ...(salaryData.transactions || [])]
   } catch (err) {
@@ -429,7 +429,7 @@ async function loadSalaryPostingData() {
 
 async function loadExchangeRates() {
   try {
-    const ratesData = await apiGet('/api/settings/exchange-rates')
+    const ratesData = await apiGet('/api/settings/exchange-rates', { background: true })
     if (ratesData && ratesData.INR) {
       exchangeRates.value = ratesData
     }
@@ -440,7 +440,7 @@ async function loadExchangeRates() {
 
 async function loadCurrencies() {
   try {
-    const curData = await apiGet('/api/settings/currencies')
+    const curData = await apiGet('/api/settings/currencies', { background: true })
     if (curData && Array.isArray(curData)) {
       curData.forEach(c => {
         currencySymbols[c.code] = c.symbol
@@ -453,7 +453,6 @@ async function loadCurrencies() {
 
 async function handleTransactionCreated(id) {
   showTransactionModal.value = false
-  await loadTransactions()
   router.push(`/finance/transactions/${id}?posted=true`)
 }
 
