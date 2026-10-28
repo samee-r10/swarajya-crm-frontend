@@ -25,6 +25,17 @@
           <option v-for="item in statuses" :key="item">{{ item }}</option>
         </select>
       </div>
+      <div class="filter-group">
+        <label for="customer-service-filter">Service:</label>
+        <select id="customer-service-filter" v-model="serviceFilter">
+          <option value="">All Services</option>
+          <option value="free">Free service</option>
+          <option value="paid">Paid service</option>
+          <option value="expired">Expired service</option>
+          <option value="scheduled">Upcoming service</option>
+          <option value="unassigned">No service added</option>
+        </select>
+      </div>
     </section>
 
     <section v-if="selectedIds.length" class="bulk-action-bar">
@@ -34,54 +45,58 @@
     </section>
 
     <section class="table-container shadow-premium desktop-only">
-      <CrmTableSkeleton v-if="loading" :rows="7" :columns="7" />
-      <table v-else class="record-table">
-        <thead>
-          <tr>
-            <th class="checkbox-col">
-              <input class="table-checkbox" type="checkbox" :checked="allPageSelected" @change="togglePageSelection">
-            </th>
-            <th><button class="table-sort" type="button" @click="setSort('company_name')">Company Name <span>{{ sortIndicator('company_name') }}</span></button></th>
-            <th><button class="table-sort" type="button" @click="setSort('contact_name')">Primary Contact <span>{{ sortIndicator('contact_name') }}</span></button></th>
-            <th><button class="table-sort" type="button" @click="setSort('industry')">Industry <span>{{ sortIndicator('industry') }}</span></button></th>
-            <th><button class="table-sort" type="button" @click="setSort('status')">Status <span>{{ sortIndicator('status') }}</span></button></th>
-            <th>Billing Address</th>
-            <th><button class="table-sort" type="button" @click="setSort('updated_at')">Last Updated <span>{{ sortIndicator('updated_at') }}</span></button></th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="customer in paginatedCustomers" :key="customer.id" @click="goToDetail(customer.id)">
-            <td class="checkbox-col" @click.stop>
-              <input class="table-checkbox" type="checkbox" :value="customer.id" v-model="selectedIds">
-            </td>
-            <td>
-              <div class="name-cell">
-                <strong>{{ customer.company_name }}</strong>
-                <span v-if="customer.industry" class="muted small">{{ customer.industry }}</span>
-              </div>
-            </td>
-            <td>
-              <div class="contact-info">
-                <strong>{{ customer.contact_name }}</strong>
-                <span class="muted small">{{ customer.email || 'No email' }}</span>
-              </div>
-            </td>
-            <td>{{ customer.industry || '-' }}</td>
-            <td><span class="pill status" :class="customer.status.toLowerCase()">{{ customer.status }}</span></td>
-            <td><span class="muted small truncate">{{ customer.billing_address || '--' }}</span></td>
-            <td class="date-col">{{ formatDate(customer.updated_at) }}</td>
-            <td class="table-actions" @click.stop>
-              <button class="button secondary small" type="button" @click="goToDetail(customer.id)">Open</button>
-            </td>
-          </tr>
-          <tr v-if="!loading && filteredCustomers.length === 0">
-            <td colspan="8">
-              <CrmEmptyState title="No customers found" description="Adjust your search or filters, or create a new customer account." />
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="customer-table-scroll" role="region" aria-label="Customers table" tabindex="0">
+        <CrmTableSkeleton v-if="loading" :rows="7" :columns="9" />
+        <table v-else class="record-table">
+          <thead>
+            <tr>
+              <th class="checkbox-col">
+                <input class="table-checkbox" type="checkbox" :checked="allPageSelected" @change="togglePageSelection">
+              </th>
+              <th><button class="table-sort" type="button" @click="setSort('company_name')">Company Name <span>{{ sortIndicator('company_name') }}</span></button></th>
+              <th>Service</th>
+              <th><button class="table-sort" type="button" @click="setSort('contact_name')">Primary Contact <span>{{ sortIndicator('contact_name') }}</span></button></th>
+              <th><button class="table-sort" type="button" @click="setSort('industry')">Industry <span>{{ sortIndicator('industry') }}</span></button></th>
+              <th><button class="table-sort" type="button" @click="setSort('status')">Status <span>{{ sortIndicator('status') }}</span></button></th>
+              <th>Billing Address</th>
+              <th><button class="table-sort" type="button" @click="setSort('updated_at')">Last Updated <span>{{ sortIndicator('updated_at') }}</span></button></th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="customer in paginatedCustomers" :key="customer.id" @click="goToDetail(customer.id)">
+              <td class="checkbox-col" @click.stop>
+                <input class="table-checkbox" type="checkbox" :value="customer.id" v-model="selectedIds">
+              </td>
+              <td>
+                <div class="name-cell">
+                  <strong>{{ customer.company_name }}</strong>
+                  <span v-if="customer.industry" class="muted small">{{ customer.industry }}</span>
+                </div>
+              </td>
+              <td><CustomerServiceSummary :terms="customer.service_terms" /></td>
+              <td>
+                <div class="contact-info">
+                  <strong>{{ customer.contact_name }}</strong>
+                  <span class="muted small">{{ customer.email || 'No email' }}</span>
+                </div>
+              </td>
+              <td>{{ customer.industry || '-' }}</td>
+              <td><span class="pill status" :class="customer.status.toLowerCase()">{{ customer.status }}</span></td>
+              <td><span class="muted small truncate">{{ customer.billing_address || '--' }}</span></td>
+              <td class="date-col">{{ formatDate(customer.updated_at) }}</td>
+              <td class="table-actions" @click.stop>
+                <button class="button secondary small" type="button" @click="goToDetail(customer.id)">Open</button>
+              </td>
+            </tr>
+            <tr v-if="!loading && filteredCustomers.length === 0">
+              <td colspan="9">
+                <CrmEmptyState title="No customers found" description="Adjust your search or filters, or create a new customer account." />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       
       <div v-if="totalPages > 1" class="pagination-bar">
         <button 
@@ -118,6 +133,10 @@
           <span class="pill status" :class="customer.status.toLowerCase()">{{ customer.status }}</span>
         </div>
         <div class="mobile-card-body">
+          <div class="mobile-card-field mobile-service-field">
+            <span>Service</span>
+            <CustomerServiceSummary :terms="customer.service_terms" />
+          </div>
           <div class="mobile-card-field">
             <span>Primary Contact</span>
             <strong>{{ customer.contact_name }}</strong>
@@ -224,6 +243,8 @@ import { apiGet, apiPost } from '../api/client'
 import CrmEmptyState from '../components/CrmEmptyState.vue'
 import CrmPageHeader from '../components/CrmPageHeader.vue'
 import CrmTableSkeleton from '../components/CrmTableSkeleton.vue'
+import CustomerServiceSummary from '../components/CustomerServiceSummary.vue'
+import { serviceState } from '../utils/customerService'
 import { useDebouncedRef } from '../utils/debounce'
 
 const router = useRouter()
@@ -232,6 +253,7 @@ const statuses = ref([])
 const loading = ref(true)
 const search = useDebouncedRef('', 300)
 const status = ref('')
+const serviceFilter = ref('')
 const sortKey = ref('updated_at')
 const sortDir = ref('desc')
 const selectedIds = ref([])
@@ -269,7 +291,9 @@ function parseOptions(options) {
 const filteredCustomers = computed(() => {
   const filtered = customers.value.filter((customer) => {
     const text = `${customer.company_name} ${customer.contact_name} ${customer.email || ''}`.toLowerCase()
-    return (!status.value || customer.status === status.value) && text.includes(search.value.toLowerCase())
+    return (!status.value || customer.status === status.value)
+      && (!serviceFilter.value || serviceState(customer.service_terms) === serviceFilter.value)
+      && text.includes(search.value.toLowerCase())
   })
   return filtered.sort((a, b) => {
     const left = String(a[sortKey.value] || '').toLowerCase()
@@ -291,7 +315,7 @@ const paginatedCustomers = computed(() => {
   return filteredCustomers.value.slice(start, end)
 })
 
-watch([search, status], () => {
+watch([search, status, serviceFilter], () => {
   currentPage.value = 1
 })
 
@@ -382,6 +406,7 @@ function togglePageSelection(event) {
 
 <style scoped>
 .customers-page {
+  min-width: 0;
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -392,13 +417,15 @@ function togglePageSelection(event) {
   border-radius: 12px;
   padding: 16px 24px;
   display: flex;
+  flex-wrap: wrap;
   gap: 24px;
   margin-bottom: 24px;
   align-items: center;
 }
 
 .filter-group.search {
-  flex: 1;
+  flex: 1 1 280px;
+  min-width: 0;
   position: relative;
 }
 
@@ -428,6 +455,16 @@ function togglePageSelection(event) {
   white-space: nowrap;
 }
 
+.mobile-service-field {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 767px) {
+  .filter-group.search {
+    flex-basis: auto;
+  }
+}
+
 .table-container {
   background: #ffffff;
   border: 1px solid var(--line);
@@ -438,6 +475,16 @@ function togglePageSelection(event) {
 .record-table {
   width: 100%;
   border-collapse: collapse;
+}
+
+.customer-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.customer-table-scroll:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
 }
 
 .record-table th {

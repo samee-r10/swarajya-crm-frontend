@@ -57,6 +57,8 @@
     </div>
   </section>
 
+  <CustomerServiceCard v-if="customer" :customer="customer" @saved="customer = $event" />
+
   <section v-if="customer" class="record-layout">
     <div class="form-grid record-card">
       <div class="span-2 card-section-title"><h2>Customer Details</h2></div>
@@ -102,6 +104,7 @@ import { computed, onMounted, ref } from 'vue'
 import { apiGet } from '../api/client'
 import SystemInfo from '../components/SystemInfo.vue'
 import CustomerForm from './CustomerForm.vue'
+import CustomerServiceCard from '../components/CustomerServiceCard.vue'
 
 const props = defineProps({ id: { type: String, required: true } })
 const customer = ref(null)
