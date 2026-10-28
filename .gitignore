@@ -17,3 +17,5 @@ __pycache__/
 
 # Vercel
 .vercel
+.env
+.env.example

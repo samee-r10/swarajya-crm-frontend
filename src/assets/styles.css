@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import '../../static/css/styles.css';
 
 #app {
@@ -151,4 +152,219 @@
     margin: 0 !important;
     min-height: auto !important;
   }
+}
+
+
+/* =========================================================
+   ENTERPRISE MODERN SPINNER & LOADER STYLING
+   ========================================================= */
+.spinner,
+.crm-spinner {
+  display: inline-block;
+  width: 38px;
+  height: 38px;
+  border-radius: 50% !important;
+  border: 3.5px solid rgba(2, 132, 199, 0.12) !important;
+  border-top-color: var(--primary, #0284c7) !important;
+  border-right-color: #06b6d4 !important;
+  animation: modernSpinPulse 0.85s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+  box-shadow: 0 0 12px rgba(2, 132, 199, 0.25);
+}
+
+.spinner-small {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50% !important;
+  border: 2.5px solid rgba(2, 132, 199, 0.12) !important;
+  border-top-color: var(--primary, #0284c7) !important;
+  border-right-color: #06b6d4 !important;
+  animation: modernSpinPulse 0.85s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+}
+
+@keyframes modernSpinPulse {
+  0% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(180deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+
+/* ==========================================================================
+   ENTERPRISE DESIGN SYSTEM FOUNDATIONS (Kokonut UI, Vengence, Bklit, Scrolltide)
+   ========================================================================== */
+
+:root {
+  /* Modern Neutral Palette */
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Outfit', var(--font-sans);
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Surfaces & Elevation */
+  --surface-card: #ffffff;
+  --surface-glass: rgba(255, 255, 255, 0.85);
+  --surface-glass-subtle: rgba(255, 255, 255, 0.65);
+  --surface-border: rgba(226, 232, 240, 0.85);
+  --surface-border-strong: rgba(203, 213, 225, 1);
+  --surface-hover-glow: rgba(2, 132, 199, 0.08);
+
+  /* Modern Brand Colors */
+  --primary-gradient: linear-gradient(135deg, #0284c7 0%, #2563eb 50%, #4f46e5 100%);
+  --accent-cyan: #06b6d4;
+  --accent-emerald: #10b981;
+  --accent-violet: #8b5cf6;
+  --accent-amber: #f59e0b;
+  --accent-rose: #f43f5e;
+
+  /* Shadows & Glows (Kokonut / Vengence UI) */
+  --shadow-bento: 0 1px 3px rgba(0, 0, 0, 0.04), 0 8px 24px -4px rgba(15, 23, 42, 0.06), 0 0 0 1px rgba(226, 232, 240, 0.8);
+  --shadow-bento-hover: 0 16px 36px -8px rgba(15, 23, 42, 0.1), 0 0 0 1px rgba(2, 132, 199, 0.35), 0 0 20px rgba(2, 132, 199, 0.1);
+  --shadow-glass: 0 20px 40px -10px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.7) inset;
+  --glow-primary: 0 0 20px rgba(2, 132, 199, 0.35);
+  --glow-emerald: 0 0 18px rgba(16, 185, 129, 0.35);
+
+  /* Spring Transitions (Skiper UI) */
+  --transition-spring: all 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: all 0.15s ease-out;
+}
+
+/* Luminous Status Badges (Vengence UI inspired) */
+.badge-luminous {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3.5px 10px;
+  border-radius: 9999px;
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  transition: var(--transition-fast);
+}
+
+.badge-luminous::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.badge-luminous-green {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+.badge-luminous-green::before { background: #10b981; }
+
+.badge-luminous-blue {
+  background: rgba(2, 132, 199, 0.1);
+  color: #0284c7;
+  border: 1px solid rgba(2, 132, 199, 0.25);
+}
+.badge-luminous-blue::before { background: #0284c7; }
+
+.badge-luminous-amber {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+.badge-luminous-amber::before { background: #f59e0b; }
+
+.badge-luminous-red {
+  background: rgba(244, 63, 94, 0.1);
+  color: #e11d48;
+  border: 1px solid rgba(244, 63, 94, 0.25);
+}
+.badge-luminous-red::before { background: #f43f5e; }
+
+.badge-luminous-purple {
+  background: rgba(139, 92, 246, 0.1);
+  color: #7c3aed;
+  border: 1px solid rgba(139, 92, 246, 0.25);
+}
+.badge-luminous-purple::before { background: #8b5cf6; }
+
+/* Bento Card Primitive (Kokonut UI) */
+.bento-card {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-bento);
+  transition: var(--transition-spring);
+  position: relative;
+  overflow: hidden;
+}
+
+.bento-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-bento-hover);
+  border-color: rgba(2, 132, 199, 0.3);
+}
+
+/* Tactile Micro-interactive Buttons (Skiper UI) */
+.btn-tactile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: var(--transition-fast);
+  user-select: none;
+}
+
+.btn-tactile:active {
+  transform: scale(0.97);
+}
+
+.btn-tactile-primary {
+  background: var(--primary-gradient);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);
+}
+
+.btn-tactile-primary:hover {
+  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.45);
+  transform: translateY(-1px);
+}
+
+.btn-tactile-secondary {
+  background: #ffffff;
+  border-color: var(--surface-border-strong);
+  color: #334155;
+}
+
+.btn-tactile-secondary:hover {
+  background: #f8fafc;
+  border-color: rgba(2, 132, 199, 0.4);
+  color: #0284c7;
+}
+
+/* Keyboard Shortcut Pill */
+.kbd-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
 }

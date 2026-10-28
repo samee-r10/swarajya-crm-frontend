@@ -15,52 +15,55 @@
       </div>
     </transition>
 
-    <!-- Page Header -->
-    <header class="crm-page-header">
-      <div class="crm-page-header__copy">
-        <span class="badge-eyebrow">Work Management</span>
-        <h1>Task Management</h1>
-        <p class="muted">Internal team task assignment, tracking, deadlines, collaboration &amp; SLA monitoring.</p>
-      </div>
-      <div class="crm-page-header__actions">
-        <button class="button secondary" type="button" @click="refreshData" :disabled="loadingTasks">
-          <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 6px;"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/></svg>
+    <!-- Page Header (Kokonut / Vengence UI) -->
+    <CrmPageHeader
+      eyebrow="Work Management"
+      title="Task Management"
+      description="Internal team task assignment, tracking, deadlines, collaboration &amp; SLA monitoring."
+    >
+      <template #actions>
+        <button class="btn-tactile btn-tactile-secondary" type="button" @click="refreshData" :disabled="loadingTasks">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+          </svg>
           Refresh
         </button>
-        <button class="button primary" type="button" @click="openCreateModal">
-          <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 6px;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/></svg>
+        <button class="btn-tactile btn-tactile-primary" type="button" @click="openCreateModal">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+          </svg>
           New Task
         </button>
-      </div>
-    </header>
+      </template>
+    </CrmPageHeader>
 
-    <!-- Main Navigation Tabs -->
-    <nav class="tasks-tabs-nav">
+    <!-- Main Navigation Tabs (Kokonut UI Sliding Bar) -->
+    <nav class="tasks-tabs-nav bento-card">
       <button :class="{ active: currentTab === 'dashboard' }" @click="switchTab('dashboard')">
-        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M4 13h7V4H4v9Zm0 7h7v-5H4v5Zm9 0h7v-9h-7v9Zm0-16v5h7V4h-7Z" fill="currentColor"/></svg>
-        Dashboard
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4 13h7V4H4v9Zm0 7h7v-5H4v5Zm9 0h7v-9h-7v9Zm0-16v5h7V4h-7Z"/></svg>
+        <span>Dashboard</span>
       </button>
       <button :class="{ active: currentTab === 'all' }" @click="switchTab('all')">
-        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z" fill="currentColor"/></svg>
-        All Tasks
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
+        <span>All Tasks</span>
         <span v-if="metrics.total_open" class="tab-badge">{{ metrics.total_open }}</span>
       </button>
       <button :class="{ active: currentTab === 'my' }" @click="switchTab('my')">
-        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor"/></svg>
-        My Tasks
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        <span>My Tasks</span>
         <span v-if="metrics.my_open" class="tab-badge primary">{{ metrics.my_open }}</span>
       </button>
       <button :class="{ active: currentTab === 'assigned_by_me' }" @click="switchTab('assigned_by_me')">
-        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" fill="currentColor"/></svg>
-        Assigned by Me
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+        <span>Assigned by Me</span>
       </button>
       <button :class="{ active: currentTab === 'reports' }" @click="switchTab('reports')">
-        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M5 3h14v18H5V3Zm3 14h2v-6H8v6Zm3 0h2V7h-2v10Zm3 0h2v-4h-2v4Z" fill="currentColor"/></svg>
-        Task Reports
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M5 3h14v18H5V3Zm3 14h2v-6H8v6Zm3 0h2V7h-2v10Zm3 0h2v-4h-2v4Z"/></svg>
+        <span>Task Reports</span>
       </button>
       <button :class="{ active: currentTab === 'settings' }" @click="switchTab('settings')">
-        <svg viewBox="0 0 24 24" width="16" height="16"><path d="m19.43 12.98.04-.98-.04-.98 2.11-1.65-2-3.46-2.49 1a7.1 7.1 0 0 0-1.69-.98L15 3h-4l-.36 2.93c-.6.24-1.17.56-1.69.98l-2.49-1-2 3.46 2.11 1.65-.04.98.04.98-2.11 1.65 2 3.46 2.49-1c.52.42 1.09.74 1.69.98L11 21h4l.36-2.93c.6-.24 1.17-.56 1.69-.98l2.49 1 2-3.46-2.11-1.65ZM13 15.5A3.5 3.5 0 1 1 13 8a3.5 3.5 0 0 1 0 7.5Z" fill="currentColor"/></svg>
-        Task Settings
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="m19.43 12.98.04-.98-.04-.98 2.11-1.65-2-3.46-2.49 1a7.1 7.1 0 0 0-1.69-.98L15 3h-4l-.36 2.93c-.6.24-1.17.56-1.69.98l-2.49-1-2 3.46 2.11 1.65-.04.98.04.98-2.11 1.65 2 3.46 2.49-1c.52.42 1.09.74 1.69.98L11 21h4l.36-2.93c.6-.24 1.17-.56 1.69-.98l2.49 1 2-3.46-2.11-1.65ZM13 15.5A3.5 3.5 0 1 1 13 8a3.5 3.5 0 0 1 0 7.5Z"/></svg>
+        <span>Task Settings</span>
       </button>
     </nav>
 
@@ -136,7 +139,7 @@
 
       <div class="dashboard-widgets-grid">
         <!-- Status Breakdown Widget -->
-        <div class="widget-card">
+        <div class="widget-card bento-card">
           <div class="widget-header">
             <h3>Tasks by Status</h3>
             <span class="muted small">{{ Object.values(dashboardData.by_status).reduce((a, b) => a + b, 0) }} total</span>
@@ -153,7 +156,7 @@
         </div>
 
         <!-- Priority Breakdown Widget -->
-        <div class="widget-card">
+        <div class="widget-card bento-card">
           <div class="widget-header">
             <h3>Open Tasks by Priority</h3>
           </div>
@@ -169,7 +172,7 @@
         </div>
 
         <!-- Top Workload Widget -->
-        <div class="widget-card">
+        <div class="widget-card bento-card">
           <div class="widget-header">
             <h3>Team Capacity &amp; Workload</h3>
           </div>
@@ -186,7 +189,7 @@
         </div>
 
         <!-- Recent Activity Feed -->
-        <div class="widget-card full-width">
+        <div class="widget-card bento-card full-width">
           <div class="widget-header">
             <h3>Recent Task Activity</h3>
           </div>
@@ -210,11 +213,11 @@
 
     <!-- TAB 2, 3, 4: TASK LISTS (ALL, MY, ASSIGNED BY ME) -->
     <section v-if="['all', 'my', 'assigned_by_me'].includes(currentTab)" class="tab-content list-content">
-      <!-- Filter Bar -->
-      <div class="filters-bar">
+      <!-- Filter Bar (Scrolltide & Kokonut UI) -->
+      <div class="filters-bar bento-card">
         <div class="search-wrap">
           <svg viewBox="0 0 24 24" width="16" height="16" class="search-icon"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/></svg>
-          <input v-model="searchQuery" placeholder="Search by Task #, title, assignee, project, client..." @input="debouncedFetch" />
+          <input v-model="searchQuery" placeholder="Search tasks by #, title, assignee, client..." @input="debouncedFetch" />
         </div>
         <select v-model="filterStatus" @change="fetchTasks" class="filter-select">
           <option value="">All Statuses</option>
@@ -245,21 +248,106 @@
           @click="toggleOverdueFilter"
         >
           <span class="pill-dot" :class="{ red: filterOverdue }"></span>
-          Overdue Only
+          Overdue
         </button>
+
+        <!-- View Mode Switcher (List vs Kanban Board) -->
+        <div class="view-mode-toggle">
+          <button
+            type="button"
+            class="view-toggle-btn"
+            :class="{ active: viewMode === 'list' }"
+            title="List Table View"
+            @click="viewMode = 'list'"
+          >
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+              <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>
+            </svg>
+            <span>List</span>
+          </button>
+          <button
+            type="button"
+            class="view-toggle-btn"
+            :class="{ active: viewMode === 'kanban' }"
+            title="Kanban Board View"
+            @click="viewMode = 'kanban'"
+          >
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+              <path d="M4 4h4v16H4V4zm6 0h4v10h-4V4zm6 0h4v6h-4V4z"/>
+            </svg>
+            <span>Board</span>
+          </button>
+        </div>
       </div>
 
-      <!-- Task Table -->
-      <div v-if="loadingTasks" class="record-card empty-state">
-        <div class="spinner-small"></div>
-        <p style="margin-top: 10px;">Loading tasks...</p>
+      <!-- Task View Area -->
+      <div v-if="loadingTasks" class="record-card empty-state bento-card">
+        <ModernSpinner size="md" :show-core="true" label="Loading tasks..." />
       </div>
-      <div v-else-if="tasks.length === 0" class="record-card empty-state">
-        <svg viewBox="0 0 24 24" width="40" height="40" style="color: #94a3b8; margin-bottom: 8px;"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" fill="currentColor"/></svg>
+      <div v-else-if="tasks.length === 0" class="record-card empty-state bento-card">
+        <svg viewBox="0 0 24 24" width="44" height="44" style="color: #94a3b8; margin-bottom: 8px;"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" fill="currentColor"/></svg>
         <p>No tasks found matching your filter criteria.</p>
-        <button class="button secondary small" style="margin-top: 12px;" @click="openCreateModal">+ Create New Task</button>
+        <button class="btn-tactile btn-tactile-secondary" style="margin-top: 12px;" @click="openCreateModal">+ Create New Task</button>
       </div>
-      <div v-else class="table-container">
+
+      <!-- KANBAN BOARD VIEW -->
+      <div v-else-if="viewMode === 'kanban'" class="kanban-board">
+        <div v-for="col in kanbanColumns" :key="col.id" class="kanban-column bento-card">
+          <div class="kanban-col-header" :class="col.tone">
+            <div class="kanban-col-title">
+              <span class="kanban-status-dot"></span>
+              <strong>{{ col.label }}</strong>
+            </div>
+            <span class="kanban-col-count">{{ col.items.length }}</span>
+          </div>
+
+          <div class="kanban-cards-wrap">
+            <div
+              v-for="task in col.items"
+              :key="task.id"
+              class="kanban-card bento-card"
+              @click="openDetail(task)"
+            >
+              <div class="kanban-card-top">
+                <span class="task-number">{{ task.task_number }}</span>
+                <span class="priority-badge" :class="priorityClass(task.priority)">{{ task.priority }}</span>
+              </div>
+
+              <strong class="kanban-card-title">{{ task.title }}</strong>
+
+              <div v-if="task.customer_name || task.project_name" class="tags-row">
+                <span v-if="task.customer_name" class="context-tag client">🏢 {{ task.customer_name }}</span>
+                <span v-if="task.project_name" class="context-tag project">📁 {{ task.project_name }}</span>
+              </div>
+
+              <div v-if="task.checklist_total > 0" class="kanban-progress-wrap">
+                <div class="progress-bar-sm">
+                  <div class="progress-fill" :style="{ width: task.progress_pct + '%' }"></div>
+                </div>
+                <span class="kanban-progress-text">{{ task.checklist_completed }}/{{ task.checklist_total }} subtasks</span>
+              </div>
+
+              <div class="kanban-card-footer">
+                <div class="assignee-cell-mini">
+                  <div class="avatar-sm mini">{{ getInitials(task.assignee_name) }}</div>
+                  <span class="assignee-name-sm">{{ task.assignee_name }}</span>
+                </div>
+                <div class="due-cell-mini" :class="{ 'overdue-text': task.is_overdue }">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                  <span>{{ task.due_date }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="col.items.length === 0" class="kanban-empty-slot">
+              <span>No tasks</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LIST TABLE VIEW -->
+      <div v-else class="table-container bento-card">
         <table class="record-table">
           <thead>
             <tr>
@@ -917,9 +1005,35 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import CrmPageHeader from '../components/CrmPageHeader.vue'
 import { apiGet, apiPost, apiPut } from '../api/client'
 
 const currentTab = ref('dashboard')
+const viewMode = ref('list') // 'list' | 'kanban'
+
+const kanbanColumns = computed(() => {
+  const cols = [
+    { id: 'todo', label: 'To Do', tone: 'slate', items: [] },
+    { id: 'progress', label: 'In Progress', tone: 'blue', items: [] },
+    { id: 'review', label: 'In Review', tone: 'purple', items: [] },
+    { id: 'blocked', label: 'Blocked / Hold', tone: 'amber', items: [] },
+    { id: 'completed', label: 'Completed', tone: 'green', items: [] }
+  ]
+  tasks.value.forEach(task => {
+    if (task.status === 'In Progress') {
+      cols[1].items.push(task)
+    } else if (task.status === 'In Review' || task.status === 'Changes Requested') {
+      cols[2].items.push(task)
+    } else if (task.status === 'Blocked' || task.status === 'On Hold') {
+      cols[3].items.push(task)
+    } else if (task.status === 'Completed') {
+      cols[4].items.push(task)
+    } else {
+      cols[0].items.push(task)
+    }
+  })
+  return cols
+})
 const loadingTasks = ref(false)
 const tasks = ref([])
 const activeUsers = ref([])
@@ -2546,4 +2660,327 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================
+   MODULE 2 REVAMP: KOKONUT BENTO, SKIPER TACTILE & KANBAN
+   ========================================================= */
+
+/* Sliding Tabs Bar */
+.tasks-tabs-nav.bento-card {
+  padding: 6px;
+  background: #ffffff;
+  border-radius: 14px;
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.tasks-tabs-nav button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-family: var(--font-sans, sans-serif);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.tasks-tabs-nav button:hover {
+  color: #0284c7;
+  background: rgba(2, 132, 199, 0.06);
+}
+
+.tasks-tabs-nav button.active {
+  color: #0284c7;
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.12) 0%, rgba(99, 102, 241, 0.06) 100%);
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(2, 132, 199, 0.08);
+}
+
+/* Metric Cards with Glowing Underline */
+.metric-card.bento-card {
+  position: relative;
+  padding: 18px 20px;
+  background: #ffffff;
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.metric-card.bento-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(2, 132, 199, 0.35);
+  box-shadow: 0 12px 28px -6px rgba(15, 23, 42, 0.1), 0 0 18px rgba(2, 132, 199, 0.08);
+}
+
+.metric-glow-line {
+  position: absolute;
+  bottom: 0;
+  left: 18px;
+  right: 18px;
+  height: 3px;
+  border-radius: 999px;
+  opacity: 0.35;
+  transition: opacity 0.24s ease;
+}
+
+.metric-card.bento-card:hover .metric-glow-line {
+  opacity: 1;
+}
+
+.metric-glow-line.blue { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+.metric-glow-line.indigo { background: linear-gradient(90deg, #4f46e5, #818cf8); }
+.metric-glow-line.amber { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.metric-glow-line.red { background: linear-gradient(90deg, #dc2626, #f87171); }
+.metric-glow-line.rose { background: linear-gradient(90deg, #e11d48, #fb7185); }
+.metric-glow-line.green { background: linear-gradient(90deg, #10b981, #34d399); }
+
+/* Filter Bar Bento Box */
+.filters-bar.bento-card {
+  padding: 12px 16px;
+  background: #ffffff;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* View Mode Switcher Pill */
+.view-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin-left: auto;
+}
+
+.view-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-family: var(--font-sans, sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.view-toggle-btn:hover {
+  color: #0f172a;
+}
+
+.view-toggle-btn.active {
+  background: #ffffff;
+  color: #0284c7;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* KANBAN BOARD */
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(240px, 1fr));
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 16px;
+  min-height: 540px;
+}
+
+.kanban-column.bento-card {
+  background: #f8fafc;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  min-height: 480px;
+}
+
+.kanban-col-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 12px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+  margin-bottom: 12px;
+}
+
+.kanban-col-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+}
+
+.kanban-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.kanban-col-header.slate .kanban-status-dot { background: #64748b; }
+.kanban-col-header.blue .kanban-status-dot { background: #0284c7; box-shadow: 0 0 6px rgba(2, 132, 199, 0.6); }
+.kanban-col-header.purple .kanban-status-dot { background: #8b5cf6; box-shadow: 0 0 6px rgba(139, 92, 246, 0.6); }
+.kanban-col-header.amber .kanban-status-dot { background: #f59e0b; box-shadow: 0 0 6px rgba(245, 158, 11, 0.6); }
+.kanban-col-header.green .kanban-status-dot { background: #10b981; box-shadow: 0 0 6px rgba(16, 185, 129, 0.6); }
+
+.kanban-col-count {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.kanban-cards-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.kanban-card.bento-card {
+  padding: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.kanban-card.bento-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(2, 132, 199, 0.35);
+  box-shadow: 0 8px 18px -4px rgba(15, 23, 42, 0.08);
+}
+
+.kanban-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kanban-card-title {
+  font-family: var(--font-sans, sans-serif);
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.4;
+}
+
+.kanban-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 2px;
+}
+
+.kanban-progress-text {
+  font-size: 10.5px;
+  color: #64748b;
+  font-family: var(--font-mono, monospace);
+}
+
+.kanban-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  margin-top: 4px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.assignee-cell-mini {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.avatar-sm.mini {
+  width: 22px;
+  height: 22px;
+  font-size: 9.5px;
+}
+
+.assignee-name-sm {
+  font-size: 11px;
+  color: #475569;
+  font-weight: 600;
+  max-width: 90px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.due-cell-mini {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #64748b;
+  font-family: var(--font-mono, monospace);
+}
+
+.due-cell-mini.overdue-text {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.kanban-empty-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 90px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+/* Modals & Dialogs (Skiper UI Frosted Elevation) */
+.modal-backdrop {
+  background: rgba(15, 23, 42, 0.45) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+.modal-dialog {
+  border-radius: 18px !important;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25) !important;
+}
+
+.modal-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid rgba(241, 245, 249, 1);
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid rgba(241, 245, 249, 1);
+}
+
 </style>
