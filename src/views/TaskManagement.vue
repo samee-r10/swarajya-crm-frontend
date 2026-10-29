@@ -188,26 +188,7 @@
           </div>
         </div>
 
-        <!-- Recent Activity Feed -->
-        <div class="widget-card bento-card full-width">
-          <div class="widget-header">
-            <h3>Recent Task Activity</h3>
-          </div>
-          <div class="activity-timeline">
-            <div v-for="act in dashboardData.recent_activities" :key="act.id" class="timeline-item">
-              <div class="timeline-dot"></div>
-              <div class="timeline-body">
-                <div class="timeline-header">
-                  <strong class="activity-task-tag">{{ act.task_number }}</strong>
-                  <span class="muted small">{{ formatDate(act.created_at) }}</span>
-                </div>
-                <p class="activity-text">{{ act.details }}</p>
-                <span class="activity-user">By {{ act.user_name }}</span>
-              </div>
-            </div>
-            <div v-if="!dashboardData.recent_activities.length" class="empty-state small">No recent task activity.</div>
-          </div>
-        </div>
+
       </div>
     </section>
 
@@ -1163,8 +1144,7 @@ const metrics = reactive({
 const dashboardData = reactive({
   by_status: {},
   by_priority: {},
-  by_assignee: [],
-  recent_activities: []
+  by_assignee: []
 })
 
 const reportsData = reactive({
@@ -1267,7 +1247,6 @@ async function fetchDashboardMetrics() {
     dashboardData.by_status = res.by_status || {}
     dashboardData.by_priority = res.by_priority || {}
     dashboardData.by_assignee = res.by_assignee || []
-    dashboardData.recent_activities = res.recent_activities || []
   } catch (err) {
     console.error('Failed to load dashboard metrics:', err)
   }
@@ -1865,7 +1844,6 @@ onMounted(() => {
   color: #0f172a;
 }
 
-.widget-card.full-width { grid-column: 1 / -1; }
 
 .breakdown-list, .priority-list, .workload-list {
   display: flex;
@@ -1955,39 +1933,6 @@ onMounted(() => {
   padding: 3px 9px;
   border-radius: 12px;
 }
-
-/* Activity Timeline */
-.activity-timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.timeline-item {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-}
-
-.timeline-dot {
-  width: 8px;
-  height: 8px;
-  background: #2563eb;
-  border-radius: 50%;
-  margin-top: 6px;
-  flex-shrink: 0;
-}
-
-.timeline-body { flex: 1; font-size: 13px; }
-.timeline-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
-
-.activity-task-tag {
-  color: #2563eb;
-  font-size: 12px;
-  font-weight: 700;
-}
-.activity-text { margin: 2px 0 4px 0; color: #1e293b; }
-.activity-user { font-size: 11px; color: #64748b; }
 
 /* Filter Bar */
 .filters-bar {

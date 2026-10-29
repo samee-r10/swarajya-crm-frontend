@@ -305,103 +305,13 @@
           </div>
           <div class="preview-modal-body">
             
-            <!-- High fidelity A4 printable document inside modal -->
-            <div class="invoice-document shadow-premium modal-a4-sheet">
-              <div class="invoice-header">
-                <div class="company-brand">
-                  <img src="/logo.png" alt="Company Logo" class="invoice-logo">
-                  <div class="company-info" v-if="invoice.company_info">
-                    <h2>{{ invoice.company_info.company_name || 'Your Company Name' }}</h2>
-                    <p v-if="invoice.company_info.company_address" style="white-space: pre-wrap;">{{ invoice.company_info.company_address }}</p>
-                    <p v-if="invoice.company_info.company_phone">Phone: {{ invoice.company_info.company_phone }}</p>
-                    <p v-if="invoice.company_info.company_email">Email: {{ invoice.company_info.company_email }}</p>
-                    <p v-if="invoice.company_info.tax_id">Tax ID: {{ invoice.company_info.tax_id }}</p>
-                  </div>
-                  <div class="company-info" v-else>
-                    <h2 class="muted italic">Company info not set</h2>
-                    <p class="muted small">Go to Setup -> Company Information to configure your header.</p>
-                  </div>
-                </div>
-                <div class="document-type">
-                  <h1>{{ invoiceDocumentTitle }}</h1>
-                  <div class="meta-item"><span>Invoice #</span><strong>{{ invoice.invoice_number }}</strong></div>
-                  <div class="meta-item"><span>Date</span><strong>{{ formatDate(invoice.invoice_date) }}</strong></div>
-                  <div class="meta-item"><span>Due Date</span><strong>{{ formatDate(invoice.due_date) }}</strong></div>
-                  <div class="meta-item" v-if="invoice.project_name"><span>Project</span><strong>{{ invoice.project_name }}</strong></div>
-                  <div class="meta-item" v-if="invoice.account_name"><span>Account</span><strong>{{ invoice.account_name }}</strong></div>
-                </div>
-              </div>
-
-              <div class="invoice-billing">
-                <div class="bill-to">
-                  <p class="section-label">Bill To:</p>
-                  <h3>{{ invoice.customer_name }}</h3>
-                  <div v-if="invoice.billing_address" class="address-box">
-                    <p style="white-space: pre-wrap;">{{ invoice.billing_address }}</p>
-                  </div>
-                  <p v-else class="muted italic small">No billing address provided for this customer.</p>
-                  
-                  <div class="contact-sub">
-                    <p><strong>Contact:</strong> {{ invoice.contact_name }}</p>
-                    <p><strong>Email:</strong> {{ invoice.customer_email }}</p>
-                  </div>
-                </div>
-              </div>
-
-              <table class="line-items">
-                <thead>
-                  <tr>
-                    <th>Description</th>
-                    <th>HSN/SAC</th>
-                    <th class="right">Qty</th>
-                    <th class="right">Rate</th>
-                    <th>Unit of Measure</th>
-                    <th class="right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(item, index) in invoiceItems" :key="index">
-                    <td>{{ item.description }}</td>
-                    <td>{{ item.hsn_sac || '-' }}</td>
-                    <td class="right">{{ item.qty }}</td>
-                    <td class="right">{{ moneyValue(item.rate) }}</td>
-                    <td>{{ item.unit_of_measure || '-' }}</td>
-                    <td class="right"><strong>{{ moneyValue(item.amount) }}</strong></td>
-                  </tr>
-                </tbody>
-              </table>
-
-              <div class="invoice-footer">
-                <div class="notes-section">
-                  <p class="section-label">Notes & Terms:</p>
-                  <p class="notes-content">{{ invoice.notes || 'Please make payment by the due date. Thank you for your business!' }}</p>
-                  <div v-if="invoice.payment_details" class="payment-details-section">
-                    <p class="section-label">Payment Details (NEFT/RTGS)</p>
-                    <p class="payment-line"><strong>Name of Beneficiary for NEFT/RTGS:</strong> {{ invoice.payment_details.beneficiary_name }}</p>
-                    <p class="payment-line"><strong>Name of Bank:</strong> {{ invoice.payment_details.bank_name }}</p>
-                    <p class="payment-line"><strong>Account Number:</strong> {{ invoice.payment_details.account_number }}</p>
-                    <p class="payment-line"><strong>IFSC Code:</strong> {{ invoice.payment_details.ifsc_code }}</p>
-                    <p class="payment-line"><strong>Payment reference:</strong> {{ invoice.payment_details.payment_reference }}</p>
-                  </div>
-                </div>
-                <div class="totals-table">
-                  <div class="total-row"><span>Subtotal</span><span>{{ moneyValue(gstSummary.subtotal) }}</span></div>
-                  <div class="total-row"><span>CGST {{ moneyValue(gstSummary.cgst_percent) }}%</span><span>{{ moneyValue(gstSummary.cgst_amount) }}</span></div>
-                  <div class="total-row"><span>SGST {{ moneyValue(gstSummary.sgst_percent) }}%</span><span>{{ moneyValue(gstSummary.sgst_amount) }}</span></div>
-                  <div class="total-row"><span>IGST {{ moneyValue(gstSummary.igst_percent) }}%</span><span>{{ moneyValue(gstSummary.igst_amount) }}</span></div>
-                  <div v-if="gstSummary.legacy_tax_amount" class="total-row"><span>Tax Amount</span><span>{{ moneyValue(gstSummary.legacy_tax_amount) }}</span></div>
-                  <div class="total-row grand-total">
-                    <span>Total Amount</span>
-                    <span>{{ invoice.currency }} {{ moneyValue(gstSummary.total_amount) }}</span>
-                  </div>
-                  <div class="amount-words">{{ amountInWords }}</div>
-                </div>
-              </div>
-
-              <div class="system-generated-note">
-                This is system generated invoice no signature required.
-              </div>
-            </div>
+            <InvoiceDocument
+              :invoice="invoice"
+              :items="invoiceItems"
+              :summary="gstSummary"
+              :title="invoiceDocumentTitle"
+              :amount-in-words="amountInWords"
+            />
 
           </div>
         </div>
@@ -475,98 +385,15 @@
         </div>
       </div>
 
-      <!-- 4. PRINT-ONLY INVOICE (Hidden on screen, shown strictly in @media print) -->
-      <div class="invoice-document print-document-only" style="display: none;">
-        <div class="invoice-header">
-          <div class="company-brand">
-            <img src="/logo.png" alt="Company Logo" class="invoice-logo">
-            <div class="company-info" v-if="invoice.company_info">
-              <h2>{{ invoice.company_info.company_name || 'Your Company Name' }}</h2>
-              <p v-if="invoice.company_info.company_address" style="white-space: pre-wrap;">{{ invoice.company_info.company_address }}</p>
-              <p v-if="invoice.company_info.company_phone">Phone: {{ invoice.company_info.company_phone }}</p>
-              <p v-if="invoice.company_info.company_email">Email: {{ invoice.company_info.company_email }}</p>
-              <p v-if="invoice.company_info.tax_id">Tax ID: {{ invoice.company_info.tax_id }}</p>
-            </div>
-            <div class="company-info" v-else>
-              <h2>Company Information</h2>
-              <p class="small text-muted">Please configure your company profile in administrative settings.</p>
-            </div>
-          </div>
-          <div class="document-type">
-            <h1>{{ invoiceDocumentTitle }}</h1>
-            <div class="meta-item"><span>Invoice #</span><strong>{{ invoice.invoice_number }}</strong></div>
-            <div class="meta-item"><span>Date</span><strong>{{ formatDate(invoice.invoice_date) }}</strong></div>
-            <div class="meta-item"><span>Due Date</span><strong>{{ formatDate(invoice.due_date) }}</strong></div>
-          </div>
-        </div>
-
-        <div class="invoice-billing">
-          <div class="bill-to">
-            <p class="section-label">Bill To:</p>
-            <h3>{{ invoice.customer_name }}</h3>
-            <div v-if="invoice.billing_address" class="address-box">
-              <p style="white-space: pre-wrap;">{{ invoice.billing_address }}</p>
-            </div>
-            <div class="contact-sub">
-              <p><strong>Contact:</strong> {{ invoice.contact_name }}</p>
-              <p><strong>Email:</strong> {{ invoice.customer_email }}</p>
-            </div>
-          </div>
-        </div>
-
-        <table class="line-items">
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th>HSN/SAC</th>
-              <th class="right">Qty</th>
-              <th class="right">Rate</th>
-              <th>Unit of Measure</th>
-              <th class="right">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(item, index) in invoiceItems" :key="index">
-              <td>{{ item.description }}</td>
-              <td>{{ item.hsn_sac || '-' }}</td>
-              <td class="right">{{ item.qty }}</td>
-              <td class="right">{{ moneyValue(item.rate) }}</td>
-              <td>{{ item.unit_of_measure || '-' }}</td>
-              <td class="right"><strong>{{ moneyValue(item.amount) }}</strong></td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div class="invoice-footer">
-          <div class="notes-section">
-            <p class="section-label">Notes & Terms:</p>
-            <p class="notes-content">{{ invoice.notes || 'Please make payment by the due date. Thank you for your business!' }}</p>
-            <div v-if="invoice.payment_details" class="payment-details-section">
-              <p class="section-label">Payment Details (NEFT/RTGS)</p>
-              <p class="payment-line"><strong>Name of Beneficiary for NEFT/RTGS:</strong> {{ invoice.payment_details.beneficiary_name }}</p>
-              <p class="payment-line"><strong>Name of Bank:</strong> {{ invoice.payment_details.bank_name }}</p>
-              <p class="payment-line"><strong>Account Number:</strong> {{ invoice.payment_details.account_number }}</p>
-              <p class="payment-line"><strong>IFSC Code:</strong> {{ invoice.payment_details.ifsc_code }}</p>
-              <p class="payment-line"><strong>Payment reference:</strong> {{ invoice.payment_details.payment_reference }}</p>
-            </div>
-          </div>
-          <div class="totals-table">
-            <div class="total-row"><span>Subtotal</span><span>{{ moneyValue(gstSummary.subtotal) }}</span></div>
-            <div class="total-row"><span>CGST {{ moneyValue(gstSummary.cgst_percent) }}%</span><span>{{ moneyValue(gstSummary.cgst_amount) }}</span></div>
-            <div class="total-row"><span>SGST {{ moneyValue(gstSummary.sgst_percent) }}%</span><span>{{ moneyValue(gstSummary.sgst_amount) }}</span></div>
-            <div class="total-row"><span>IGST {{ moneyValue(gstSummary.igst_percent) }}%</span><span>{{ moneyValue(gstSummary.igst_amount) }}</span></div>
-            <div v-if="gstSummary.legacy_tax_amount" class="total-row"><span>Tax Amount</span><span>{{ moneyValue(gstSummary.legacy_tax_amount) }}</span></div>
-            <div class="total-row grand-total">
-              <span>Total Amount</span>
-              <span>{{ invoice.currency }} {{ moneyValue(gstSummary.total_amount) }}</span>
-            </div>
-            <div class="amount-words">{{ amountInWords }}</div>
-          </div>
-        </div>
-
-        <div class="system-generated-note">
-          This is system generated invoice no signature required.
-        </div>
+      <!-- Preview and print share one invoice template. -->
+      <div class="print-document-only">
+        <InvoiceDocument
+          :invoice="invoice"
+          :items="invoiceItems"
+          :summary="gstSummary"
+          :title="invoiceDocumentTitle"
+          :amount-in-words="amountInWords"
+        />
       </div>
 
       <div class="receipt-document print-receipt-only" style="display: none;">
@@ -630,6 +457,7 @@ import { nextTick, onMounted, ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet, apiPut } from '../api/client'
 import SystemInfo from '../components/SystemInfo.vue'
+import InvoiceDocument from '../components/InvoiceDocument.vue'
 
 const router = useRouter()
 const props = defineProps({ id: String })
@@ -1418,24 +1246,16 @@ function printStandaloneReceipt() {
 
 .preview-modal-body {
   flex: 1;
-  overflow-y: auto;
-  padding: 40px;
-  display: flex;
-  justify-content: center;
-  background: #f1f5f9;
-}
-
-.modal-a4-sheet {
-  background: #ffffff;
-  padding: 60px !important;
-  border-radius: 6px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-  width: 100%;
-  max-width: 800px;
-  height: max-content;
-  min-height: 1050px;
+  overflow: auto;
+  padding: 24px;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  background: #e9eef4;
+}
+
+.preview-modal-body > :first-child {
+  margin-inline: auto;
 }
 
 .invoice-logo {
@@ -1447,17 +1267,17 @@ function printStandaloneReceipt() {
   display: block;
 }
 
-/* TABLE COLUMN WIDTHS & ALIGNMENTS */
-.line-items th:nth-child(1), .items-view-table th:nth-child(1) { width: 34%; }
-.line-items th:nth-child(2), .items-view-table th:nth-child(2) { width: 12%; }
-.line-items th:nth-child(3), .items-view-table th:nth-child(3) { width: 8%; text-align: right !important; }
-.line-items th:nth-child(4), .items-view-table th:nth-child(4) { width: 14%; text-align: right !important; }
-.line-items th:nth-child(5), .items-view-table th:nth-child(5) { width: 14%; }
-.line-items th:nth-child(6), .items-view-table th:nth-child(6) { width: 18%; text-align: right !important; }
+/* CRM line item table column widths and alignment. */
+.items-view-table th:nth-child(1) { width: 34%; }
+.items-view-table th:nth-child(2) { width: 12%; }
+.items-view-table th:nth-child(3) { width: 8%; text-align: right !important; }
+.items-view-table th:nth-child(4) { width: 14%; text-align: right !important; }
+.items-view-table th:nth-child(5) { width: 14%; }
+.items-view-table th:nth-child(6) { width: 18%; text-align: right !important; }
 
-.line-items td:nth-child(3), .items-view-table td:nth-child(3) { text-align: right !important; }
-.line-items td:nth-child(4), .items-view-table td:nth-child(4) { text-align: right !important; }
-.line-items td:nth-child(6), .items-view-table td:nth-child(6) { text-align: right !important; }
+.items-view-table td:nth-child(3) { text-align: right !important; }
+.items-view-table td:nth-child(4) { text-align: right !important; }
+.items-view-table td:nth-child(6) { text-align: right !important; }
 
 /* LOADING & ANIMATION */
 .loading-state {
@@ -1658,42 +1478,59 @@ function printStandaloneReceipt() {
   font-size: 13px;
 }
 
-/* PRINTING MEDIA INSTRUCTION OVERRIDES */
+/* Zero page margins suppress the browser's automatic print header/footer.
+   The invoice sheet supplies its own 12mm content inset. */
+@page crm-invoice {
+  size: A4 portrait;
+  margin: 0;
+}
+
 @media print {
-  /* Hide all screen widgets, bars, sidebars, headers, and modal overlays */
-  .no-print,
-  .modal-overlay,
-  .preview-modal-overlay,
-  .record-layout,
-  header,
-  nav,
-  .global-header,
-  .top-bar,
-  .actions {
-    display: none !important;
+  :global(body:has(.invoice-container)) {
+    page: crm-invoice;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
   }
-  
-  body, #app, .invoice-container {
-    background: #ffffff !important;
+
+  :global(html:has(.invoice-container)),
+  :global(body:has(.invoice-container)),
+  :global(body:has(.invoice-container) #app),
+  :global(body:has(.invoice-container) .app-shell),
+  :global(body:has(.invoice-container) .main-layout-container),
+  :global(body:has(.invoice-container) .main) {
+    display: block !important;
+    position: static !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    transform: none !important;
+  }
+
+  :global(body:has(.invoice-container) .enterprise-sidebar),
+  :global(body:has(.invoice-container) .app-footer),
+  :global(body:has(.invoice-container) .mobile-sidebar-backdrop),
+  :global(body:has(.invoice-container) .app-loader-track),
+  :global(body:has(.invoice-container) .app-loader-backdrop),
+  .no-print,
+  .preview-modal-overlay {
+    display: none !important;
   }
 
   .invoice-container {
     padding: 0 !important;
     margin: 0 !important;
-    max-width: 100% !important;
+    max-width: none !important;
   }
 
-  /* Show only the dedicated printable sheet */
   .print-document-only {
-    display: flex !important;
-    flex-direction: column;
-    background: #ffffff !important;
-    box-shadow: none !important;
-    border: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
+    display: block !important;
+    width: 100%;
   }
 
   .print-receipt-only {
@@ -1707,7 +1544,7 @@ function printStandaloneReceipt() {
   :global(html.receipt-print-mode) .print-receipt-only {
     display: flex !important;
     flex-direction: column;
-    background: #ffffff !important;
+    background: #fff !important;
     box-shadow: none !important;
     border: none !important;
     padding: 0 !important;
@@ -1716,204 +1553,17 @@ function printStandaloneReceipt() {
     max-width: 100% !important;
     min-height: auto !important;
   }
-
-  /* Core invoice document layout rules within print */
-  .invoice-header {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 50px;
-    align-items: flex-start;
-  }
-  
-  .company-info h2 { font-size: 20px; margin-bottom: 8px; }
-  .company-info p { font-size: 14px; color: #444; margin: 2px 0; }
-  
-  .document-type { text-align: right; }
-  .document-type h1 { font-size: 32px; color: var(--primary); margin-bottom: 16px; letter-spacing: -1px; }
-  
-  .meta-item { display: flex; justify-content: flex-end; gap: 12px; margin-bottom: 4px; font-size: 14px; }
-  .meta-item span { color: #555; width: 80px; }
-
-  .invoice-billing {
-    margin-bottom: 50px;
-  }
-  
-  .section-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    color: #555;
-    font-weight: 800;
-    margin-bottom: 8px;
-  }
-  
-  .bill-to h3 { font-size: 24px; margin-bottom: 8px; color: var(--primary); }
-  .bill-to p { margin: 4px 0; font-size: 14px; }
-  .address-box { margin-bottom: 12px; padding: 12px; background: #f8fafc; border-radius: 8px; border-left: 4px solid var(--primary); }
-  .contact-sub { margin-top: 16px; }
-
-  .line-items {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 50px;
-  }
-  
-  .line-items th {
-    background: #f8fafc;
-    padding: 12px 16px;
-    text-align: left;
-    font-size: 12px;
-    text-transform: uppercase;
-    border-bottom: 2px solid var(--line);
-  }
-  
-  .line-items td {
-    padding: 16px;
-    border-bottom: 1px solid var(--line);
-    font-size: 14px;
-  }
-
-  .invoice-footer {
-    display: flex;
-    justify-content: space-between;
-    margin-top: auto;
-  }
-  
-  .notes-section { flex: 1; padding-right: 40px; }
-  .notes-content { font-size: 13px; color: #444; white-space: pre-wrap; line-height: 1.6; }
-  
-  .totals-table { width: 280px; }
-  .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
-  .grand-total { border-top: 2px solid var(--primary); margin-top: 8px; padding-top: 16px; font-weight: 900; font-size: 20px; color: var(--primary); }
-  .amount-words {
-    border-top: 1px dashed var(--line);
-    color: #475569;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1.5;
-    margin-top: 12px;
-    padding-top: 12px;
-    text-transform: capitalize;
-  }
-  
-  .system-generated-note {
-    margin-top: 50px;
-    text-align: center;
-    font-size: 12px;
-    color: #555;
-    font-style: italic;
-    border-top: 1px dashed var(--line);
-    padding-top: 16px;
-    width: 100%;
-  }
 }
 
-/* HIGH FIDELITY PRINTABLE SHEET CSS SPEC FOR SCREEN/MODAL RENDER */
-.invoice-document {
-  display: flex;
-  flex-direction: column;
-}
-
-.invoice-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 60px;
-  align-items: flex-start;
-}
-
+/* Shared company header styles for the payment receipt. */
 .company-info h2 { font-size: 20px; margin-bottom: 8px; }
 .company-info p { font-size: 14px; color: var(--muted); margin: 2px 0; }
-
 .document-type { text-align: right; }
 .document-type h1 { font-size: 32px; color: var(--primary); margin-bottom: 16px; letter-spacing: -1px; }
-
 .meta-item { display: flex; justify-content: flex-end; gap: 12px; margin-bottom: 4px; font-size: 14px; }
 .meta-item span { color: var(--muted); width: 80px; }
-
-.invoice-billing {
-  margin-bottom: 60px;
-}
-
-.section-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  color: var(--muted);
-  font-weight: 800;
-  margin-bottom: 8px;
-}
-
-.bill-to h3 { font-size: 24px; margin-bottom: 8px; color: var(--primary); }
-.bill-to p { margin: 4px 0; font-size: 14px; }
-.address-box { margin-bottom: 12px; padding: 12px; background: #f8fafc; border-radius: 8px; border-left: 4px solid var(--primary); }
-
-.contact-sub { margin-top: 16px; }
-
-.line-items {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 60px;
-}
-
-.line-items th {
-  background: #f8fafc;
-  padding: 12px 16px;
-  text-align: left;
-  font-size: 12px;
-  text-transform: uppercase;
-  border-bottom: 2px solid var(--line);
-}
-
-.line-items td {
-  padding: 16px;
-  border-bottom: 1px solid var(--line);
-  font-size: 14px;
-}
-
-.invoice-footer {
-  display: flex;
-  justify-content: space-between;
-  margin-top: auto;
-}
-
-.notes-section { flex: 1; padding-right: 40px; }
-.notes-content { font-size: 13px; color: var(--muted); white-space: pre-wrap; line-height: 1.6; }
-
-.payment-details-section {
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px dashed var(--line);
-}
-
-.payment-line {
-  font-size: 13px;
-  color: var(--primary);
-  line-height: 1.7;
-  margin: 4px 0;
-}
-
-.totals-table { width: 280px; }
-.total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
-.grand-total { border-top: 2px solid var(--primary); margin-top: 8px; padding-top: 16px; font-weight: 900; font-size: 20px; color: var(--primary); }
-.amount-words {
-  border-top: 1px dashed var(--line);
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.5;
-  margin-top: 12px;
-  padding-top: 12px;
-  text-transform: capitalize;
-}
-
-.system-generated-note {
-  margin-top: 50px;
-  text-align: center;
-  font-size: 12px;
-  color: var(--muted);
-  font-style: italic;
-  border-top: 1px dashed var(--line);
-  padding-top: 16px;
-  width: 100%;
-}
+.section-label { font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 800; margin-bottom: 8px; }
+.system-generated-note { margin-top: 50px; text-align: center; font-size: 12px; color: var(--muted); font-style: italic; border-top: 1px dashed var(--line); padding-top: 16px; width: 100%; }
 
 /* SALESFORCE-STYLE CHEVRON PATH TRACKER */
 .status-path-tracker {

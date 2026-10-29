@@ -109,37 +109,6 @@
         </CrmKpiCard>
       </section>
 
-      <!-- Sales Pipeline Visualizer (Anim Master / Kokonut Bento) -->
-      <section class="pipeline-panel bento-card">
-        <div class="panel-header">
-          <div class="panel-title-wrap">
-            <div class="panel-icon-badge blue">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h2v7H7zm4-3h2v10h-2zm4 6h2v4h-2z"/>
-              </svg>
-            </div>
-            <div>
-              <h2 class="panel-title">Sales Pipeline</h2>
-              <p class="panel-subtitle">Deal flow by current stage from your latest opportunities.</p>
-            </div>
-          </div>
-          <span class="badge-luminous badge-luminous-blue">{{ primaryPipeline }}</span>
-        </div>
-
-        <div class="pipeline-bars">
-          <div v-for="stage in stageSummary" :key="stage.name" class="pipeline-row">
-            <div class="pipeline-row-label">
-              <strong class="stage-name">{{ stage.name }}</strong>
-              <span class="stage-count-pill">{{ stage.count }} deals</span>
-            </div>
-            <div class="pipeline-track">
-              <span class="pipeline-fill" :style="{ width: `${stage.percent}%` }"></span>
-            </div>
-            <span class="pipeline-percent-label">{{ stage.percent }}%</span>
-          </div>
-        </div>
-      </section>
-
       <!-- Executive Split Grid (Revenue & Pending Approvals) -->
       <section class="executive-summary-grid">
         <!-- Revenue Overview -->
@@ -237,7 +206,6 @@ const loading = ref(true)
 let refreshTimer = null
 const data = reactive({
   metrics: { customers: 0, open_opportunities: 0, active_projects: 0, pipeline_values: [] },
-  opportunities_by_stage: [],
   pending_approvals: { total: 0, breakdown: { claims: 0, stakeholder_payouts: 0, cp_payments: 0 } }
 })
 
@@ -256,12 +224,6 @@ const pipelineTotal = computed(() => {
   return data.metrics.pipeline_values.map((item) => `${item.currency} ${Number(item.total || 0).toLocaleString()}`).join(', ')
 })
 
-const primaryPipeline = computed(() => {
-  const first = data.metrics.pipeline_values[0]
-  if (!first) return 'No value yet'
-  return `${first.currency} ${Number(first.total || 0).toLocaleString()}`
-})
-
 const pendingApprovals = computed(() => ({
   total: Number(data.pending_approvals?.total || 0),
   breakdown: {
@@ -270,19 +232,6 @@ const pendingApprovals = computed(() => ({
     cp_payments: Number(data.pending_approvals?.breakdown?.cp_payments || 0)
   }
 }))
-
-const stageSummary = computed(() => {
-  const entries = (data.opportunities_by_stage || []).map((item) => [item.stage || 'Unqualified', Number(item.count || 0)])
-  if (!entries.length) {
-    return [
-      { name: 'Discussion', count: 0, percent: 12 },
-      { name: 'Commercial negotiation', count: 0, percent: 12 },
-      { name: 'Contractual negotiation', count: 0, percent: 12 }
-    ]
-  }
-  const max = Math.max(...entries.map(([, count]) => count), 1)
-  return entries.map(([name, count]) => ({ name, count, percent: Math.max(12, Math.round((count / max) * 100)) }))
-})
 
 let lastLoadedTime = 0
 
@@ -484,11 +433,6 @@ async function loadDashboard() {
   flex-shrink: 0;
 }
 
-.panel-icon-badge.blue {
-  background: rgba(2, 132, 199, 0.1);
-  color: #0284c7;
-}
-
 .panel-icon-badge.emerald {
   background: rgba(16, 185, 129, 0.1);
   color: #10b981;
@@ -513,86 +457,6 @@ async function loadDashboard() {
   font-size: 12.5px;
   color: #64748b;
   margin: 2px 0 0 0;
-}
-
-/* =========================================================
-   PIPELINE VISUALIZER (Anim Master Slider style)
-   ========================================================= */
-.pipeline-panel {
-  padding: 24px 26px;
-  background: #ffffff;
-  border: 1px solid rgba(226, 232, 240, 0.85);
-  border-radius: 18px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02), 0 6px 20px -4px rgba(15, 23, 42, 0.04);
-}
-
-.pipeline-bars {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.pipeline-row {
-  display: grid;
-  grid-template-columns: minmax(180px, 240px) 1fr 50px;
-  align-items: center;
-  gap: 18px;
-  padding: 8px 12px;
-  border-radius: 10px;
-  transition: background 0.15s ease;
-}
-
-.pipeline-row:hover {
-  background: #f8fafc;
-}
-
-.pipeline-row-label {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.stage-name {
-  font-family: var(--font-sans, sans-serif);
-  font-size: 13.5px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.stage-count-pill {
-  font-family: var(--font-mono, monospace);
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: #f1f5f9;
-  color: #475569;
-}
-
-.pipeline-track {
-  background: #f1f5f9;
-  border-radius: 9999px;
-  height: 8px;
-  overflow: hidden;
-  position: relative;
-}
-
-.pipeline-fill {
-  background: linear-gradient(90deg, #0284c7 0%, #06b6d4 100%);
-  border-radius: inherit;
-  display: block;
-  height: 100%;
-  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 0 8px rgba(2, 132, 199, 0.4);
-}
-
-.pipeline-percent-label {
-  font-family: var(--font-mono, monospace);
-  font-size: 12px;
-  font-weight: 700;
-  color: #64748b;
-  text-align: right;
 }
 
 /* =========================================================
@@ -780,13 +644,6 @@ async function loadDashboard() {
 @media (max-width: 900px) {
   .executive-summary-grid {
     grid-template-columns: 1fr;
-  }
-  .pipeline-row {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-  .pipeline-percent-label {
-    text-align: left;
   }
 }
 
