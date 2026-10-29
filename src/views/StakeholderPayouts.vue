@@ -156,8 +156,8 @@
           <p v-if="error" class="span-2 flash warning">{{ error }}</p>
           <div class="span-2 action-row">
             <button class="button secondary" type="button" @click="closePayoutModal">Close</button>
-            <button v-if="isDraft" class="button secondary" type="button" @click="saveWithStatus('Draft')">Save Draft</button>
-            <button v-if="isDraft" class="button" type="button" @click="saveWithStatus('Submitted')">Submit for Approval</button>
+            <button v-if="isDraft" class="button secondary" type="button" :disabled="isSavingPayout" @click="saveWithStatus('Draft')">Save Draft</button>
+            <button v-if="isDraft" class="button" type="button" :disabled="isSavingPayout" @click="saveWithStatus('Submitted')">{{ isSavingPayout ? 'Saving...' : 'Submit for Approval' }}</button>
             <button v-if="selectedPayout && selectedPayout.status === 'Draft'" class="button secondary" type="button" @click="payoutAction('cancel')">Cancel</button>
           </div>
         </form>
@@ -259,6 +259,7 @@ const delegateRemarks = ref('')
 const delegatingLoading = ref(false)
 const error = ref('')
 const loadError = ref('')
+const isSavingPayout = ref(false)
 const form = reactive(defaultForm())
 
 const pendingApprovalCount = computed(() => payouts.value.filter(p => String(p.status || '').startsWith('Pending Approval')).length)
@@ -371,6 +372,7 @@ async function pendingApprovalsFromPayoutDetails(payoutRows) {
 
 function openPayoutModal(payout = null) {
   selectedPayout.value = payout
+  Object.keys(form).forEach(key => delete form[key])
   Object.assign(form, defaultForm(), normalizePayoutForm(payout))
   error.value = ''
   showPayoutModal.value = true
@@ -378,9 +380,10 @@ function openPayoutModal(payout = null) {
 
 function normalizePayoutForm(payout) {
   if (!payout) return {}
+  const defaults = defaultForm()
   const recipientType = payout.recipient_type || (payout.partner_id ? 'Channel Partner' : 'Stakeholder')
   return {
-    ...payout,
+    ...Object.fromEntries(Object.keys(defaults).map(key => [key, payout[key] ?? defaults[key]])),
     recipient_type: recipientType,
     stakeholder_id: recipientType === 'Stakeholder' ? payout.stakeholder_id : '',
     partner_id: recipientType === 'Channel Partner' ? payout.partner_id : '',
@@ -410,14 +413,17 @@ async function handleAttachment(event) {
 }
 
 async function saveWithStatus(status) {
+  if (isSavingPayout.value) return
   form.status = status
   await savePayout()
 }
 
 async function savePayout() {
+  if (isSavingPayout.value) return
+  isSavingPayout.value = true
   error.value = ''
   try {
-    const payload = { ...form }
+    const payload = Object.fromEntries(Object.keys(defaultForm()).map(key => [key, form[key]]))
     if (payload.recipient_type === 'Channel Partner') payload.stakeholder_id = ''
     else payload.partner_id = ''
     if (selectedPayout.value) await apiPut(`/api/treasury/stakeholder-payouts/${selectedPayout.value.id}`, payload)
@@ -426,6 +432,8 @@ async function savePayout() {
     await loadAll()
   } catch (err) {
     error.value = err.message
+  } finally {
+    isSavingPayout.value = false
   }
 }
 
