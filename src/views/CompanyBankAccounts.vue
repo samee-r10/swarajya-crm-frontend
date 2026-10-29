@@ -9,7 +9,8 @@
       <button class="button" type="button" @click="openForm()">New Bank Account</button>
     </header>
 
-    <p v-if="statusMessage" class="flash success">{{ statusMessage }}</p>
+    <p v-if="statusMessage" class="flash success" role="status">{{ statusMessage }}</p>
+    <p v-if="error && !showForm" class="flash warning" role="alert">{{ error }}</p>
 
     <section class="metric-grid">
       <div class="metric-card"><span>Available Balance</span><strong>{{ money(stats.available_balance) }}</strong></div>
@@ -50,6 +51,9 @@
               <button class="button secondary small" type="button" @click="openStatement(account)">Statement</button>
               <button class="button small" type="button" @click="checkBalance(account)">Check Balance</button>
               <button class="button secondary small" type="button" @click="openForm(account)">Edit</button>
+              <button class="button secondary small" :class="{ 'block-account-btn': account.status !== 'Blocked' }" type="button" :disabled="changingStatusId === account.id" @click="toggleAccountBlock(account)">
+                {{ changingStatusId === account.id ? 'Updating...' : account.status === 'Blocked' ? 'Unblock' : 'Block' }}
+              </button>
             </td>
           </tr>
           <tr v-if="bankAccounts.length === 0"><td colspan="8" class="empty-row">No company bank accounts configured.</td></tr>
@@ -89,6 +93,9 @@
         <div class="mobile-card-actions" @click.stop>
           <button class="button" type="button" @click="openStatement(account)">View Statement</button>
           <button class="button secondary" type="button" @click="checkBalance(account)">Check Balance</button>
+          <button class="button secondary" :class="{ 'block-account-btn': account.status !== 'Blocked' }" type="button" :disabled="changingStatusId === account.id" @click="toggleAccountBlock(account)">
+            {{ changingStatusId === account.id ? 'Updating...' : account.status === 'Blocked' ? 'Unblock' : 'Block' }}
+          </button>
         </div>
       </div>
       <div v-if="bankAccounts.length === 0" class="empty-state" style="text-align: center; padding: 24px;">No company bank accounts configured.</div>
@@ -203,7 +210,7 @@
           <label>Opening Balance<input v-model.number="form.opening_balance" type="number" step="0.01"></label>
           <label>Account Type<input v-model="form.account_type"></label>
           <label>Legal Entity<input v-model="form.legal_entity"></label>
-          <label>Status<select v-model="form.status"><option>Active</option><option>Inactive</option></select></label>
+          <label>Status<select v-model="form.status"><option>Active</option><option>Inactive</option><option>Blocked</option></select></label>
           <label class="span-2">Remarks<textarea v-model="form.remarks" rows="3"></textarea></label>
           <p v-if="error" class="span-2 flash warning">{{ error }}</p>
           <div class="span-2 action-row">
@@ -227,6 +234,7 @@ const stats = ref({})
 const showForm = ref(false)
 const error = ref('')
 const statusMessage = ref('')
+const changingStatusId = ref(null)
 const balanceResult = ref(null)
 const selectedStatementAccount = ref(null)
 const statementTransactions = ref([])
@@ -274,7 +282,7 @@ async function loadData() {
   const salaryOutflow = salaryLedgerTransactions.value.reduce((sum, entry) => sum + Number(entry.total_amount || entry.amount || 0), 0)
   stats.value = {
     ...(data?.stats || {}),
-    available_balance: bankAccounts.value.reduce((sum, account) => sum + Number(displayBalance(account) ?? 0), 0),
+    available_balance: bankAccounts.value.filter(account => account.status === 'Active').reduce((sum, account) => sum + Number(displayBalance(account) ?? 0), 0),
     total_inflow: data?.stats?.total_inflow || 0,
     total_outflow: Number(data?.stats?.total_outflow || 0) + salaryOutflow,
     pending_payables: data?.stats?.pending_payables || 0
@@ -288,6 +296,27 @@ function openForm(account = null) {
   if (account?.beneficiary_name && !form.account_name) form.account_name = account.beneficiary_name
   showForm.value = true
   error.value = ''
+}
+
+async function toggleAccountBlock(account) {
+  if (changingStatusId.value !== null) return
+  changingStatusId.value = account.id
+  error.value = ''
+  statusMessage.value = ''
+  const status = account.status === 'Blocked' ? 'Active' : 'Blocked'
+  try {
+    const data = await apiPut(`/api/treasury/bank-accounts/${account.id}/status`, { status })
+    Object.assign(account, data.bank_account)
+    try { saveBankAccountLocally(account) } catch { /* Server status remains authoritative. */ }
+    await loadData()
+    statusMessage.value = status === 'Blocked'
+      ? 'Bank account blocked. Transactions and settlements are disabled for this account.'
+      : 'Bank account unblocked and available for transactions.'
+  } catch (err) {
+    error.value = err.message || 'Unable to update bank account status.'
+  } finally {
+    changingStatusId.value = null
+  }
 }
 
 async function saveAccount() {
@@ -379,7 +408,7 @@ function saveBankAccountLocally(account) {
   const existing = loadLocalBankAccounts()
   const payload = normalizeBankAccount({ ...account })
   if (!payload.id) payload.id = `local-bank-${Date.now()}`
-  const index = existing.findIndex(item => String(item.id) === String(payload.id))
+  const index = existing.findIndex(item => String(item.id) === String(payload.id) || (payload.account_number && item.account_number === payload.account_number))
   if (index >= 0) existing.splice(index, 1, payload)
   else existing.unshift(payload)
   window.localStorage.setItem(LOCAL_TREASURY_BANKS_KEY, JSON.stringify(existing))
@@ -518,6 +547,7 @@ function formatTimestamp(value) {
 }
 
 function statusClass(status) {
+  if (status === 'Blocked') return 'status-pill blocked'
   return (status || 'Active') === 'Active' ? 'status-pill active' : 'status-pill inactive'
 }
 </script>
@@ -733,6 +763,8 @@ function statusClass(status) {
 .status-pill { border-radius: 999px; display: inline-flex; padding: 4px 10px; font-size: 11px; font-weight: 800; }
 .status-pill.active { background: #dcfce7; color: #166534; }
 .status-pill.inactive { background: #f1f5f9; color: #475569; }
+.status-pill.blocked { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.block-account-btn { color: #b91c1c; border-color: #fecaca; }
 @media (max-width: 760px) {
   .balance-check-card { align-items: stretch; flex-direction: column; }
   .statement-modal {

@@ -51,10 +51,14 @@
       <div class="status-path-tracker no-print">
         <div class="path-scroller">
           <div class="path-steps">
-            <div 
+            <button
               v-for="step in pathSteps" 
               :key="step.status" 
+              type="button"
               class="path-step"
+              :disabled="isUpdatingStatus || isStatusBlocked(step.status)"
+              :aria-pressed="selectedStatus === step.status"
+              :title="isStatusBlocked(step.status) ? 'Approved invoices cannot return to Draft or Sent to Client.' : step.label"
               :class="{
                 'active': invoice.status === step.status,
                 'complete': isStepComplete(step.status),
@@ -62,17 +66,17 @@
               }"
               @click="selectStatus(step.status)"
             >
-              <div class="step-label">
+              <span class="step-label">
                 <span class="step-icon" v-if="isStepComplete(step.status) && invoice.status !== step.status">✓</span>
                 {{ step.label }}
-              </div>
-            </div>
+              </span>
+            </button>
           </div>
         </div>
         <div class="path-actions">
           <button 
             class="button btn-animate" 
-            :disabled="selectedStatus === invoice.status || isUpdatingStatus"
+            :disabled="!canUpdateStatus || isUpdatingStatus"
             @click="markStatusComplete"
           >
             <span v-if="isUpdatingStatus" class="btn-spinner"></span>
@@ -80,6 +84,9 @@
           </button>
         </div>
       </div>
+
+      <p v-if="statusError" class="status-error no-print" role="alert">{{ statusError }}</p>
+      <p v-if="statusMessage" class="status-message no-print" role="status">{{ statusMessage }}</p>
 
       <!-- PARTIAL PAYMENT VALUE INPUT (Expands when Partially Paid is selected) -->
       <transition name="fade-slide">
@@ -320,7 +327,7 @@
       <div v-if="showReceiptModal" class="preview-modal-overlay no-print" @click.self="showReceiptModal = false">
         <div class="preview-modal-content receipt-modal-content">
           <div class="preview-modal-header">
-            <h2>Payment Receipt</h2>
+            <div class="receipt-modal-title"><h2>Payment Receipt</h2><span>A4 · 1 page</span></div>
             <div class="modal-actions">
               <button class="button btn-animate" @click="printReceipt">
                 <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 6px;"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z" fill="currentColor"/></svg>
@@ -329,57 +336,19 @@
               <button class="button secondary btn-animate" @click="showReceiptModal = false">Close</button>
             </div>
           </div>
-          <div class="preview-modal-body receipt-preview-body">
-            <div class="receipt-document shadow-premium">
-              <div class="receipt-header">
-                <div class="company-brand">
-                  <img src="/logo.png" alt="Company Logo" class="invoice-logo">
-                  <div class="company-info" v-if="invoice.company_info">
-                    <h2>{{ invoice.company_info.company_name || 'Your Company Name' }}</h2>
-                    <p v-if="invoice.company_info.company_address" style="white-space: pre-wrap;">{{ invoice.company_info.company_address }}</p>
-                    <p v-if="invoice.company_info.company_phone">Phone: {{ invoice.company_info.company_phone }}</p>
-                    <p v-if="invoice.company_info.company_email">Email: {{ invoice.company_info.company_email }}</p>
-                    <p v-if="invoice.company_info.tax_id">Tax ID: {{ invoice.company_info.tax_id }}</p>
-                  </div>
-                </div>
-                <div class="document-type">
-                  <h1>PAYMENT RECEIPT</h1>
-                  <div class="meta-item"><span>Receipt #</span><strong>{{ receiptNumber }}</strong></div>
-                  <div class="meta-item"><span>Date</span><strong>{{ receiptDate }}</strong></div>
-                  <div class="meta-item"><span>Invoice #</span><strong>{{ invoice.invoice_number }}</strong></div>
-                </div>
-              </div>
-
-              <div class="receipt-ack">
-                <p>Received from</p>
-                <h3>{{ invoice.customer_name }}</h3>
-                <span v-if="invoice.billing_address">{{ invoice.billing_address }}</span>
-              </div>
-
-              <div class="receipt-amount-panel">
-                <span>Amount Received</span>
-                <strong>{{ invoice.currency }} {{ amountPaid.toFixed(2) }}</strong>
-              </div>
-
-              <div class="receipt-grid">
-                <div><span>Invoice Total</span><strong>{{ invoice.currency }} {{ Number(invoice.total_amount || 0).toFixed(2) }}</strong></div>
-                <div><span>Payment Status</span><strong>{{ invoice.status }}</strong></div>
-                <div><span>Payment Mode</span><strong>{{ receiptPaymentMode }}</strong></div>
-                <div><span>Balance Due</span><strong>{{ invoice.currency }} {{ balanceDue.toFixed(2) }}</strong></div>
-                <div v-if="invoice.project_name"><span>Project</span><strong>{{ invoice.project_name }}</strong></div>
-              </div>
-
-              <div v-if="invoice.payment_details" class="receipt-bank-details">
-                <p class="section-label">Bank Details</p>
-                <p><strong>Bank:</strong> {{ invoice.payment_details.bank_name }}</p>
-                <p><strong>Account Number:</strong> {{ invoice.payment_details.account_number }}</p>
-                <p><strong>IFSC:</strong> {{ invoice.payment_details.ifsc_code }}</p>
-                <p><strong>Payment Reference:</strong> {{ invoice.payment_details.payment_reference }}</p>
-              </div>
-
-              <div class="receipt-note">
-                This acknowledges receipt of payment against invoice {{ invoice.invoice_number }}.
-              </div>
+          <p v-if="receiptPrintError" class="receipt-print-error" role="alert">{{ receiptPrintError }}</p>
+          <div ref="receiptViewport" class="preview-modal-body receipt-preview-body">
+            <div class="receipt-preview-frame" :style="receiptPreviewStyle">
+              <PaymentReceipt
+                ref="receiptPreview"
+                :invoice="invoice"
+                :receipt-number="receiptNumber"
+                :receipt-date="receiptDate"
+                :amount-paid="amountPaid"
+                :balance-due="balanceDue"
+                :payment-mode="receiptPaymentMode"
+                :amount-in-words="receiptAmountInWords"
+              />
             </div>
           </div>
         </div>
@@ -396,68 +365,19 @@
         />
       </div>
 
-      <div class="receipt-document print-receipt-only" style="display: none;">
-        <div class="receipt-header">
-          <div class="company-brand">
-            <img src="/logo.png" alt="Company Logo" class="invoice-logo">
-            <div class="company-info" v-if="invoice.company_info">
-              <h2>{{ invoice.company_info.company_name || 'Your Company Name' }}</h2>
-              <p v-if="invoice.company_info.company_address" style="white-space: pre-wrap;">{{ invoice.company_info.company_address }}</p>
-              <p v-if="invoice.company_info.company_phone">Phone: {{ invoice.company_info.company_phone }}</p>
-              <p v-if="invoice.company_info.company_email">Email: {{ invoice.company_info.company_email }}</p>
-              <p v-if="invoice.company_info.tax_id">Tax ID: {{ invoice.company_info.tax_id }}</p>
-            </div>
-          </div>
-          <div class="document-type">
-            <h1>PAYMENT RECEIPT</h1>
-            <div class="meta-item"><span>Receipt #</span><strong>{{ receiptNumber }}</strong></div>
-            <div class="meta-item"><span>Date</span><strong>{{ receiptDate }}</strong></div>
-            <div class="meta-item"><span>Invoice #</span><strong>{{ invoice.invoice_number }}</strong></div>
-          </div>
-        </div>
-
-        <div class="receipt-ack">
-          <p>Received from</p>
-          <h3>{{ invoice.customer_name }}</h3>
-          <span v-if="invoice.billing_address">{{ invoice.billing_address }}</span>
-        </div>
-
-        <div class="receipt-amount-panel">
-          <span>Amount Received</span>
-          <strong>{{ invoice.currency }} {{ amountPaid.toFixed(2) }}</strong>
-        </div>
-
-        <div class="receipt-grid">
-          <div><span>Invoice Total</span><strong>{{ invoice.currency }} {{ Number(invoice.total_amount || 0).toFixed(2) }}</strong></div>
-          <div><span>Payment Status</span><strong>{{ invoice.status }}</strong></div>
-          <div><span>Payment Mode</span><strong>{{ receiptPaymentMode }}</strong></div>
-          <div><span>Balance Due</span><strong>{{ invoice.currency }} {{ balanceDue.toFixed(2) }}</strong></div>
-          <div v-if="invoice.project_name"><span>Project</span><strong>{{ invoice.project_name }}</strong></div>
-        </div>
-
-        <div v-if="invoice.payment_details" class="receipt-bank-details">
-          <p class="section-label">Bank Details</p>
-          <p><strong>Bank:</strong> {{ invoice.payment_details.bank_name }}</p>
-          <p><strong>Account Number:</strong> {{ invoice.payment_details.account_number }}</p>
-          <p><strong>IFSC:</strong> {{ invoice.payment_details.ifsc_code }}</p>
-          <p><strong>Payment Reference:</strong> {{ invoice.payment_details.payment_reference }}</p>
-        </div>
-
-        <div class="system-generated-note">
-          This is system generated payment receipt no signature required.
-        </div>
-      </div>
 
     </div>
   </div>
 </template>
 
 <script setup>
-import { nextTick, onMounted, ref, computed, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet, apiPut } from '../api/client'
 import SystemInfo from '../components/SystemInfo.vue'
 import InvoiceDocument from '../components/InvoiceDocument.vue'
+import PaymentReceipt from '../components/PaymentReceipt.vue'
+import { printReceiptDocument } from '../utils/printReceipt'
 
 const router = useRouter()
 const props = defineProps({ id: String })
@@ -466,11 +386,46 @@ const error = ref('')
 const showPreviewModal = ref(false)
 const showReceiptModal = ref(false)
 const showReceiptPrompt = ref(false)
+const receiptPreview = ref(null)
+const receiptViewport = ref(null)
+const receiptPrintError = ref('')
+const receiptPreviewStyle = ref({})
+let receiptResizeObserver
+
+watch(showReceiptModal, async isOpen => {
+  receiptResizeObserver?.disconnect()
+  receiptPrintError.value = ''
+  if (!isOpen) return
+  await nextTick()
+  const viewport = receiptViewport.value
+  const sheet = receiptPreview.value?.$el
+  if (!viewport || !sheet) return
+  const fitReceiptPreview = () => {
+    // Match the preview to both available dimensions, without changing the paper layout.
+    const { paddingLeft, paddingRight, paddingTop, paddingBottom } = getComputedStyle(viewport)
+    const width = viewport.clientWidth - parseFloat(paddingLeft) - parseFloat(paddingRight)
+    const height = viewport.clientHeight - parseFloat(paddingTop) - parseFloat(paddingBottom)
+    const scale = Math.min(1, width / sheet.offsetWidth, height / sheet.offsetHeight)
+    receiptPreviewStyle.value = {
+      '--receipt-preview-scale': scale,
+      width: `${sheet.offsetWidth * scale}px`,
+      height: `${sheet.offsetHeight * scale}px`
+    }
+  }
+  receiptResizeObserver = new ResizeObserver(fitReceiptPreview)
+  receiptResizeObserver.observe(viewport)
+  receiptResizeObserver.observe(sheet)
+  fitReceiptPreview()
+})
+
+onBeforeUnmount(() => receiptResizeObserver?.disconnect())
 
 // Chevron Path & Payment tracking state
 const selectedStatus = ref(null)
 const tempAmountPaid = ref(0)
 const isUpdatingStatus = ref(false)
+const statusError = ref('')
+const statusMessage = ref('')
 
 const pathSteps = [
   { status: 'Draft', label: 'Draft' },
@@ -505,9 +460,16 @@ const balanceDue = computed(() => {
 const canGenerateReceipt = computed(() => amountPaid.value > 0 && ['Partially Paid', 'Paid'].includes(invoice.value?.status))
 const isTaxInvoice = computed(() => ['Approved', 'Partially Paid', 'Paid'].includes(invoice.value?.status))
 const isInvoiceLocked = computed(() => isTaxInvoice.value)
+const canUpdateStatus = computed(() => {
+  if (!invoice.value || !selectedStatus.value || isStatusBlocked(selectedStatus.value)) return false
+  return selectedStatus.value !== invoice.value.status || (
+    selectedStatus.value === 'Partially Paid' && Number(tempAmountPaid.value) !== amountPaid.value
+  )
+})
 const invoiceDocumentTitle = computed(() => isTaxInvoice.value ? 'TAX INVOICE' : 'PROFORMA INVOICE')
 const receiptNumber = computed(() => invoice.value ? `${invoice.value.invoice_number}-RCPT` : '')
-const receiptDate = computed(() => new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }))
+const receiptDate = computed(() => new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }))
+const receiptAmountInWords = computed(() => amountToWords(amountPaid.value, invoice.value?.currency || ''))
 const receiptPaymentMode = computed(() => invoice.value?.payment_details ? 'Bank Transfer' : 'Not specified')
 const invoiceItems = computed(() => (invoice.value?.items || []).map(normalizeInvoiceItem))
 const gstSummary = computed(() => {
@@ -555,6 +517,7 @@ function setHalfPaid() {
 function setFullPaid() {
   if (invoice.value) {
     tempAmountPaid.value = invoice.value.total_amount
+    selectStatus('Paid')
   }
 }
 
@@ -572,42 +535,45 @@ function isStepComplete(status) {
 }
 
 function selectStatus(status) {
+  if (isUpdatingStatus.value || isStatusBlocked(status)) return
+  statusError.value = ''
+  statusMessage.value = ''
   selectedStatus.value = status
   if (status === 'Partially Paid' && invoice.value) {
     tempAmountPaid.value = invoice.value.amount_paid || Number((invoice.value.total_amount / 2).toFixed(2))
   }
 }
 
+function isStatusBlocked(status) {
+  return isInvoiceLocked.value && ['Draft', 'Sent'].includes(status)
+}
+
 async function markStatusComplete() {
-  if (!invoice.value) return
+  if (!invoice.value || !canUpdateStatus.value || isUpdatingStatus.value) return
+  statusError.value = ''
+  statusMessage.value = ''
+  if (selectedStatus.value === 'Partially Paid' && (
+    !Number.isFinite(Number(tempAmountPaid.value)) ||
+    Number(tempAmountPaid.value) <= 0 || Number(tempAmountPaid.value) >= Number(invoice.value.total_amount)
+  )) {
+    statusError.value = 'Enter an amount greater than zero and less than the invoice total, or select Fully Paid.'
+    return
+  }
   isUpdatingStatus.value = true
   try {
-    const updatedInvoice = { ...invoice.value }
-    updatedInvoice.status = selectedStatus.value
-    
-    // Auto-adjust amount_paid based on target status
-    if (selectedStatus.value === 'Paid') {
-      updatedInvoice.amount_paid = invoice.value.total_amount
-    } else if (selectedStatus.value === 'Partially Paid') {
-      updatedInvoice.amount_paid = tempAmountPaid.value
-    } else if (['Draft', 'Sent', 'Approved', 'Cancelled'].includes(selectedStatus.value)) {
-      updatedInvoice.amount_paid = 0
+    const payload = { status: selectedStatus.value }
+    if (selectedStatus.value === 'Partially Paid') {
+      payload.amount_paid = Number(tempAmountPaid.value)
     }
-    
-    // Call PUT endpoint
-    await apiPut(`/api/finance/invoices/${props.id}`, updatedInvoice)
-    
-    // Refresh the loaded invoice
-    const data = await apiGet(`/api/finance/invoices/${props.id}`)
-    invoice.value = normalizeInvoice(data.invoice)
+    const data = await apiPut(`/api/finance/invoices/${props.id}/status`, payload)
+    invoice.value = normalizeInvoice({ ...invoice.value, ...data.invoice })
     selectedStatus.value = invoice.value.status
     tempAmountPaid.value = invoice.value.amount_paid || 0
-    if (canGenerateReceipt.value) {
-      showReceiptPrompt.value = true
-    }
+    statusMessage.value = `Invoice stage updated to ${pathSteps.find(step => step.status === invoice.value.status)?.label || invoice.value.status}.`
+    showReceiptPrompt.value = canGenerateReceipt.value
   } catch (err) {
     console.error("Failed to update status:", err)
-    error.value = "Failed to update status: " + err.message
+    statusError.value = "Failed to update status: " + err.message
   } finally {
     isUpdatingStatus.value = false
   }
@@ -719,136 +685,22 @@ function numberToWords(num) {
   return parts.join(' ')
 }
 
-function clearReceiptPrintMode() {
-  document.documentElement.classList.remove('receipt-print-mode')
-  window.removeEventListener('afterprint', clearReceiptPrintMode)
-}
-
 function printInvoice() {
   const originalTitle = document.title
-  clearReceiptPrintMode()
   document.title = ' ' // Remove title from print header
   window.print()
   document.title = originalTitle
 }
 
 async function printReceipt() {
-  await nextTick()
-  printStandaloneReceipt()
-}
-
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
-}
-
-function receiptField(label, value) {
-  return `<div class="field"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`
-}
-
-function printStandaloneReceipt() {
-  if (!invoice.value) return
-  const inv = invoice.value
-  const bank = inv.payment_details || null
-  const bankHtml = bank ? `
-    <section class="bank">
-      <h2>Bank Details</h2>
-      <p><strong>Bank:</strong> ${escapeHtml(bank.bank_name)}</p>
-      <p><strong>Account Number:</strong> ${escapeHtml(bank.account_number)}</p>
-      <p><strong>IFSC:</strong> ${escapeHtml(bank.ifsc_code)}</p>
-      <p><strong>Payment Reference:</strong> ${escapeHtml(bank.payment_reference)}</p>
-    </section>
-  ` : ''
-  const company = inv.company_info || {}
-  const printWindow = window.open('', '_blank', 'width=900,height=1100')
-  if (!printWindow) {
-    swal('Please allow pop-ups to print the receipt.')
-    return
+  receiptPrintError.value = ''
+  try {
+    await printReceiptDocument(receiptPreview.value?.$el, receiptNumber.value)
+  } catch (err) {
+    receiptPrintError.value = err.message || 'Could not print the receipt. Please try again.'
   }
-  printWindow.document.write(`
-    <!doctype html>
-    <html>
-      <head>
-        <title>Receipt ${escapeHtml(receiptNumber.value)}</title>
-        <style>
-          * { box-sizing: border-box; }
-          body { margin: 0; padding: 40px; font-family: Inter, Arial, sans-serif; color: #1f2937; background: #ffffff; }
-          .receipt { max-width: 780px; margin: 0 auto; min-height: calc(100vh - 80px); display: flex; flex-direction: column; }
-          .header { display: flex; justify-content: space-between; gap: 32px; align-items: flex-start; margin-bottom: 48px; }
-          .logo { max-width: 180px; max-height: 60px; object-fit: contain; margin-bottom: 12px; }
-          h1 { margin: 0 0 16px; color: #0f172a; font-size: 32px; letter-spacing: 0; }
-          h2 { margin: 0 0 12px; font-size: 12px; text-transform: uppercase; color: #64748b; letter-spacing: 0; }
-          .company h2 { color: #0f172a; font-size: 20px; text-transform: none; }
-          .company p, .meta p, .bank p { margin: 3px 0; color: #475569; font-size: 13px; }
-          .meta { text-align: right; min-width: 250px; }
-          .meta-row { display: flex; justify-content: flex-end; gap: 12px; margin: 5px 0; font-size: 13px; }
-          .meta-row span { color: #64748b; }
-          .customer { padding: 22px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; margin-bottom: 28px; }
-          .customer p { margin: 0 0 8px; color: #64748b; font-size: 12px; font-weight: 800; text-transform: uppercase; }
-          .customer h3 { margin: 0 0 8px; color: #0f172a; font-size: 24px; }
-          .customer span { white-space: pre-wrap; color: #475569; font-size: 13px; }
-          .amount { display: flex; justify-content: space-between; align-items: center; padding: 28px; border-radius: 8px; background: #ecfdf5; border: 1px solid #bbf7d0; margin-bottom: 28px; }
-          .amount span { color: #166534; font-weight: 800; text-transform: uppercase; font-size: 12px; }
-          .amount strong { color: #166534; font-size: 30px; }
-          .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 28px; }
-          .field { padding: 16px; border: 1px solid #e2e8f0; border-radius: 8px; }
-          .field span, .field strong { display: block; }
-          .field span { color: #64748b; font-size: 12px; margin-bottom: 6px; }
-          .field strong { color: #0f172a; font-size: 14px; }
-          .bank { border-top: 1px dashed #cbd5e1; padding-top: 20px; margin-top: 8px; }
-          .note { margin-top: auto; padding-top: 44px; border-top: 1px dashed #cbd5e1; text-align: center; color: #64748b; font-size: 12px; font-style: italic; }
-          @media print { body { padding: 0; } .receipt { max-width: 100%; min-height: 100vh; } }
-        </style>
-      </head>
-      <body>
-        <main class="receipt">
-          <section class="header">
-            <div class="company">
-              <img class="logo" src="/logo.png" alt="Company Logo">
-              <h2>${escapeHtml(company.company_name || 'Your Company Name')}</h2>
-              ${company.company_address ? `<p style="white-space: pre-wrap;">${escapeHtml(company.company_address)}</p>` : ''}
-              ${company.company_phone ? `<p>Phone: ${escapeHtml(company.company_phone)}</p>` : ''}
-              ${company.company_email ? `<p>Email: ${escapeHtml(company.company_email)}</p>` : ''}
-              ${company.tax_id ? `<p>Tax ID: ${escapeHtml(company.tax_id)}</p>` : ''}
-            </div>
-            <div class="meta">
-              <h1>PAYMENT RECEIPT</h1>
-              <div class="meta-row"><span>Receipt #</span><strong>${escapeHtml(receiptNumber.value)}</strong></div>
-              <div class="meta-row"><span>Date</span><strong>${escapeHtml(receiptDate.value)}</strong></div>
-              <div class="meta-row"><span>Invoice #</span><strong>${escapeHtml(inv.invoice_number)}</strong></div>
-            </div>
-          </section>
-          <section class="customer">
-            <p>Received from</p>
-            <h3>${escapeHtml(inv.customer_name)}</h3>
-            ${inv.billing_address ? `<span>${escapeHtml(inv.billing_address)}</span>` : ''}
-          </section>
-          <section class="amount"><span>Payment Received</span><strong>${escapeHtml(inv.currency)} ${amountPaid.value.toFixed(2)}</strong></section>
-          <section class="grid">
-            ${receiptField('Linked Invoice', inv.invoice_number)}
-            ${receiptField('Invoice Total', `${inv.currency} ${Number(inv.total_amount || 0).toFixed(2)}`)}
-            ${receiptField('Payment Mode', receiptPaymentMode.value)}
-            ${receiptField('Payment Status', inv.status)}
-            ${receiptField('Amount Allocated', `${inv.currency} ${amountPaid.value.toFixed(2)}`)}
-            ${receiptField('Balance Outstanding', `${inv.currency} ${balanceDue.value.toFixed(2)}`)}
-          </section>
-          ${bankHtml}
-          <p class="note">This is a system generated payment receipt. No signature required.</p>
-        </main>
-      </body>
-    </html>
-  `)
-  printWindow.document.close()
-  printWindow.focus()
-  setTimeout(() => {
-    printWindow.print()
-    printWindow.close()
-  }, 250)
 }
+
 </script>
 
 <style scoped>
@@ -1258,15 +1110,6 @@ function printStandaloneReceipt() {
   margin-inline: auto;
 }
 
-.invoice-logo {
-  max-height: 55px;
-  max-width: 200px;
-  object-fit: contain;
-  margin-top: -15px;
-  margin-bottom: 12px;
-  display: block;
-}
-
 /* CRM line item table column widths and alignment. */
 .items-view-table th:nth-child(1) { width: 34%; }
 .items-view-table th:nth-child(2) { width: 12%; }
@@ -1324,8 +1167,7 @@ function printStandaloneReceipt() {
 }
 
 /* ON-SCREEN PRINT TEMPLATE (Purely hidden) */
-.print-document-only,
-.print-receipt-only {
+.print-document-only {
   display: none;
 }
 
@@ -1357,126 +1199,21 @@ function printStandaloneReceipt() {
   gap: 10px;
 }
 
-.receipt-modal-content {
-  max-width: 880px;
+.receipt-modal-content { max-width: 920px; }
+.receipt-modal-title { display: flex; align-items: center; gap: 12px; }
+.receipt-modal-title span { font-size: 12px; color: var(--muted); }
+.receipt-modal-content .preview-modal-header { flex-shrink: 0; flex-wrap: wrap; gap: 12px; }
+.receipt-preview-body { min-height: 0; padding: 20px; overflow: hidden; }
+.receipt-preview-frame {
+  flex: 0 0 auto;
+  width: calc(210mm * var(--receipt-preview-scale, 1));
+  height: calc(296mm * var(--receipt-preview-scale, 1));
 }
-
-.receipt-preview-body {
-  align-items: flex-start;
+.receipt-preview-frame :deep(.receipt-sheet) {
+  transform: scale(var(--receipt-preview-scale, 1));
+  transform-origin: top left;
 }
-
-.receipt-document {
-  width: 100%;
-  max-width: 760px;
-  min-height: 820px;
-  display: flex;
-  flex-direction: column;
-  background: #ffffff;
-  padding: 56px;
-  border-radius: 6px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-}
-
-.receipt-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 32px;
-  align-items: flex-start;
-  margin-bottom: 56px;
-}
-
-.receipt-ack {
-  padding: 24px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #f8fafc;
-}
-
-.receipt-ack p {
-  margin: 0 0 8px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.receipt-ack h3 {
-  margin: 0 0 8px;
-  color: var(--primary);
-  font-size: 24px;
-}
-
-.receipt-ack span {
-  display: block;
-  color: var(--muted);
-  white-space: pre-wrap;
-}
-
-.receipt-amount-panel {
-  margin: 32px 0;
-  padding: 28px;
-  border-radius: 8px;
-  background: #ecfdf5;
-  border: 1px solid #bbf7d0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.receipt-amount-panel span {
-  color: #166534;
-  font-weight: 800;
-  text-transform: uppercase;
-  font-size: 12px;
-}
-
-.receipt-amount-panel strong {
-  color: #166534;
-  font-size: 30px;
-}
-
-.receipt-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.receipt-grid div {
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-
-.receipt-grid span,
-.receipt-grid strong {
-  display: block;
-}
-
-.receipt-grid span {
-  color: var(--muted);
-  font-size: 12px;
-  margin-bottom: 6px;
-}
-
-.receipt-note {
-  margin-top: auto;
-  padding-top: 36px;
-  color: var(--muted);
-  font-size: 13px;
-  text-align: center;
-}
-
-.receipt-bank-details {
-  margin-top: 24px;
-  padding-top: 18px;
-  border-top: 1px dashed var(--line);
-}
-
-.receipt-bank-details p {
-  margin: 4px 0;
-  color: var(--muted);
-  font-size: 13px;
-}
+.receipt-print-error { margin: 0; padding: 10px 28px; color: #b91c1c; background: #fef2f2; }
 
 /* Zero page margins suppress the browser's automatic print header/footer.
    The invoice sheet supplies its own 12mm content inset. */
@@ -1533,37 +1270,7 @@ function printStandaloneReceipt() {
     width: 100%;
   }
 
-  .print-receipt-only {
-    display: none !important;
-  }
-
-  :global(html.receipt-print-mode) .print-document-only {
-    display: none !important;
-  }
-
-  :global(html.receipt-print-mode) .print-receipt-only {
-    display: flex !important;
-    flex-direction: column;
-    background: #fff !important;
-    box-shadow: none !important;
-    border: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-height: auto !important;
-  }
 }
-
-/* Shared company header styles for the payment receipt. */
-.company-info h2 { font-size: 20px; margin-bottom: 8px; }
-.company-info p { font-size: 14px; color: var(--muted); margin: 2px 0; }
-.document-type { text-align: right; }
-.document-type h1 { font-size: 32px; color: var(--primary); margin-bottom: 16px; letter-spacing: -1px; }
-.meta-item { display: flex; justify-content: flex-end; gap: 12px; margin-bottom: 4px; font-size: 14px; }
-.meta-item span { color: var(--muted); width: 80px; }
-.section-label { font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 800; margin-bottom: 8px; }
-.system-generated-note { margin-top: 50px; text-align: center; font-size: 12px; color: var(--muted); font-style: italic; border-top: 1px dashed var(--line); padding-top: 16px; width: 100%; }
 
 /* SALESFORCE-STYLE CHEVRON PATH TRACKER */
 .status-path-tracker {
@@ -1592,6 +1299,8 @@ function printStandaloneReceipt() {
 }
 
 .path-step {
+  border: 0;
+  font-family: inherit;
   flex: 1;
   text-align: center;
   padding: 10px 12px 10px 24px;
@@ -1656,6 +1365,24 @@ function printStandaloneReceipt() {
 .path-step.selected:hover {
   background: #ea580c;
 }
+
+.path-step:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.path-step:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 3px var(--primary, #2563eb);
+}
+
+.status-error,
+.status-message {
+  margin: -12px 0 24px;
+}
+
+.status-error { color: #b91c1c; }
+.status-message { color: #15803d; }
 
 .step-label {
   display: flex;

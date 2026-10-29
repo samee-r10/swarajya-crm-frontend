@@ -291,7 +291,7 @@ async function loadTreasuryBankAccounts() {
   } catch {
     treasuryAccounts = []
   }
-  return mergeBankAccounts(treasuryAccounts, loadLocalBankAccounts())
+  return mergeBankAccounts(treasuryAccounts, [])
 }
 
 function loadLocalBankAccounts() {

@@ -355,7 +355,7 @@ async function loadTreasuryBankAccounts() {
   } catch {
     treasuryAccounts = []
   }
-  return mergeBankAccounts(treasuryAccounts, loadLocalBankAccounts())
+  return mergeBankAccounts(treasuryAccounts, [])
 }
 
 function loadLocalBankAccounts() {
@@ -397,7 +397,8 @@ async function loadPayables() {
   }
 }
 
-function openPayment(payable) {
+async function openPayment(payable) {
+  bankAccounts.value = []
   selectedPayable.value = payable
   const recipientType = inferRecipientType(payable)
   Object.assign(payment, defaultPayment(), {
@@ -406,6 +407,7 @@ function openPayment(payable) {
   })
   paymentRecipientOwnerKey.value = inferRecipientOwnerKey(payable, recipientType)
   error.value = ''
+  bankAccounts.value = await loadTreasuryBankAccounts()
 }
 
 function inferRecipientType(payable) {
@@ -428,7 +430,7 @@ function paymentReference(payable) {
 
 async function markPaid() {
   if (submittingPayment.value) return
-  if (!payment.bank_account_id) {
+  if (!bankAccounts.value.some(account => String(account.id) === String(payment.bank_account_id))) {
     error.value = 'Select the bank account used for this payable payment.'
     return
   }

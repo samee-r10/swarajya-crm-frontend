@@ -1,8 +1,15 @@
 <template>
-  <section v-if="project" class="page-header">
-    <div><p class="eyebrow">Project</p><h1>{{ project.project_name }}</h1><p class="muted">{{ project.company_name }} · {{ project.status }}</p></div>
-    <button class="button btn-animate" type="button" @click="showEditModal = true">Edit</button>
-  </section>
+  <CrmRecordHeader
+    v-if="project"
+    record-type="Project"
+    variant="project"
+    :title="project.project_name"
+    :fields="headerFields"
+  >
+    <template #actions>
+      <button class="button" type="button" @click="showEditModal = true">Edit</button>
+    </template>
+  </CrmRecordHeader>
 
   <!-- Edit Modal Overlay -->
   <transition name="fade">
@@ -39,11 +46,24 @@ import { computed, onMounted, ref } from 'vue'
 import { apiGet } from '../api/client'
 import SystemInfo from '../components/SystemInfo.vue'
 import ProjectForm from './ProjectForm.vue'
+import CrmRecordHeader from '../components/CrmRecordHeader.vue'
 
 const props = defineProps({ id: { type: String, required: true } })
 const project = ref(null)
 const projFields = ref([])
 const showEditModal = ref(false)
+
+const headerFields = computed(() => {
+  const record = project.value || {}
+  return [
+    { label: 'Customer', value: record.company_name, to: record.customer_id && record.company_name ? `/customers/${record.customer_id}` : undefined },
+    { label: 'Opportunity', value: record.opportunity_title, to: record.opportunity_id && record.opportunity_title ? `/opportunities/${record.opportunity_id}` : undefined },
+    { label: 'Status', value: record.status },
+    { label: 'Project owner', value: record.owner },
+    { label: 'Delivery timeline', value: record.delivery_timeline, type: 'date' },
+    { label: 'Last updated', value: record.updated_at, type: 'date' }
+  ]
+})
 
 const fields = computed(() => {
   if (!project.value) return []

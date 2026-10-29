@@ -140,18 +140,6 @@
             </select>
           </div>
 
-          <!-- Invoice Selector (If Sales Revenue Receipt) -->
-          <div class="form-field" v-if="isSalesRevenueReceipt">
-            <label>Linked Receivable Invoice <span class="req">*</span></label>
-            <select v-model="form.invoice_id" :disabled="!form.customer_id || invoiceLoading" required class="form-control">
-              <option value="">{{ invoiceSelectPlaceholder }}</option>
-              <option v-for="inv in receivableInvoices" :key="inv.id" :value="inv.id">
-                {{ invoiceLabel(inv) }}
-              </option>
-            </select>
-            <span v-if="invoiceHint" class="field-hint">{{ invoiceHint }}</span>
-          </div>
-
           <!-- Associated Project (If Income) -->
           <div class="form-field" v-if="form.type === 'Income'">
             <label>Associated Project</label>
@@ -159,6 +147,18 @@
               <option value="">Select Project</option>
               <option v-for="p in filteredProjects" :key="p.id" :value="p.id">{{ p.project_name }}</option>
             </select>
+          </div>
+
+          <!-- Invoice Selector (If Sales Revenue Receipt) -->
+          <div class="form-field span-2" v-if="isSalesRevenueReceipt">
+            <label>Paid Unposted Invoice <span class="req">*</span></label>
+            <select v-model="form.invoice_id" @change="applySelectedInvoice" :disabled="!form.customer_id || !form.project_id || invoiceLoading" required class="form-control">
+              <option value="">{{ invoiceSelectPlaceholder }}</option>
+              <option v-for="inv in receivableInvoices" :key="inv.id" :value="inv.id">
+                {{ invoiceLabel(inv) }}
+              </option>
+            </select>
+            <span v-if="invoiceHint" class="field-hint">{{ invoiceHint }}</span>
           </div>
 
           <!-- Vendor (If Expense) -->
@@ -269,8 +269,16 @@
           <div class="form-field">
             <label>CGST (%)</label>
             <div class="tax-input-group">
-              <input v-model="form.cgst_percent" type="number" step="0.01" min="0" placeholder="0" class="form-control">
+              <input v-model="form.cgst_percent" type="number" step="any" min="0" placeholder="0" class="form-control">
               <span class="tax-computed" v-if="computedCGST > 0">+{{ money(computedCGST) }}</span>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label>SGST (%)</label>
+            <div class="tax-input-group">
+              <input v-model="form.sgst_percent" type="number" step="any" min="0" placeholder="0" class="form-control">
+              <span class="tax-computed" v-if="computedSGST > 0">+{{ money(computedSGST) }}</span>
             </div>
           </div>
 
@@ -278,7 +286,7 @@
           <div class="form-field">
             <label>IGST (%)</label>
             <div class="tax-input-group">
-              <input v-model="form.igst_percent" type="number" step="0.01" min="0" placeholder="0" class="form-control">
+              <input v-model="form.igst_percent" type="number" step="any" min="0" placeholder="0" class="form-control">
               <span class="tax-computed" v-if="computedIGST > 0">+{{ money(computedIGST) }}</span>
             </div>
           </div>
@@ -335,6 +343,7 @@
             <div class="calc-chips">
               <span>Base: {{ money(form.amount || 0) }}</span>
               <span v-if="computedCGST > 0">CGST: +{{ money(computedCGST) }}</span>
+              <span v-if="computedSGST > 0">SGST: +{{ money(computedSGST) }}</span>
               <span v-if="computedIGST > 0">IGST: +{{ money(computedIGST) }}</span>
               <span v-if="computedAdditionalCharges > 0">Charges: +{{ money(computedAdditionalCharges) }}</span>
               <span v-if="computedTDS > 0" class="neg">TDS: -{{ money(computedTDS) }}</span>
@@ -665,6 +674,8 @@ const loans = ref([])
 const approvedClaims = ref([])
 const receivableInvoices = ref([])
 const invoiceLoading = ref(false)
+const isLoadingExisting = ref(false)
+let invoiceRequestVersion = 0
 const transactionFields = ref([])
 const uploadingDocument = ref(false)
 const isPosting = ref(false)
@@ -732,6 +743,8 @@ const form = reactive({
   amount: '',
   cgst_percent: 0,
   cgst_amount: 0,
+  sgst_percent: 0,
+  sgst_amount: 0,
   igst_percent: 0,
   igst_amount: 0,
   tds_percent: 0,
@@ -758,8 +771,9 @@ watch(postingDateOption, (opt) => {
 })
 
 watch(() => form.type, (newType) => {
+  if (isLoadingExisting.value) return
   if (newType === 'Income') {
-    const salesRev = accounts.value.find(a => a.name === 'Sales Revenue')
+    const salesRev = accounts.value.find(isSalesAccount)
     if (salesRev) form.account_id = salesRev.id
   } else {
     form.account_id = ''
@@ -768,6 +782,7 @@ watch(() => form.type, (newType) => {
 })
 
 watch(() => form.project_id, (newProjId) => {
+  if (isLoadingExisting.value) return
   if (newProjId) {
     const selected = projects.value.find(p => p.id === parseInt(newProjId))
     if (selected && selected.customer_id) {
@@ -776,7 +791,10 @@ watch(() => form.project_id, (newProjId) => {
   }
 })
 
-watch([() => form.account_id, () => form.customer_id, () => form.type], () => {
+watch([() => form.account_id, () => form.customer_id, () => form.project_id, () => form.type], () => {
+  if (isLoadingExisting.value) return
+  const project = projects.value.find(p => Number(p.id) === Number(form.project_id))
+  if (project && Number(project.customer_id) !== Number(form.customer_id)) form.project_id = ''
   clearInvoiceSelection()
   if (!isEmployeeClaimsAccount.value) form.expense_claim_id = ''
   loadReceivableInvoices()
@@ -868,7 +886,7 @@ onMounted(async () => {
   if (isEditing.value) {
     await loadExistingTransaction()
   } else if (form.type === 'Income') {
-    const salesRev = accounts.value.find(a => a.name === 'Sales Revenue')
+    const salesRev = accounts.value.find(isSalesAccount)
     if (salesRev) form.account_id = salesRev.id
   }
 })
@@ -885,6 +903,10 @@ const computedCGST = computed(() => {
   const amt = parseFloat(form.amount) || 0
   const pct = parseFloat(form.cgst_percent) || 0
   return parseFloat((amt * (pct / 100)).toFixed(2))
+})
+
+const computedSGST = computed(() => {
+  return Number(((Number(form.amount) || 0) * (Number(form.sgst_percent) || 0) / 100).toFixed(2))
 })
 
 const computedIGST = computed(() => {
@@ -945,13 +967,14 @@ const computedTotal = computed(() => {
   const addCharges = computedAdditionalCharges.value
   const platformFee = computedPlatformFee.value
   const cgst = computedCGST.value
+  const sgst = computedSGST.value
   const igst = computedIGST.value
   const tds = computedTDS.value
 
   if (form.type === 'Income') {
-    return parseFloat((amt + cgst + igst + addCharges - tds - platformFee).toFixed(2))
+    return parseFloat((amt + cgst + sgst + igst + addCharges - tds - platformFee).toFixed(2))
   } else {
-    return parseFloat((amt + cgst + igst + addCharges + platformFee - tds).toFixed(2))
+    return parseFloat((amt + cgst + sgst + igst + addCharges + platformFee - tds).toFixed(2))
   }
 })
 
@@ -997,7 +1020,7 @@ const isEmployeeClaimsAccount = computed(() => {
 })
 
 const isSalesRevenueReceipt = computed(() => {
-  return form.type === 'Income' && selectedAccount.value?.name === 'Sales Revenue'
+  return form.type === 'Income' && isSalesAccount(selectedAccount.value)
 })
 
 const selectedInvoice = computed(() => {
@@ -1007,19 +1030,26 @@ const selectedInvoice = computed(() => {
 
 const invoiceSelectPlaceholder = computed(() => {
   if (!form.customer_id) return 'Select customer first'
-  if (invoiceLoading.value) return 'Loading invoices...'
-  if (receivableInvoices.value.length === 0) return 'No unpaid invoices found'
-  return 'Select invoice'
+  if (!form.project_id) return 'Select project first'
+  if (invoiceLoading.value) return 'Loading paid invoices...'
+  if (receivableInvoices.value.length === 0) return 'No paid unposted invoices found'
+  return 'Select paid invoice'
 })
 
 const invoiceHint = computed(() => {
   if (!isSalesRevenueReceipt.value) return ''
-  if (!form.customer_id) return 'Select a customer to load open invoices.'
-  if (!invoiceLoading.value && receivableInvoices.value.length === 0) {
-    return 'Only outstanding invoices with remaining balance are shown.'
-  }
-  return ''
+  if (!form.customer_id || !form.project_id) return 'Select a customer and project to load paid, unposted invoices.'
+  if (selectedInvoice.value?.posting_defaults?.tax_split_required) return 'This older invoice stores total tax only. Enter the GST split to match its tax total before posting.'
+  return 'Only fully paid invoices without an active ledger entry are shown. Selecting an invoice fills its amount, taxes, currency, product, and reference.'
 })
+
+function isSalesAccount(account) {
+  if (!account) return false
+  const name = String(account.name || '').toLowerCase().trim().replace(/\s+/g, ' ')
+  return String(account.gl_code || '').trim() === '4000' || [
+    'sales revenue', 'sale of development', 'sales of development', 'sale of design', 'sales of design'
+  ].includes(name)
+}
 
 function accountLabel(acc) {
   return acc.gl_code ? `${acc.gl_code} - ${acc.name}` : acc.name
@@ -1032,34 +1062,72 @@ function productName(prod) {
 }
 
 function invoiceLabel(inv) {
-  return `${inv.invoice_number} - ${inv.currency} ${Number(inv.balance_due || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} due`
+  return `${inv.invoice_number} · ${inv.currency} ${Number(inv.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} · Paid`
 }
 
 function clearInvoiceSelection() {
+  if (form.invoice_id) {
+    form.amount = ''
+    form.cgst_percent = 0
+    form.sgst_percent = 0
+    form.igst_percent = 0
+    form.reference = ''
+    form.description = ''
+    form.product_id = ''
+  }
   form.invoice_id = ''
   form.invoice_number = ''
   receivableInvoices.value = []
 }
 
+function applySelectedInvoice() {
+  const inv = selectedInvoice.value
+  if (!inv) return
+  const defaults = inv.posting_defaults || {}
+  form.invoice_number = inv.invoice_number
+  form.amount = defaults.amount
+  form.currency = defaults.currency || inv.currency
+  form.product_id = inv.product_id || ''
+  form.cgst_percent = defaults.cgst_percent || 0
+  form.sgst_percent = defaults.sgst_percent || 0
+  form.igst_percent = defaults.igst_percent || 0
+  form.tds_percent = 0
+  form.additional_charges_percent = ''
+  form.additional_charges = ''
+  form.platform_fee_percent = ''
+  form.platform_fee_amount = ''
+  form.reference = inv.invoice_number
+  form.category = inv.product_id ? 'Item' : 'Service'
+  form.payment_status = 'Paid'
+  const descriptions = (inv.items || []).map(item => item.description).filter(Boolean)
+  form.description = `Sales invoice ${inv.invoice_number}${descriptions.length ? ' — ' + descriptions.join('; ') : ''}`
+}
+
 async function loadReceivableInvoices() {
-  if (!isSalesRevenueReceipt.value || !form.customer_id || !form.account_id) return
+  const requestVersion = ++invoiceRequestVersion
+  if (!isSalesRevenueReceipt.value || !form.customer_id || !form.project_id || !form.account_id) {
+    invoiceLoading.value = false
+    return
+  }
   invoiceLoading.value = true
   try {
     const params = new URLSearchParams({
       customer_id: form.customer_id,
+      project_id: form.project_id,
       account_id: form.account_id
     })
-    if (props.id && form.invoice_id) params.append('include_invoice_id', form.invoice_id)
-    const data = await apiGet(`/api/finance/invoices/receivable?${params}`)
-    receivableInvoices.value = data.invoices || []
+    if (props.id) params.append('transaction_id', props.id)
+    const data = await apiGet(`/api/finance/invoices/paid-unposted?${params}`)
+    if (requestVersion === invoiceRequestVersion) receivableInvoices.value = data.invoices || []
   } catch (err) {
-    error.value = err.message || 'Unable to load invoice records.'
+    if (requestVersion === invoiceRequestVersion) error.value = err.message || 'Unable to load invoice records.'
   } finally {
-    invoiceLoading.value = false
+    if (requestVersion === invoiceRequestVersion) invoiceLoading.value = false
   }
 }
 
 async function loadExistingTransaction() {
+  isLoadingExisting.value = true
   try {
     const data = await apiGet(`/api/finance/transactions/${props.id}`)
     const tx = data.transaction || {}
@@ -1079,6 +1147,7 @@ async function loadExistingTransaction() {
       currency: tx.currency || 'INR',
       amount: tx.amount ?? '',
       cgst_percent: tx.cgst_percent || 0,
+      sgst_percent: tx.sgst_percent || 0,
       igst_percent: tx.igst_percent || 0,
       tds_percent: tx.tds_percent || 0,
       additional_charges_percent: tx.additional_charges_percent ?? '',
@@ -1095,7 +1164,11 @@ async function loadExistingTransaction() {
     postingDateOption.value = 'custom'
   } catch (err) {
     error.value = err.message || 'Unable to load transaction.'
+  } finally {
+    await nextTick()
+    isLoadingExisting.value = false
   }
+  await loadReceivableInvoices()
 }
 
 watch(() => form.expense_claim_id, (claimId) => {
@@ -1126,6 +1199,7 @@ const simulatedLedger = computed(() => {
   const addCharges = computedAdditionalCharges.value
   const platformFee = computedPlatformFee.value
   const cgst = computedCGST.value
+  const sgst = computedSGST.value
   const igst = computedIGST.value
   const tds = computedTDS.value
   const netTotal = computedTotal.value
@@ -1291,6 +1365,13 @@ const simulatedLedger = computed(() => {
     }
   }
 
+  if (sgst > 0) {
+    const income = form.type === 'Income'
+    ledger.push({ gl_code: income ? '2015' : '1025',
+      account: income ? 'SGST Output Tax Payable' : 'SGST Input Tax Credit',
+      type: income ? 'Liability' : 'Asset', description: `SGST (${form.sgst_percent}%)`,
+      debit: income ? 0 : sgst, credit: income ? sgst : 0 })
+  }
   return ledger
 })
 
@@ -1360,9 +1441,18 @@ function validateBeforePosting() {
     error.value = 'Base amount must be greater than zero.'
     return false
   }
-  if (isSalesRevenueReceipt.value && !form.invoice_id) {
-    error.value = 'Please select the invoice number for this Sales Revenue receipt.'
+  if (isSalesRevenueReceipt.value && (!form.customer_id || !form.project_id || !selectedInvoice.value || invoiceLoading.value)) {
+    error.value = 'Please select a customer, project, and paid unposted invoice for this sales entry.'
     return false
+  }
+  if (isSalesRevenueReceipt.value && selectedInvoice.value) {
+    const inv = selectedInvoice.value
+    const gross = Number(form.amount) + computedCGST.value + computedSGST.value + computedIGST.value
+    if (Math.abs(Number(form.amount) - Number(inv.posting_defaults?.amount)) > 0.01 ||
+      Math.abs(gross - Number(inv.total_amount)) > 0.01 || form.currency !== inv.currency) {
+      error.value = 'The base amount, GST total, and currency must match the selected invoice.'
+      return false
+    }
   }
   if (isEmployeeClaimsAccount.value && !form.expense_claim_id) {
     error.value = 'Please select an approved employee claim for GL 7010.'

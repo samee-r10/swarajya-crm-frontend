@@ -33,73 +33,6 @@
       </div>
     </div>
 
-    <!-- Dashboard Tab -->
-    <div v-if="activeTab === 'dashboard'" class="dashboard-tab">
-      <!-- KPI Grid -->
-      <div class="kpi-grid mb-24">
-        <div class="kpi-card reserve-card">
-          <div class="kpi-icon">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-              <path d="M12 2v9M8 5h8"/>
-            </svg>
-          </div>
-          <div class="kpi-content">
-            <span class="kpi-label">Company Reserve Fund</span>
-            <h3>₹{{ formatCurrency(dashboardData.reserve_available) }}</h3>
-            <p class="kpi-sub">Available balance (settled reserve only)</p>
-          </div>
-        </div>
-
-        <div class="kpi-card revenue-card">
-          <div class="kpi-icon">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="1" x2="12" y2="23"/>
-              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-            </svg>
-          </div>
-          <div class="kpi-content">
-            <span class="kpi-label">Total Shared Revenue</span>
-            <h3>₹{{ formatCurrency(dashboardData.shared_revenue) }}</h3>
-            <p class="kpi-sub">Stakeholder &amp; channel partner payouts from settled revenue</p>
-          </div>
-        </div>
-
-        <div class="kpi-card stakeholder-card">
-          <div class="kpi-icon">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-          </div>
-          <div class="kpi-content">
-            <span class="kpi-label">Owner Earnings Paid</span>
-            <h3>₹{{ formatCurrency(dashboardData.stakeholder_paid) }}</h3>
-            <p class="kpi-sub text-warning">₹{{ formatCurrency(dashboardData.stakeholder_pending) }} pending · see Payment Dashboard for contributions</p>
-          </div>
-        </div>
-
-        <div class="kpi-card partner-card">
-          <div class="kpi-icon">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-          </div>
-          <div class="kpi-content">
-            <span class="kpi-label">Partner Commissions</span>
-            <h3>₹{{ formatCurrency(dashboardData.partner_paid) }}</h3>
-            <p class="kpi-sub text-warning">₹{{ formatCurrency(dashboardData.partner_pending) }} Pending</p>
-          </div>
-        </div>
-      </div>
-
-
-    </div>
     <!-- Payment Dashboard Tab -->
     <div v-if="activeTab === 'payment_dashboard'" class="payment-dashboard-tab">
 
@@ -1249,9 +1182,8 @@ import { apiGet, apiPost, apiPut } from '../api/client'
 const router = useRouter()
 
 // Tabs
-const activeTab = ref('dashboard')
+const activeTab = ref('revenue')
 const tabs = [
-  { id: 'dashboard', label: 'Dashboard', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>' },
   { id: 'revenue', label: 'Revenue Log', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>' },
   { id: 'expense_log', label: 'Expense Log', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-5-5ZM8 18H6v-2h2v2Zm0-4H6v-2h2v2Zm0-4H6V8h2v2Zm8 8h-6v-2h6v2Zm0-4h-6v-2h6v2Zm0-4h-6V8h6v2Z"/></svg>' },
   { id: 'stakeholders', label: 'Company Owners', icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
@@ -1451,7 +1383,7 @@ const editSplitTotalPercentageSum = computed(() => {
 })
 
 const isSaveEditSplitDisabled = computed(() => {
-  return editSplitTotalPercentageSum.value !== 100 || editSplitStakeholderPool.value < 0 || !editSplitForm.bank_account_id
+  return editSplitTotalPercentageSum.value !== 100 || editSplitStakeholderPool.value < 0 || !activeBankAccounts.value.some(account => String(account.id) === String(editSplitForm.bank_account_id))
 })
 
 // Pagination states
@@ -1736,7 +1668,7 @@ function closeHistoryModal() {
   historyModal.visible = false
 }
 
-function openEditSplitModal(entry) {
+async function openEditSplitModal(entry) {
   if (isCompanyExpense(entry)) {
     goToPayables()
     return
@@ -1753,7 +1685,17 @@ function openEditSplitModal(entry) {
   editSplitForm.partner_commission_percentage = 0
   editSplitForm.stakeholders = []
 
+  bankAccounts.value = []
   showEditSplitModal.value = true
+  try {
+    const data = await apiGet('/api/treasury/bank-accounts')
+    bankAccounts.value = data.bank_accounts || []
+    if (!activeBankAccounts.value.some(account => String(account.id) === String(editSplitForm.bank_account_id))) {
+      editSplitForm.bank_account_id = ''
+    }
+  } catch (err) {
+    swal(err.message || 'Unable to load available bank accounts.')
+  }
 }
 
 function openRevenueSettlementConfirm() {
@@ -2046,7 +1988,6 @@ function formatTimestamp(val) {
   align-items: center;
 }
 
-.dashboard-tab,
 .payment-dashboard-tab {
   display: grid;
   gap: 26px;

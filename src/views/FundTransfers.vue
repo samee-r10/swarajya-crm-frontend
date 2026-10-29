@@ -127,7 +127,7 @@ async function loadData() {
   }
   const data = await safe(() => apiGet('/api/treasury/fund-transfers'))
   const treasuryBankData = await safe(() => apiGet('/api/treasury/bank-accounts'))
-  bankAccounts.value = mergeBankAccounts(treasuryBankData?.bank_accounts || treasuryBankData?.accounts || data?.bank_accounts || [], loadLocalBankAccounts())
+  bankAccounts.value = mergeBankAccounts(treasuryBankData?.bank_accounts || treasuryBankData?.accounts || data?.bank_accounts || [], [])
   transfers.value = data?.transfers || []
 }
 

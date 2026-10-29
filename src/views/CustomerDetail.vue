@@ -1,12 +1,15 @@
 <template>
-  <section v-if="customer" class="page-header">
-    <div>
-      <p class="eyebrow">Customer</p>
-      <h1>{{ customer.company_name }}</h1>
-      <p class="muted">{{ customer.contact_name }} · {{ customer.email || 'No email' }} · {{ customer.phone || 'No phone' }}</p>
-    </div>
-    <button class="button btn-animate" type="button" @click="showEditModal = true">Edit</button>
-  </section>
+  <CrmRecordHeader
+    v-if="customer"
+    record-type="Customer"
+    variant="customer"
+    :title="customer.company_name"
+    :fields="headerFields"
+  >
+    <template #actions>
+      <button class="button" type="button" @click="showEditModal = true">Edit</button>
+    </template>
+  </CrmRecordHeader>
 
   <!-- Edit Modal Overlay -->
   <transition name="fade">
@@ -25,37 +28,6 @@
       </div>
     </div>
   </transition>
-
-  <section v-if="customer" class="customer-360-grid">
-    <div class="customer-summary-card panel">
-      <div class="summary-avatar">{{ initials }}</div>
-      <div>
-        <p class="eyebrow">Customer 360</p>
-        <h2>{{ customer.company_name }}</h2>
-        <p class="muted">{{ customer.billing_address || 'No billing address on file' }}</p>
-      </div>
-      <div class="summary-stats">
-        <div><strong>{{ opportunities.length }}</strong><span>Opportunities</span></div>
-        <div><strong>{{ projects.length }}</strong><span>Projects</span></div>
-        <div><strong>{{ customer.status || 'Lead' }}</strong><span>Status</span></div>
-      </div>
-    </div>
-
-    <div class="panel timeline-card">
-      <div class="panel-header">
-        <div>
-          <h2>Activity Timeline</h2>
-          <p class="muted">Recent relationship context and next actions.</p>
-        </div>
-      </div>
-      <div class="timeline">
-        <div v-for="item in timelineItems" :key="item.title" class="timeline-item">
-          <span class="timeline-dot"></span>
-          <div><strong>{{ item.title }}</strong><span class="muted">{{ item.meta }}</span></div>
-        </div>
-      </div>
-    </div>
-  </section>
 
   <CustomerServiceCard v-if="customer" :customer="customer" @saved="customer = $event" />
 
@@ -105,6 +77,7 @@ import { apiGet } from '../api/client'
 import SystemInfo from '../components/SystemInfo.vue'
 import CustomerForm from './CustomerForm.vue'
 import CustomerServiceCard from '../components/CustomerServiceCard.vue'
+import CrmRecordHeader from '../components/CrmRecordHeader.vue'
 
 const props = defineProps({ id: { type: String, required: true } })
 const customer = ref(null)
@@ -112,6 +85,18 @@ const opportunities = ref([])
 const projects = ref([])
 const customerFields = ref([])
 const showEditModal = ref(false)
+const headerFields = computed(() => {
+  const record = customer.value || {}
+  return [
+    { label: 'Contact', value: record.contact_name },
+    { label: 'Email', value: record.email, href: record.email ? `mailto:${record.email}` : undefined },
+    { label: 'Phone', value: record.phone, href: record.phone ? `tel:${record.phone}` : undefined },
+    { label: 'Status', value: record.status || 'Lead' },
+    { label: 'Opportunities', value: opportunities.value.length },
+    { label: 'Projects', value: projects.value.length }
+  ]
+})
+
 const profileFieldFallbacks = [
   { label: 'Address Line 1', api_name: 'address_line_1', field_type: 'Text' },
   { label: 'Address Line 2', api_name: 'address_line_2', field_type: 'Text' },
@@ -178,31 +163,6 @@ function mergeProfileFields(fields) {
     if (!byApi.has(field.api_name)) byApi.set(field.api_name, field)
   })
   return Array.from(byApi.values())
-}
-const initials = computed(() => {
-  if (!customer.value?.company_name) return 'CR'
-  return customer.value.company_name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()
-})
-const timelineItems = computed(() => {
-  const items = []
-  if (customer.value?.updated_at) {
-    items.push({ title: 'Customer profile updated', meta: formatDate(customer.value.updated_at) })
-  }
-  if (opportunities.value[0]) {
-    items.push({ title: `Opportunity: ${opportunities.value[0].title}`, meta: opportunities.value[0].stage || 'Stage pending' })
-  }
-  if (projects.value[0]) {
-    items.push({ title: `Project: ${projects.value[0].project_name}`, meta: projects.value[0].status || 'Status pending' })
-  }
-  if (!items.length) {
-    items.push({ title: 'No activity yet', meta: 'Create an opportunity or project to start the timeline.' })
-  }
-  return items
-})
-
-function formatDate(dateStr) {
-  if (!dateStr) return 'No date'
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 </script>
 
@@ -296,105 +256,4 @@ function formatDate(dateStr) {
   opacity: 0;
 }
 
-.customer-360-grid {
-  align-items: stretch;
-  display: grid;
-  gap: 20px;
-  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
-  margin-bottom: 20px;
-}
-
-.customer-summary-card {
-  align-items: center;
-  display: grid;
-  gap: 18px;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-}
-
-.summary-avatar {
-  align-items: center;
-  background: var(--primary-soft);
-  border: 1px solid rgba(37, 99, 235, 0.16);
-  border-radius: 8px;
-  color: var(--primary);
-  display: flex;
-  font-size: 22px;
-  font-weight: 900;
-  height: 64px;
-  justify-content: center;
-  width: 64px;
-}
-
-.customer-summary-card h2 {
-  font-size: 24px;
-  margin: 0 0 4px;
-}
-
-.summary-stats {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(3, minmax(92px, 1fr));
-}
-
-.summary-stats div {
-  background: var(--surface-soft);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 12px;
-}
-
-.summary-stats strong,
-.summary-stats span {
-  display: block;
-}
-
-.summary-stats span {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.timeline {
-  display: grid;
-  gap: 14px;
-}
-
-.timeline-item {
-  align-items: flex-start;
-  display: flex;
-  gap: 12px;
-}
-
-.timeline-item strong,
-.timeline-item span {
-  display: block;
-}
-
-.timeline-dot {
-  background: var(--primary);
-  border-radius: 999px;
-  box-shadow: 0 0 0 5px var(--primary-soft);
-  flex: 0 0 9px;
-  height: 9px;
-  margin-top: 7px;
-  width: 9px;
-}
-
-@media (max-width: 1100px) {
-  .customer-360-grid,
-  .customer-summary-card {
-    grid-template-columns: 1fr;
-  }
-
-  .summary-stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 640px) {
-  .summary-stats {
-    grid-template-columns: 1fr;
-  }
-}
 </style>

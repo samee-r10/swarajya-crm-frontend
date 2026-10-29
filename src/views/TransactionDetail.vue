@@ -102,6 +102,7 @@
           <span class="card-label">Taxes & Deductions</span>
           <div class="tax-breakdown-pills">
             <span v-if="transaction.cgst_amount" class="pill-chip">CGST: +{{ money(transaction.currency, transaction.cgst_amount) }}</span>
+            <span v-if="transaction.sgst_amount" class="pill-chip">SGST: +{{ money(transaction.currency, transaction.sgst_amount) }}</span>
             <span v-if="transaction.igst_amount" class="pill-chip">IGST: +{{ money(transaction.currency, transaction.igst_amount) }}</span>
             <span v-if="transaction.tds_amount" class="pill-chip negative">TDS: -{{ money(transaction.currency, transaction.tds_amount) }}</span>
           </div>
@@ -126,7 +127,7 @@
           <strong class="card-val grand-val">
             {{ transaction.type === 'Income' ? '+' : '-' }} {{ money(transaction.currency, transactionTotalAmount(transaction)) }}
           </strong>
-          <span class="card-sub">{{ transaction.type === 'Income' ? 'Cash Inflow to Bank' : 'Cash Outflow from Bank' }}</span>
+          <span class="card-sub">{{ transaction.transaction_type === 'Salary Payable' ? 'Salary expense posted against Accounts Payable' : transaction.type === 'Income' ? 'Cash Inflow to Bank' : 'Cash Outflow from Bank' }}</span>
         </div>
       </section>
 
@@ -436,7 +437,7 @@ const headerTransactionId = computed(() => {
 const hasTax = computed(() => {
   if (!transaction.value) return false
   const t = transaction.value
-  return Boolean(t.cgst_amount || t.igst_amount || t.tds_amount)
+  return Boolean(t.cgst_amount || t.sgst_amount || t.igst_amount || t.tds_amount)
 })
 
 const hasFees = computed(() => {
@@ -581,14 +582,15 @@ function transactionTotalAmount(t) {
   }
   const amount = Number(t.amount || 0)
   const cgst = Number(t.cgst_amount || 0)
+  const sgst = Number(t.sgst_amount || 0)
   const igst = Number(t.igst_amount || 0)
   const tds = Number(t.tds_amount || 0)
   const addCharges = Number(t.additional_charges || t.additional_charges_amount || 0)
   const platformFee = Number(t.platform_fee_amount || t.platform_charges || 0)
   if (t.type === 'Income') {
-    return Number((amount + cgst + igst + addCharges - tds - platformFee).toFixed(2))
+    return Number((amount + cgst + sgst + igst + addCharges - tds - platformFee).toFixed(2))
   } else {
-    return Number((amount + cgst + igst + addCharges + platformFee - tds).toFixed(2))
+    return Number((amount + cgst + sgst + igst + addCharges + platformFee - tds).toFixed(2))
   }
 }
 </script>
@@ -622,9 +624,9 @@ function transactionTotalAmount(t) {
 
 /* Header */
 .detail-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 24px;
   background: #ffffff;
   padding: 24px 28px;
@@ -632,12 +634,14 @@ function transactionTotalAmount(t) {
   border: 1px solid var(--line, #e2e8f0);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   margin-bottom: 24px;
-  flex-wrap: wrap;
 }
 
 .header-left {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  text-align: left;
   gap: 8px;
 }
 
@@ -702,13 +706,17 @@ function transactionTotalAmount(t) {
   color: #0f172a;
   margin: 0;
   letter-spacing: -0.5px;
+  overflow-wrap: anywhere;
 }
 
 .header-desc {
   font-size: 14px;
   color: #64748b;
   margin: 0;
-  max-width: 650px;
+  max-width: 70ch;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .header-actions {
@@ -716,7 +724,13 @@ function transactionTotalAmount(t) {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  justify-content: flex-end;
+  justify-self: end;
+  margin-left: auto;
+  max-width: 100%;
 }
+
+.header-actions .button { white-space: nowrap; }
 
 .primary-action-btn {
   background: #0284c7 !important;
@@ -940,6 +954,7 @@ function transactionTotalAmount(t) {
 }
 
 .description-body p { margin: 0; }
+.description-body { white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* Right Column: GL Showcase Card */
 .gl-feature-card {
@@ -1212,6 +1227,10 @@ function transactionTotalAmount(t) {
 .right { text-align: right; }
 
 /* Responsive adjustments */
+@media (max-width: 1200px) {
+  .detail-header { grid-template-columns: minmax(0, 1fr); }
+}
+
 @media (max-width: 1024px) {
   .content-columns {
     grid-template-columns: 1fr;
@@ -1220,17 +1239,15 @@ function transactionTotalAmount(t) {
 
 @media (max-width: 768px) {
   .detail-header {
-    flex-direction: column;
-    align-items: stretch;
+    padding: 20px;
   }
 
   .header-actions {
-    width: 100%;
-    flex-direction: column;
+    flex-direction: row;
   }
 
   .header-actions .button {
-    width: 100%;
+    width: auto;
     justify-content: center;
   }
 

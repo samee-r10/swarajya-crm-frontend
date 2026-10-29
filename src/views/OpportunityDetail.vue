@@ -1,11 +1,12 @@
 <template>
-  <section v-if="opportunity" class="page-header">
-    <div>
-      <p class="eyebrow">Opportunity</p>
-      <h1>{{ opportunity.title }}</h1>
-      <p class="muted">{{ opportunity.company_name }} · {{ opportunity.stage }}</p>
-    </div>
-    <div class="header-actions">
+  <CrmRecordHeader
+    v-if="opportunity"
+    record-type="Opportunity"
+    variant="opportunity"
+    :title="opportunity.title"
+    :fields="headerFields"
+  >
+    <template #actions>
       <button class="button secondary" type="button" @click="showUploadModal = true">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
@@ -13,8 +14,8 @@
         Upload Document
       </button>
       <button class="button btn-animate" type="button" @click="showEditModal = true">Edit</button>
-    </div>
-  </section>
+    </template>
+  </CrmRecordHeader>
 
   <!-- Edit Modal Overlay -->
   <transition name="fade">
@@ -282,6 +283,7 @@ import { API_BASE, apiDelete, apiGet, apiPost, apiPut, apiUploadFile } from '../
 import SystemInfo from '../components/SystemInfo.vue'
 import DocumentViewer from '../components/DocumentViewer.vue'
 import OpportunityForm from './OpportunityForm.vue'
+import CrmRecordHeader from '../components/CrmRecordHeader.vue'
 
 const props = defineProps({ id: { type: String, required: true } })
 const opportunity = ref(null)
@@ -290,6 +292,18 @@ const oppFields = ref([])
 const stages = ref([])
 const selectedStage = ref(null)
 const showEditModal = ref(false)
+
+const headerFields = computed(() => {
+  const record = opportunity.value || {}
+  return [
+    { label: 'Opportunity number', value: record.opportunity_number },
+    { label: 'Customer', value: record.company_name, to: record.customer_id && record.company_name ? `/customers/${record.customer_id}` : undefined },
+    { label: 'Stage', value: record.stage },
+    { label: 'Value', value: `${record.currency || 'INR'} ${Number(record.value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+    { label: 'Expected close', value: record.expected_close, type: 'date' },
+    { label: 'Country', value: record.country }
+  ]
+})
 
 // Documents State
 const showUploadModal = ref(false)
@@ -581,19 +595,6 @@ function categoryClass(category) {
 </script>
 
 <style scoped>
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24px;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
 .path-container {
   display: flex;
   background: white;
