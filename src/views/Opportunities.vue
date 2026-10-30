@@ -1,16 +1,8 @@
 <template>
   <div class="opportunities-page">
-    <header class="page-header">
-      <div>
-        <p class="eyebrow">Sales</p>
-        <h1>Opportunities</h1>
-        <p class="muted">Track potential deals and sales pipeline.</p>
-      </div>
-      <button class="button" @click="showNewModal = true">
-        <svg viewBox="0 0 24 24" width="18" height="18" style="margin-right: 8px;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/></svg>
-        New Opportunity
-      </button>
-    </header>
+    <CrmPageHeader eyebrow="Sales" title="Opportunities" description="Track potential deals and sales pipeline.">
+      <template #actions><button class="button" @click="showNewModal = true">New Opportunity</button></template>
+    </CrmPageHeader>
 
     <section class="filters-bar">
       <div class="filter-group search">
@@ -38,7 +30,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="opp in filtered" :key="opp.id" @click="goToDetail(opp.id)">
+          <tr v-for="opp in paginatedOpportunities" :key="opp.id" @click="goToDetail(opp.id)">
             <td>
               <div class="name-cell">
                 <strong>{{ opp.title }}</strong>
@@ -64,7 +56,7 @@
     <!-- Mobile Responsive Cards (Visible on mobile <768px) -->
     <div class="mobile-card-list mobile-only">
       <div
-        v-for="opp in filtered"
+        v-for="opp in paginatedOpportunities"
         :key="opp.id"
         class="mobile-card"
         @click="goToDetail(opp.id)"
@@ -97,14 +89,21 @@
       <div v-if="filtered.length === 0" class="empty-state" style="text-align: center; padding: 24px;">No opportunities found.</div>
     </div>
 
-    <!-- Modal -->
-    <div v-if="showNewModal" class="modal-overlay" @click="showNewModal = false">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <h2>New Opportunity</h2>
-          <button class="modal-close" @click="showNewModal = false">&times;</button>
-        </div>
-        <form class="form-grid modal-form" @submit.prevent="saveNew">
+    <CrmPagination
+      v-model:page="currentPage"
+      :total-pages="totalPages"
+      :total-items="filtered.length"
+      :page-size="itemsPerPage"
+      aria-label="Opportunities table pagination"
+    />
+
+    <CrmModal
+      v-model="showNewModal"
+      title="New opportunity"
+      description="Create a qualified sales opportunity and connect it to the correct customer."
+      size="lg"
+    >
+        <form id="new-opportunity-form" class="form-grid entity-modal-form" @submit.prevent="saveNew">
           <label 
             v-for="field in oppFields" 
             :key="field.api_name"
@@ -192,15 +191,18 @@
               :placeholder="'Enter ' + field.label.toLowerCase() + '...'"
             >
           </label>
-          <div class="span-2 action-row"><button class="button" type="submit">Save</button></div>
+          <p v-if="saveError" class="span-2 flash warning">{{ saveError }}</p>
         </form>
-      </div>
-    </div>
+      <template #footer>
+        <button class="button secondary" type="button" @click="showNewModal = false">Cancel</button>
+        <button class="button" type="submit" form="new-opportunity-form" :disabled="savingNew">{{ savingNew ? 'Creating...' : 'Create opportunity' }}</button>
+      </template>
+    </CrmModal>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet, apiPost } from '../api/client'
 import { useDebouncedRef } from '../utils/debounce'
@@ -213,6 +215,8 @@ const currencies = ref([])
 const stage = ref('')
 const search = useDebouncedRef('', 300)
 const showNewModal = ref(false)
+const savingNew = ref(false)
+const saveError = ref('')
 const newForm = reactive({ customer_id: '', country: '', title: '', opportunity_number: '', value: 0, currency: 'INR', stage: 'Draft', expected_close: '', requirements: '', next_action: '' })
 
 const defaultFields = [
@@ -255,6 +259,18 @@ const filtered = computed(() => opportunities.value.filter((opp) => {
   return matchesStage && matchesSearch
 }))
 
+const currentPage = ref(1)
+const itemsPerPage = 10
+const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / itemsPerPage)))
+const paginatedOpportunities = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  return filtered.value.slice(start, start + itemsPerPage)
+})
+
+watch([search, stage], () => {
+  currentPage.value = 1
+})
+
 onMounted(async () => {
   try {
     const data = await apiGet('/api/opportunities')
@@ -277,6 +293,9 @@ onMounted(async () => {
 })
 
 async function saveNew() {
+  if (savingNew.value) return
+  savingNew.value = true
+  saveError.value = ''
   try {
     const data = await apiPost('/api/opportunities', newForm)
     opportunities.value.unshift(data.opportunity)
@@ -290,7 +309,9 @@ async function saveNew() {
       }
     })
   } catch (err) {
-    console.error('Save failed', err)
+    saveError.value = err.message || 'Unable to create the opportunity.'
+  } finally {
+    savingNew.value = false
   }
 }
 

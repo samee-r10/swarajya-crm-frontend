@@ -1,22 +1,16 @@
 <template>
   <div class="ledger-container">
-    <header class="page-header">
-      <div>
-        <p class="eyebrow">Finance Module</p>
-        <h1>Transaction Ledger</h1>
-        <p class="muted">Monitor and manage all financial inflows and outflows.</p>
-      </div>
-      <div class="header-actions" style="display: flex; align-items: center; gap: 20px;">
-        <!-- Currency View Toggle Selection -->
-        <div class="currency-toggle-wrap" style="display: flex; align-items: center; background: var(--surface); border: 1px solid var(--line); padding: 4px 12px; border-radius: 30px;">
-          <span class="muted small" style="font-weight: 700; margin-right: 8px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Currency:</span>
-          <div class="toggle-buttons" style="display: flex; background: #f1f5f9; padding: 2px; border-radius: 20px;">
+    <CrmPageHeader eyebrow="Finance" title="Transaction ledger" description="Review cash movement, tax impact, posting status, and general-ledger entries from one workspace.">
+      <template #actions>
+        <div class="ledger-header-actions">
+        <div class="currency-toggle-wrap" aria-label="Display currency">
+          <span>Display currency</span>
+          <div class="toggle-buttons">
             <button 
               type="button" 
               class="toggle-btn" 
               :class="{ active: viewCurrency === 'USD' }" 
               @click="viewCurrency = 'USD'"
-              style="border: none; background: none; padding: 6px 16px; font-size: 11px; font-weight: 800; cursor: pointer; border-radius: 18px; transition: all 0.2s;"
             >
               USD
             </button>
@@ -25,7 +19,6 @@
               class="toggle-btn" 
               :class="{ active: viewCurrency === 'INR' }" 
               @click="viewCurrency = 'INR'"
-              style="border: none; background: none; padding: 6px 16px; font-size: 11px; font-weight: 800; cursor: pointer; border-radius: 18px; transition: all 0.2s;"
             >
               INR
             </button>
@@ -33,18 +26,19 @@
         </div>
 
         <button class="button secondary" @click="exportData">
-          <svg viewBox="0 0 24 24" width="18" height="18" style="margin-right: 8px;"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/></svg>
+          <svg viewBox="0 0 24 24" width="16" height="16"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/></svg>
           Export
         </button>
         <button class="button secondary" type="button" :disabled="salaryPostingLoading || !canPostSalary" :title="canPostSalary ? 'Post an existing salary payable to the ledger' : 'Post Salary to Ledger permission is required'" @click="openSalaryPaymentModal">
           Post Salaries
         </button>
         <button class="button" type="button" @click="showTransactionModal = true">
-          <svg viewBox="0 0 24 24" width="18" height="18" style="margin-right: 8px;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/></svg>
+          <svg viewBox="0 0 24 24" width="16" height="16"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/></svg>
           New Transaction
         </button>
-      </div>
-    </header>
+        </div>
+      </template>
+    </CrmPageHeader>
 
     <p v-if="salaryPostError && !showSalaryPaymentModal" class="flash warning" role="alert">{{ salaryPostError }}</p>
     <p v-if="salaryPostSuccess" class="flash success" role="status">{{ salaryPostSuccess }}</p>
@@ -204,23 +198,13 @@
       </table>
       </div>
       
-      <div v-if="totalPages > 1" class="pagination-bar">
-        <button 
-          class="pagination-btn" 
-          :disabled="currentPage === 1" 
-          @click="currentPage--"
-        >
-          Previous
-        </button>
-        <span class="pagination-info">Page {{ currentPage }} of {{ totalPages }} ({{ filteredTransactions.length }} records)</span>
-        <button 
-          class="pagination-btn" 
-          :disabled="currentPage === totalPages" 
-          @click="currentPage++"
-        >
-          Next
-        </button>
-      </div>
+      <CrmPagination
+        v-model:page="currentPage"
+        :total-pages="totalPages"
+        :total-items="filteredTransactions.length"
+        :page-size="itemsPerPage"
+        aria-label="Transactions table pagination"
+      />
     </section>
 
     <!-- Mobile Responsive Transaction Cards (Visible on mobile <768px) -->
@@ -265,35 +249,35 @@
       </div>
       <div v-if="filteredTransactions.length === 0" class="empty-state" style="text-align: center; padding: 24px;">No transactions match your filters.</div>
     </div>
+    <CrmPagination
+      v-if="!loading && !error"
+      class="mobile-only"
+      v-model:page="currentPage"
+      :total-pages="totalPages"
+      :total-items="filteredTransactions.length"
+      :page-size="itemsPerPage"
+      aria-label="Transactions mobile pagination"
+    />
 
-    <transition name="fade">
-      <div v-if="showTransactionModal" class="transaction-modal-overlay">
-        <div class="transaction-modal-shell">
-          <div class="transaction-modal-header">
-            <div>
-              <p class="eyebrow">Finance Module</p>
-              <h2>New Transaction</h2>
-            </div>
-            <button class="modal-close-btn" type="button" @click="closeTransactionModal">×</button>
-          </div>
-          <div class="transaction-modal-body">
-            <TransactionForm is-modal @save-success="handleTransactionCreated" @cancel="closeTransactionModal" />
-          </div>
-        </div>
+    <CrmModal
+      v-model="showTransactionModal"
+      title="New transaction"
+      description="Post an income or expense transaction with complete accounting context."
+      size="xl"
+      @close="closeTransactionModal"
+    >
+      <div class="transaction-form-host">
+        <TransactionForm is-modal @save-success="handleTransactionCreated" @cancel="closeTransactionModal" />
       </div>
-    </transition>
+    </CrmModal>
 
-    <div v-if="showSalaryPaymentModal" class="modal-overlay" @click.self="showSalaryPaymentModal = false">
-      <div class="modal-content salary-post-modal">
-        <div class="modal-header">
-          <div>
-            <p class="eyebrow">HR Management</p>
-            <h2>Post Salary to Ledger</h2>
-            <p class="muted">Record salary expense against the existing payable. Settle payments from Treasury Payables.</p>
-          </div>
-          <button class="modal-close" type="button" @click="showSalaryPaymentModal = false">&times;</button>
-        </div>
-        <div class="p-24">
+    <CrmModal
+      v-model="showSalaryPaymentModal"
+      title="Post salary to ledger"
+      description="Record salary expense against an existing payable; settlement remains in Treasury Payables."
+      size="lg"
+    >
+        <form id="salary-post-form" class="salary-post-form" @submit.prevent="postSalaryPayment">
           <div class="form-grid">
             <label>Salary Month
               <select v-model="salaryPaymentForm.month">
@@ -338,13 +322,12 @@
             <strong>{{ money(selectedSalaryPayable?.currency || 'INR', selectedSalaryTotal) }}</strong>
           </div>
           <p v-if="salaryPostError" class="flash warning">{{ salaryPostError }}</p>
-          <div class="form-actions mt-16">
-            <button class="button secondary" type="button" @click="showSalaryPaymentModal = false">Cancel</button>
-            <button class="button" type="button" :disabled="salaryPostingLoading || isPostingSalary || !selectedSalaryPayable || !selectedSalaryAccount" @click="postSalaryPayment">{{ isPostingSalary ? 'Posting...' : 'Post to Ledger' }}</button>
-          </div>
-        </div>
-      </div>
-    </div>
+        </form>
+      <template #footer>
+        <button class="button secondary" type="button" @click="showSalaryPaymentModal = false">Cancel</button>
+        <button class="button" type="submit" form="salary-post-form" :disabled="salaryPostingLoading || isPostingSalary || !selectedSalaryPayable || !selectedSalaryAccount">{{ isPostingSalary ? 'Posting...' : 'Post to ledger' }}</button>
+      </template>
+    </CrmModal>
 
     <!-- GL Entries Drawer for complete double-entry inspection -->
     <GlEntriesDrawer

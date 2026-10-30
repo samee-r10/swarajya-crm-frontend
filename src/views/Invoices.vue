@@ -130,23 +130,13 @@
         </tbody>
       </table>
       
-      <div v-if="totalPages > 1" class="pagination-bar">
-        <button 
-          class="pagination-btn" 
-          :disabled="currentPage === 1" 
-          @click="currentPage--"
-        >
-          Previous
-        </button>
-        <span class="pagination-info">Page {{ currentPage }} of {{ totalPages }} ({{ filtered.length }} records)</span>
-        <button 
-          class="pagination-btn" 
-          :disabled="currentPage === totalPages" 
-          @click="currentPage++"
-        >
-          Next
-        </button>
-      </div>
+      <CrmPagination
+        v-model:page="currentPage"
+        :total-pages="totalPages"
+        :total-items="filtered.length"
+        :page-size="itemsPerPage"
+        aria-label="Invoices table pagination"
+      />
     </section>
 
     <!-- Mobile Responsive Invoice Cards (Visible on mobile <768px) -->
@@ -188,6 +178,14 @@
       </div>
       <div v-if="filtered.length === 0" class="empty-state" style="text-align: center; padding: 24px;">No invoices found.</div>
     </div>
+    <CrmPagination
+      class="mobile-only"
+      v-model:page="currentPage"
+      :total-pages="totalPages"
+      :total-items="filtered.length"
+      :page-size="itemsPerPage"
+      aria-label="Invoices mobile pagination"
+    />
   </div>
 </template>
 

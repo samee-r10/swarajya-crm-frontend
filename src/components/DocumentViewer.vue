@@ -106,22 +106,16 @@
                 class="pdf-native-frame"
                 :title="currentName"
               >
-                <iframe
-                  :src="currentUrl"
-                  class="pdf-native-frame"
-                  :title="currentName"
-                >
-                  <div class="viewer-fallback">
-                    <div class="fallback-card">
-                      <h3>PDF Preview</h3>
-                      <p>Open or download the document below.</p>
-                      <div class="fallback-actions">
-                        <a class="button primary" :href="currentUrl" :download="currentName">Download PDF</a>
-                        <a class="button secondary" :href="currentUrl" target="_blank" rel="noopener">Open PDF in New Tab</a>
-                      </div>
+                <div class="viewer-fallback">
+                  <div class="fallback-card">
+                    <h3>PDF Preview</h3>
+                    <p>Open or download the document below.</p>
+                    <div class="fallback-actions">
+                      <a class="button primary" :href="currentUrl" :download="currentName">Download PDF</a>
+                      <a class="button secondary" :href="currentUrl" target="_blank" rel="noopener">Open PDF in New Tab</a>
                     </div>
                   </div>
-                </iframe>
+                </div>
               </object>
             </div>
 

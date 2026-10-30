@@ -1,6 +1,6 @@
-# Lead Management CRM
+# Swarajya CRM Frontend
 
-A Flask and MySQL CRM for managing customers, sales opportunities, and project delivery status.
+A Vue 3 and Vite frontend for the MongoDB-backed Swarajya CRM platform.
 
 ## Features
 
@@ -12,57 +12,28 @@ A Flask and MySQL CRM for managing customers, sales opportunities, and project d
 
 ## Setup
 
-1. Create a virtual environment and install dependencies:
+1. Install dependencies:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+npm install
 ```
 
-2. Create your environment file:
+2. Run the development server:
 
 ```bash
-cp .env.example .env
+npm run dev
 ```
 
-Edit `.env` with your MySQL username and password.
+Open `http://127.0.0.1:5173`.
 
-3. Initialize the database:
+## API configuration
+
+Development API requests are proxied to the backend on port `5001`. Production reads:
+
+- `VITE_API_BASE_URL`
+
+Build the frontend with:
 
 ```bash
-flask init-db
+npm run build
 ```
-
-You can also import `schema.sql` directly in MySQL if you prefer.
-
-4. Run the application:
-
-```bash
-flask run
-```
-
-Open `http://127.0.0.1:5000`.
-
-## MySQL Notes
-
-The app reads these environment variables:
-
-- `MYSQL_HOST`
-- `MYSQL_PORT`
-- `MYSQL_USER`
-- `MYSQL_PASSWORD`
-- `MYSQL_DATABASE`
-- `FLASK_SECRET_KEY`
-
-The default database name is `lms_crm`.
-
-## Existing Database Updates
-
-If you already initialized the database before projects required opportunities, run:
-
-```bash
-mysql -u your_user -p < migrations/001_require_project_opportunity.sql
-```
-
-If the migration shows projects with `opportunity_id` as `NULL`, edit those projects in MySQL and assign an opportunity before rerunning the migration. New projects in the app now require both customer and opportunity.

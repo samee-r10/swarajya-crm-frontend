@@ -35,18 +35,18 @@ const toneClass = computed(() => `crm-kpi-card--${props.tone}`)
   justify-content: space-between;
   min-height: 148px;
   padding: 20px 22px;
-  background: #ffffff;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  border-radius: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 6px 18px -4px rgba(15, 23, 42, 0.04);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
   transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .crm-kpi-card:hover {
   transform: translateY(-3px);
-  border-color: rgba(2, 132, 199, 0.35);
-  box-shadow: 0 14px 30px -8px rgba(15, 23, 42, 0.1), 0 0 20px rgba(2, 132, 199, 0.08);
+  border-color: rgba(36, 95, 196, 0.28);
+  box-shadow: var(--shadow-bento-hover);
 }
 
 .kpi-card-header {
@@ -79,18 +79,18 @@ const toneClass = computed(() => `crm-kpi-card--${props.tone}`)
 /* Tone Palettes (Vengence UI Vibrant Accents) */
 .crm-kpi-card--blue .crm-kpi-card__icon,
 .crm-kpi-card--primary .crm-kpi-card__icon {
-  background: rgba(2, 132, 199, 0.1);
-  color: #0284c7;
+  background: var(--primary-soft);
+  color: var(--primary);
 }
 
 .crm-kpi-card--green .crm-kpi-card__icon {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
+  background: var(--success-bg);
+  color: var(--success-text);
 }
 
 .crm-kpi-card--amber .crm-kpi-card__icon {
-  background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
+  background: var(--warning-bg);
+  color: var(--warning-text);
 }
 
 .crm-kpi-card--violet .crm-kpi-card__icon {
@@ -99,8 +99,8 @@ const toneClass = computed(() => `crm-kpi-card--${props.tone}`)
 }
 
 .crm-kpi-card--red .crm-kpi-card__icon {
-  background: rgba(244, 63, 94, 0.1);
-  color: #f43f5e;
+  background: var(--danger-bg);
+  color: var(--danger-text);
 }
 
 .crm-kpi-card__body {
@@ -112,17 +112,17 @@ const toneClass = computed(() => `crm-kpi-card--${props.tone}`)
   font-family: var(--font-sans, sans-serif);
   font-size: 11.5px;
   font-weight: 700;
-  color: #64748b;
+  color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 4px;
 }
 
 .kpi-value {
-  font-family: var(--font-display, 'Outfit', sans-serif);
+  font-family: var(--font-display, sans-serif);
   font-size: 28px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--heading);
   line-height: 1.2;
   letter-spacing: -0.02em;
 }
@@ -131,7 +131,7 @@ const toneClass = computed(() => `crm-kpi-card--${props.tone}`)
   font-family: var(--font-sans, sans-serif);
   font-size: 12px;
   font-weight: 500;
-  color: #94a3b8;
+  color: var(--muted);
   margin-top: 6px;
 }
 
@@ -153,15 +153,15 @@ const toneClass = computed(() => `crm-kpi-card--${props.tone}`)
 
 .crm-kpi-card--blue .kpi-bottom-glow,
 .crm-kpi-card--primary .kpi-bottom-glow {
-  background: linear-gradient(90deg, #0284c7, #38bdf8);
+  background: linear-gradient(90deg, var(--brand-700), var(--brand-500));
 }
 
 .crm-kpi-card--green .kpi-bottom-glow {
-  background: linear-gradient(90deg, #10b981, #34d399);
+  background: linear-gradient(90deg, #176b42, #4ca97a);
 }
 
 .crm-kpi-card--amber .kpi-bottom-glow {
-  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  background: linear-gradient(90deg, #9a650e, #d59a2b);
 }
 
 .crm-kpi-card--violet .kpi-bottom-glow {
@@ -169,6 +169,6 @@ const toneClass = computed(() => `crm-kpi-card--${props.tone}`)
 }
 
 .crm-kpi-card--red .kpi-bottom-glow {
-  background: linear-gradient(90deg, #f43f5e, #fb7185);
+  background: linear-gradient(90deg, #a93630, #d36a62);
 }
 </style>

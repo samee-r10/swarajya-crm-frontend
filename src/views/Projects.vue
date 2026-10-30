@@ -1,16 +1,8 @@
 <template>
   <div class="projects-page">
-    <header class="page-header">
-      <div>
-        <p class="eyebrow">Delivery</p>
-        <h1>Projects</h1>
-        <p class="muted">Manage and monitor project delivery and execution.</p>
-      </div>
-      <button class="button" @click="showNewModal = true">
-        <svg viewBox="0 0 24 24" width="18" height="18" style="margin-right: 8px;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/></svg>
-        New Project
-      </button>
-    </header>
+    <CrmPageHeader eyebrow="Delivery" title="Projects" description="Manage and monitor project delivery and execution.">
+      <template #actions><button class="button" @click="showNewModal = true">New Project</button></template>
+    </CrmPageHeader>
 
     <section class="filters-bar">
       <div class="filter-group search">
@@ -55,23 +47,13 @@
         </tbody>
       </table>
       
-      <div v-if="totalPages > 1" class="pagination-bar">
-        <button 
-          class="pagination-btn" 
-          :disabled="currentPage === 1" 
-          @click="currentPage--"
-        >
-          Previous
-        </button>
-        <span class="pagination-info">Page {{ currentPage }} of {{ totalPages }} ({{ filtered.length }} records)</span>
-        <button 
-          class="pagination-btn" 
-          :disabled="currentPage === totalPages" 
-          @click="currentPage++"
-        >
-          Next
-        </button>
-      </div>
+      <CrmPagination
+        v-model:page="currentPage"
+        :total-pages="totalPages"
+        :total-items="filtered.length"
+        :page-size="itemsPerPage"
+        aria-label="Projects table pagination"
+      />
     </section>
 
     <!-- Mobile Responsive Project Cards (Visible on mobile <768px) -->
@@ -109,15 +91,22 @@
       </div>
       <div v-if="filtered.length === 0" class="empty-state" style="text-align: center; padding: 24px;">No projects found matching your filters.</div>
     </div>
+    <CrmPagination
+      class="mobile-only"
+      v-model:page="currentPage"
+      :total-pages="totalPages"
+      :total-items="filtered.length"
+      :page-size="itemsPerPage"
+      aria-label="Projects mobile pagination"
+    />
 
-    <!-- Modal -->
-    <div v-if="showNewModal" class="modal-overlay" @click="showNewModal = false">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <h2>New Project</h2>
-          <button class="modal-close" @click="showNewModal = false">&times;</button>
-        </div>
-        <form class="form-grid modal-form" @submit.prevent="saveNew">
+    <CrmModal
+      v-model="showNewModal"
+      title="New project"
+      description="Convert approved work into a delivery record with clear ownership and timing."
+      size="lg"
+    >
+        <form id="new-project-form" class="form-grid entity-modal-form" @submit.prevent="saveNew">
           <label 
             v-for="field in projFields" 
             :key="field.api_name"
@@ -206,10 +195,13 @@
               :placeholder="'Enter ' + field.label.toLowerCase() + '...'"
             >
           </label>
-          <div class="span-2 action-row"><button class="button" type="submit">Save</button></div>
+          <p v-if="saveError" class="span-2 flash warning">{{ saveError }}</p>
         </form>
-      </div>
-    </div>
+      <template #footer>
+        <button class="button secondary" type="button" @click="showNewModal = false">Cancel</button>
+        <button class="button" type="submit" form="new-project-form" :disabled="savingNew">{{ savingNew ? 'Creating...' : 'Create project' }}</button>
+      </template>
+    </CrmModal>
   </div>
 </template>
 
@@ -227,6 +219,8 @@ const opportunities = ref([])
 const status = ref('')
 const search = useDebouncedRef('', 300)
 const showNewModal = ref(false)
+const savingNew = ref(false)
+const saveError = ref('')
 const newForm = reactive({ customer_id: '', opportunity_id: '', project_name: '', status: 'Planning', client_requirements: '', delivery_timeline: '', product_delivery_status: '', owner: '', last_update: '' })
 
 const defaultFields = [
@@ -304,6 +298,9 @@ onMounted(async () => {
 })
 
 async function saveNew() {
+  if (savingNew.value) return
+  savingNew.value = true
+  saveError.value = ''
   try {
     const data = await apiPost('/api/projects', newForm)
     projects.value.unshift(data.project)
@@ -317,7 +314,9 @@ async function saveNew() {
       }
     })
   } catch (err) {
-    console.error('Save failed', err)
+    saveError.value = err.message || 'Unable to create the project.'
+  } finally {
+    savingNew.value = false
   }
 }
 

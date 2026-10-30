@@ -194,46 +194,62 @@
 
     <!-- TAB 2, 3, 4: TASK LISTS (ALL, MY, ASSIGNED BY ME) -->
     <section v-if="['all', 'my', 'assigned_by_me'].includes(currentTab)" class="tab-content list-content">
-      <!-- Filter Bar (Scrolltide & Kokonut UI) -->
-      <div class="filters-bar bento-card">
-        <div class="search-wrap">
-          <svg viewBox="0 0 24 24" width="16" height="16" class="search-icon"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/></svg>
-          <input v-model="searchQuery" placeholder="Search tasks by #, title, assignee, client..." @input="debouncedFetch" />
+      <section class="filters-bar task-filters" role="search" aria-label="Task filters">
+        <div class="filter-field task-search-field">
+          <label for="task-search">Search</label>
+          <div class="search-wrap">
+            <svg viewBox="0 0 24 24" width="16" height="16" class="search-icon" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/></svg>
+            <input id="task-search" v-model="searchQuery" type="search" placeholder="Task number, title, assignee or client" @input="debouncedFetch" />
+          </div>
         </div>
-        <select v-model="filterStatus" @change="fetchTasks" class="filter-select">
-          <option value="">All Statuses</option>
-          <option value="To Do">To Do</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Blocked">Blocked</option>
-          <option value="On Hold">On Hold</option>
-          <option value="In Review">In Review</option>
-          <option value="Changes Requested">Changes Requested</option>
-          <option value="Completed">Completed</option>
-          <option value="Cancelled">Cancelled</option>
-        </select>
-        <select v-model="filterPriority" @change="fetchTasks" class="filter-select">
-          <option value="">All Priorities</option>
-          <option value="Critical">Critical</option>
-          <option value="High">High</option>
-          <option value="Medium">Medium</option>
-          <option value="Low">Low</option>
-        </select>
-        <select v-model="filterType" @change="fetchTasks" class="filter-select">
-          <option value="">All Task Types</option>
-          <option v-for="t in taskTypes" :key="t.name" :value="t.name">{{ t.name }}</option>
-        </select>
-        <button
-          type="button"
-          class="btn-filter-pill"
-          :class="{ active: filterOverdue }"
-          @click="toggleOverdueFilter"
-        >
-          <span class="pill-dot" :class="{ red: filterOverdue }"></span>
-          Overdue
-        </button>
 
-        <!-- View Mode Switcher (List vs Kanban Board) -->
-        <div class="view-mode-toggle">
+        <div class="filter-field">
+          <label for="task-status-filter">Status</label>
+          <select id="task-status-filter" v-model="filterStatus" class="filter-select" @change="fetchTasks">
+            <option value="">All statuses</option>
+            <option value="To Do">To Do</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Blocked">Blocked</option>
+            <option value="On Hold">On Hold</option>
+            <option value="In Review">In Review</option>
+            <option value="Changes Requested">Changes Requested</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </div>
+
+        <div class="filter-field">
+          <label for="task-priority-filter">Priority</label>
+          <select id="task-priority-filter" v-model="filterPriority" class="filter-select" @change="fetchTasks">
+            <option value="">All priorities</option>
+            <option value="Critical">Critical</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+        </div>
+
+        <div class="filter-field">
+          <label for="task-type-filter">Task type</label>
+          <select id="task-type-filter" v-model="filterType" class="filter-select" @change="fetchTasks">
+            <option value="">All task types</option>
+            <option v-for="t in taskTypes" :key="t.name" :value="t.name">{{ t.name }}</option>
+          </select>
+        </div>
+
+        <div class="filter-actions">
+          <button
+            type="button"
+            class="btn-filter-pill"
+            :class="{ active: filterOverdue }"
+            :aria-pressed="filterOverdue"
+            @click="toggleOverdueFilter"
+          >
+            <span class="pill-dot" :class="{ red: filterOverdue }"></span>
+            Overdue only
+          </button>
+
+          <div class="view-mode-toggle" aria-label="Task view">
           <button
             type="button"
             class="view-toggle-btn"
@@ -259,7 +275,8 @@
             <span>Board</span>
           </button>
         </div>
-      </div>
+        </div>
+      </section>
 
       <!-- Task View Area -->
       <div v-if="loadingTasks" class="record-card empty-state bento-card">
@@ -328,54 +345,71 @@
       </div>
 
       <!-- LIST TABLE VIEW -->
-      <div v-else class="table-container bento-card">
-        <table class="record-table">
+      <div v-else class="table-container task-table-shell">
+        <div class="task-table-toolbar">
+          <div class="task-table-toolbar__summary">
+            <strong>{{ currentTab === 'all' ? 'All tasks' : currentTab === 'my' ? 'My tasks' : 'Assigned by me' }}</strong>
+            <span>{{ pagination.total }} {{ pagination.total === 1 ? 'record' : 'records' }}</span>
+          </div>
+          <span class="task-table-toolbar__hint">Select a row to review task details</span>
+        </div>
+        <table class="record-table task-list-table">
+          <colgroup>
+            <col class="task-col-number">
+            <col class="task-col-title">
+            <col class="task-col-assignee">
+            <col class="task-col-priority">
+            <col class="task-col-date">
+            <col class="task-col-subtasks">
+            <col class="task-col-status">
+            <col class="task-col-action">
+          </colgroup>
           <thead>
             <tr>
-              <th style="width: 120px;">Task #</th>
-              <th>Title &amp; Context</th>
-              <th>Assignee</th>
-              <th>Priority</th>
-              <th>Due Date</th>
-              <th>Subtasks</th>
-              <th>Status</th>
-              <th class="right">Action</th>
+              <th scope="col">Task</th>
+              <th scope="col">Title and context</th>
+              <th scope="col">Assignee</th>
+              <th scope="col">Priority</th>
+              <th scope="col">Due date</th>
+              <th scope="col">Progress</th>
+              <th scope="col">Status</th>
+              <th scope="col" class="right">Action</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="task in tasks" :key="task.id" class="clickable-row" @click="openDetail(task)">
-              <td>
+              <td class="task-identity-cell">
                 <strong class="task-number">{{ task.task_number }}</strong>
                 <span v-if="task.task_type" class="type-pill-sm">{{ task.task_type }}</span>
               </td>
-              <td>
+              <td class="task-summary-cell">
                 <div class="task-title-cell">
-                  <strong class="task-title-text">{{ task.title }}</strong>
+                  <strong class="task-title-text" :title="task.title">{{ task.title }}</strong>
                   <div class="tags-row">
-                    <span v-if="task.customer_name" class="context-tag client">🏢 {{ task.customer_name }}</span>
-                    <span v-if="task.project_name" class="context-tag project">📁 {{ task.project_name }}</span>
-                    <span v-if="task.environment && task.environment !== 'None'" class="context-tag env">⚙️ {{ task.environment }}</span>
+                    <span v-if="task.customer_name" class="context-tag client" :title="task.customer_name">Customer · {{ task.customer_name }}</span>
+                    <span v-if="task.project_name" class="context-tag project" :title="task.project_name">Project · {{ task.project_name }}</span>
+                    <span v-if="task.environment && task.environment !== 'None'" class="context-tag env">{{ task.environment }}</span>
                   </div>
                 </div>
               </td>
-              <td>
+              <td class="task-assignee-column">
                 <div class="assignee-cell">
                   <div class="avatar-sm">{{ getInitials(task.assignee_name) }}</div>
-                  <div>
+                  <div class="assignee-copy">
                     <strong>{{ task.assignee_name }}</strong>
-                    <span v-if="task.assignee_notification_email" class="notif-mail-indicator" :title="'Notifications sent to: ' + task.assignee_notification_email">
-                      ✉️ {{ task.assignee_notification_email }}
+                    <span v-if="task.assignee_notification_email" class="notif-mail-indicator" :title="task.assignee_notification_email">
+                      {{ task.assignee_notification_email }}
                     </span>
-                    <span v-else-if="task.assignee_email" class="muted block small">{{ task.assignee_email }}</span>
+                    <span v-else-if="task.assignee_email" class="assignee-email" :title="task.assignee_email">{{ task.assignee_email }}</span>
                   </div>
                 </div>
               </td>
               <td>
                 <span class="priority-badge" :class="priorityClass(task.priority)">{{ task.priority }}</span>
               </td>
-              <td>
+              <td class="task-date-cell">
                 <span :class="{ 'overdue-text': task.is_overdue }">
-                  {{ task.due_date }}
+                  {{ formatTaskDate(task.due_date) }}
                   <span v-if="task.due_time" class="muted small block">{{ task.due_time }}</span>
                 </span>
                 <span v-if="task.is_overdue" class="badge-overdue">OVERDUE</span>
@@ -393,34 +427,41 @@
                 <span class="status-badge" :class="statusClass(task.status)">{{ task.status }}</span>
               </td>
               <td class="right" @click.stop>
-                <button class="action-btn" title="View details" @click="openDetail(task)">
-                  <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="currentColor"/></svg>
+                <button class="task-open-button" type="button" :aria-label="`Open ${task.task_number}`" title="Open task" @click="openDetail(task)">
+                  <span>Open</span>
+                  <svg viewBox="0 0 20 20" width="13" height="13" aria-hidden="true"><path d="m7.5 5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
                 </button>
               </td>
             </tr>
           </tbody>
         </table>
 
-        <!-- Pagination -->
-        <div class="pagination-footer">
-          <span class="muted small">Showing {{ tasks.length }} of {{ pagination.total }} tasks</span>
-          <div class="page-controls">
-            <button class="button secondary small" :disabled="pagination.page <= 1" @click="changePage(pagination.page - 1)">Previous</button>
-            <span class="small font-bold">Page {{ pagination.page }} of {{ pagination.pages || 1 }}</span>
-            <button class="button secondary small" :disabled="pagination.page >= pagination.pages" @click="changePage(pagination.page + 1)">Next</button>
-          </div>
-        </div>
+        <CrmPagination
+          :page="pagination.page"
+          :total-pages="pagination.pages || 1"
+          :total-items="pagination.total"
+          :page-size="pagination.limit"
+          aria-label="Tasks table pagination"
+          @update:page="changePage"
+        />
       </div>
     </section>
 
     <!-- TAB 5: TASK REPORTS -->
     <section v-if="currentTab === 'reports'" class="tab-content reports-content">
+      <div class="report-kpi-grid">
+        <article><span>Open workload</span><strong>{{ reportSummary.openTasks }}</strong><small>Across {{ reportsData.team_workload.length }} team members</small></article>
+        <article><span>Estimated effort</span><strong>{{ reportSummary.estimatedHours }}h</strong><small>Planned delivery capacity</small></article>
+        <article><span>Logged effort</span><strong>{{ reportSummary.loggedHours }}h</strong><small>{{ reportSummary.utilization }}% of estimated effort</small></article>
+        <article :class="{ alert: reportsData.overdue_tasks.length }"><span>Active overdue</span><strong>{{ reportsData.overdue_tasks.length }}</strong><small>{{ reportsData.overdue_tasks.length ? 'Requires management attention' : 'All active work is on schedule' }}</small></article>
+      </div>
       <div class="reports-grid">
         <div class="report-card">
-          <div class="widget-header">
-            <h3>Team Workload &amp; Hours Summary</h3>
+          <div class="report-card-header">
+            <div><p>Capacity</p><h3>Team workload</h3></div>
+            <span>{{ reportsData.team_workload.length }} assignees</span>
           </div>
-          <table class="record-table">
+          <div class="report-table-scroll"><table class="record-table report-table">
             <thead>
               <tr>
                 <th>Assignee</th>
@@ -436,16 +477,17 @@
                 <td class="right">{{ w.est_hours }}h</td>
                 <td class="right" style="color: #2563eb; font-weight: 700;">{{ w.act_hours }}h</td>
               </tr>
-              <tr v-if="!reportsData.team_workload.length"><td colspan="4" class="empty-state small">No workload logged yet.</td></tr>
+              <tr v-if="!reportsData.team_workload.length"><td colspan="4"><div class="report-empty"><strong>No workload data yet</strong><span>Open tasks and effort will appear after assignments are created.</span></div></td></tr>
             </tbody>
-          </table>
+          </table></div>
         </div>
 
         <div class="report-card">
-          <div class="widget-header">
-            <h3>Tasks by Project</h3>
+          <div class="report-card-header">
+            <div><p>Delivery</p><h3>Project distribution</h3></div>
+            <span>{{ reportsData.by_project.length }} projects</span>
           </div>
-          <table class="record-table">
+          <div class="report-table-scroll"><table class="record-table report-table">
             <thead>
               <tr>
                 <th>Project Name</th>
@@ -459,16 +501,17 @@
                 <td class="right">{{ p.count }}</td>
                 <td class="right" style="color: #10b981; font-weight: 700;">{{ p.completed }}</td>
               </tr>
-              <tr v-if="!reportsData.by_project.length"><td colspan="3" class="empty-state small">No project-linked tasks found.</td></tr>
+              <tr v-if="!reportsData.by_project.length"><td colspan="3"><div class="report-empty"><strong>No project activity yet</strong><span>Link tasks to projects to see delivery distribution.</span></div></td></tr>
             </tbody>
-          </table>
+          </table></div>
         </div>
 
         <div class="report-card full-width">
-          <div class="widget-header">
-            <h3>Active Overdue Task Register</h3>
+          <div class="report-card-header">
+            <div><p>Exceptions</p><h3>Active overdue register</h3></div>
+            <span>{{ reportsData.overdue_tasks.length }} records</span>
           </div>
-          <table class="record-table">
+          <div class="report-table-scroll"><table class="record-table report-table overdue-report-table">
             <thead>
               <tr>
                 <th>Task #</th>
@@ -488,9 +531,9 @@
                 <td class="overdue-text">{{ t.due_date }}</td>
                 <td><span class="status-badge" :class="statusClass(t.status)">{{ t.status }}</span></td>
               </tr>
-              <tr v-if="!reportsData.overdue_tasks.length"><td colspan="6" class="empty-state small">🎉 No overdue tasks! All work is within deadlines.</td></tr>
+              <tr v-if="!reportsData.overdue_tasks.length"><td colspan="6"><div class="report-empty report-empty--success"><strong>No overdue tasks</strong><span>All active work is currently within its committed deadline.</span></div></td></tr>
             </tbody>
-          </table>
+          </table></div>
         </div>
       </div>
     </section>
@@ -602,22 +645,22 @@
       </div>
     </section>
 
-    <!-- CREATE TASK MODAL (SMOOTH SCROLLING) -->
-    <div v-if="showCreateModal" class="modal-backdrop" @click.self="showCreateModal = false">
-      <div class="modal-dialog modal-scroll-container">
-        <header class="modal-header">
-          <div>
-            <h3>Create New Task</h3>
-            <p class="muted small">Assign internal work, set deadlines, and track completion.</p>
-          </div>
-          <button class="close-btn" @click="showCreateModal = false">&times;</button>
-        </header>
-
-        <form @submit.prevent="submitCreateTask" class="modal-body-scrollable">
+    <!-- CREATE TASK MODAL -->
+    <CrmModal
+      v-model="showCreateModal"
+      title="Create new task"
+      description="Assign ownership, define delivery expectations, and add the context your team needs."
+      size="lg"
+    >
+        <form id="create-task-form" class="task-create-form" @submit.prevent="submitCreateTask">
           <div class="form-grid">
+            <div class="task-form-section-title full-width">
+              <span>01</span>
+              <div><strong>Task details</strong><small>Define the work, priority, and owner.</small></div>
+            </div>
             <div class="form-group full-width">
               <label>Task Title *</label>
-              <input v-model="createForm.title" required placeholder="e.g. Deploy client web portal to staging" />
+              <input v-model="createForm.title" required placeholder="For example, deploy client portal to staging" />
             </div>
 
             <div class="form-group">
@@ -640,7 +683,7 @@
             <div class="form-group">
               <label>Assignee *</label>
               <select v-model="createForm.assignee_id" required>
-                <option value="" disabled>Select Team Member...</option>
+                <option value="" disabled>Select a team member</option>
                 <option v-for="u in activeUsers" :key="u.id" :value="u.id">
                   {{ u.full_name }} {{ u.notification_email ? `(Alerts: ${u.notification_email})` : `(${u.email})` }}
                 </option>
@@ -654,6 +697,10 @@
               </select>
             </div>
 
+            <div class="task-form-section-title full-width">
+              <span>02</span>
+              <div><strong>Schedule and effort</strong><small>Set the working window and expected effort.</small></div>
+            </div>
             <div class="form-group">
               <label>Due Date *</label>
               <input v-model="createForm.due_date" type="date" required />
@@ -670,10 +717,14 @@
             </div>
 
             <div class="form-group">
-              <label>Estimated Effort (Hours)</label>
-              <input v-model.number="createForm.estimated_hours" type="number" step="0.5" min="0" placeholder="e.g. 4.0" />
+              <label>Estimated Effort</label>
+              <input v-model.number="createForm.estimated_hours" type="number" step="0.5" min="0" placeholder="Hours, for example 4" />
             </div>
 
+            <div class="task-form-section-title full-width">
+              <span>03</span>
+              <div><strong>Business context</strong><small>Connect the task to its environment, customer, or project.</small></div>
+            </div>
             <div class="form-group">
               <label>Environment</label>
               <select v-model="createForm.environment">
@@ -702,49 +753,50 @@
             </div>
 
             <div class="form-group full-width">
-              <label>Detailed Task Description *</label>
-              <textarea v-model="createForm.description" rows="4" required placeholder="Specify scope, requirements, steps to reproduce, or verification criteria..."></textarea>
+              <label>Task Description *</label>
+              <textarea v-model="createForm.description" rows="4" required placeholder="Add scope, requirements, dependencies, and acceptance criteria"></textarea>
             </div>
 
-            <!-- Review Configuration -->
+            <div class="task-form-section-title full-width">
+              <span>04</span>
+              <div><strong>Delivery controls</strong><small>Add approval requirements and a completion checklist.</small></div>
+            </div>
             <div class="form-group full-width review-panel">
               <label class="checkbox-label">
                 <input type="checkbox" v-model="createForm.review_required" />
-                <span><strong>Mandatory Review Required</strong> (Task cannot be completed without reviewer approval)</span>
+                <span><strong>Require reviewer approval</strong><small>The task cannot be completed until it is approved.</small></span>
               </label>
               <div v-if="createForm.review_required" class="mt-8">
                 <label>Designated Reviewer</label>
                 <select v-model="createForm.reviewer_id" required>
-                  <option value="" disabled>Select Reviewer...</option>
+                  <option value="" disabled>Select a reviewer</option>
                   <option v-for="u in activeUsers" :key="u.id" :value="u.id">{{ u.full_name }} ({{ u.email }})</option>
                 </select>
               </div>
             </div>
 
-            <!-- Checklist / Subtasks -->
             <div class="form-group full-width checklist-panel">
               <div class="checklist-header">
                 <strong>Checklist &amp; Subtasks</strong>
-                <button type="button" class="button secondary small" @click="addChecklistRow">+ Add Subtask</button>
+                <button type="button" class="button secondary small" @click="addChecklistRow">Add item</button>
               </div>
               <div v-for="(item, idx) in createForm.checklists" :key="idx" class="checklist-input-row">
-                <input v-model="createForm.checklists[idx]" placeholder="Subtask description..." />
-                <button v-if="createForm.checklists.length > 1" type="button" class="delete-btn" @click="removeChecklistRow(idx)">&times;</button>
+                <input v-model="createForm.checklists[idx]" placeholder="Checklist item" />
+                <button v-if="createForm.checklists.length > 1" type="button" class="delete-btn" aria-label="Remove checklist item" @click="removeChecklistRow(idx)">&times;</button>
               </div>
             </div>
           </div>
 
           <div v-if="createError" class="error-banner">{{ createError }}</div>
 
-          <footer class="modal-footer">
-            <button type="button" class="button secondary" @click="showCreateModal = false">Cancel</button>
-            <button type="submit" class="button primary" :disabled="submittingTask">
-              {{ submittingTask ? 'Assigning...' : 'Create & Assign Task' }}
-            </button>
-          </footer>
         </form>
-      </div>
-    </div>
+      <template #footer>
+        <button type="button" class="button secondary" @click="showCreateModal = false">Cancel</button>
+        <button type="submit" form="create-task-form" class="button primary" :disabled="submittingTask">
+          {{ submittingTask ? 'Creating task...' : 'Create task' }}
+        </button>
+      </template>
+    </CrmModal>
 
     <!-- TASK DETAIL DRAWER / MODAL -->
     <div v-if="showDetailModal && selectedTask" class="modal-backdrop" @click.self="showDetailModal = false">
@@ -941,46 +993,39 @@
       </div>
     </div>
 
-    <!-- REASON MODAL (Clean in-app replacement for window.prompt) -->
-    <div v-if="reasonModal.show" class="modal-backdrop" @click.self="reasonModal.show = false">
-      <div class="modal-dialog modal-sm">
-        <header class="modal-header">
-          <div>
-            <h3>{{ reasonModal.title }}</h3>
-            <p class="muted small">{{ reasonModal.subtitle }}</p>
-          </div>
-          <button class="close-btn" @click="reasonModal.show = false">&times;</button>
-        </header>
-
-        <form @submit.prevent="confirmReasonModal">
-          <div class="modal-body-scrollable">
-            <div class="form-group full-width">
-              <label>{{ reasonModal.fieldLabel }} *</label>
-              <textarea
-                v-model="reasonModal.reasonText"
-                rows="4"
-                :placeholder="reasonModal.placeholder"
-                required
-                class="reason-textarea"
-                autofocus
-              ></textarea>
-            </div>
-          </div>
-
-          <footer class="modal-footer">
-            <button type="button" class="button secondary" @click="reasonModal.show = false">Cancel</button>
-            <button
-              type="submit"
-              class="button"
-              :class="reasonModal.btnClass"
-              :disabled="!reasonModal.reasonText.trim()"
-            >
-              {{ reasonModal.confirmText }}
-            </button>
-          </footer>
-        </form>
-      </div>
-    </div>
+    <!-- REASON MODAL -->
+    <CrmModal
+      v-model="reasonModal.show"
+      :title="reasonModal.title"
+      :description="reasonModal.subtitle"
+      size="sm"
+    >
+      <form id="task-reason-form" class="task-reason-form" @submit.prevent="confirmReasonModal">
+        <div class="form-group full-width">
+          <label>{{ reasonModal.fieldLabel }} *</label>
+          <textarea
+            v-model="reasonModal.reasonText"
+            rows="4"
+            :placeholder="reasonModal.placeholder"
+            required
+            class="reason-textarea"
+            autofocus
+          ></textarea>
+        </div>
+      </form>
+      <template #footer>
+        <button type="button" class="button secondary" @click="reasonModal.show = false">Cancel</button>
+        <button
+          type="submit"
+          form="task-reason-form"
+          class="button"
+          :class="reasonModal.btnClass"
+          :disabled="!reasonModal.reasonText.trim()"
+        >
+          {{ reasonModal.confirmText }}
+        </button>
+      </template>
+    </CrmModal>
   </div>
 </template>
 
@@ -1152,6 +1197,18 @@ const reportsData = reactive({
   overdue_tasks: [],
   by_project: [],
   by_type: []
+})
+
+const reportSummary = computed(() => {
+  const openTasks = reportsData.team_workload.reduce((sum, item) => sum + Number(item.tasks || 0), 0)
+  const estimatedHours = reportsData.team_workload.reduce((sum, item) => sum + Number(item.est_hours || 0), 0)
+  const loggedHours = reportsData.team_workload.reduce((sum, item) => sum + Number(item.act_hours || 0), 0)
+  return {
+    openTasks,
+    estimatedHours: Math.round(estimatedHours * 10) / 10,
+    loggedHours: Math.round(loggedHours * 10) / 10,
+    utilization: estimatedHours ? Math.round((loggedHours / estimatedHours) * 100) : 0
+  }
 })
 
 const taskTypes = ref([
@@ -1396,6 +1453,17 @@ function priorityClass(p) {
 function formatDate(dt) {
   if (!dt) return '-'
   return String(dt).substring(0, 16).replace('T', ' ')
+}
+
+function formatTaskDate(value) {
+  if (!value) return '—'
+  const date = new Date(`${String(value).substring(0, 10)}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  }).format(date)
 }
 
 // Create Task Modal & Checklists
@@ -2040,49 +2108,140 @@ onMounted(() => {
   vertical-align: middle;
 }
 
+.task-table-shell {
+  border-color: #dce3eb;
+  border-radius: 8px;
+  box-shadow: none;
+  overflow-x: auto;
+}
+
+.task-list-table {
+  min-width: 1296px;
+  table-layout: fixed;
+}
+
+.task-list-table .task-col-number { width: 148px; }
+.task-list-table .task-col-title { width: 330px; }
+.task-list-table .task-col-assignee { width: 270px; }
+.task-list-table .task-col-priority { width: 100px; }
+.task-list-table .task-col-date { width: 130px; }
+.task-list-table .task-col-subtasks { width: 130px; }
+.task-list-table .task-col-status { width: 125px; }
+.task-list-table .task-col-action { width: 63px; }
+
+.task-list-table th {
+  background: #f8fafc;
+  color: #667589;
+  font-size: 10.5px;
+  font-weight: 750;
+  height: 44px;
+  letter-spacing: .055em;
+  padding: 0 16px;
+  white-space: nowrap;
+}
+
+.task-list-table td {
+  background: #ffffff;
+  height: auto;
+  padding: 14px 16px;
+}
+
+.task-list-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.task-list-table tbody tr:hover td {
+  background: #f8fbff;
+}
+
+.task-identity-cell,
+.task-date-cell {
+  white-space: nowrap;
+}
+
+.task-identity-cell {
+  vertical-align: top !important;
+}
+
 .clickable-row { cursor: pointer; transition: background 0.1s; }
 .clickable-row:hover { background: #f8fafc; }
 
-.task-number { color: #2563eb; font-weight: 700; }
+.task-number {
+  color: #1f5f9f;
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.35;
+}
 .task-number-lg { font-size: 18px; font-weight: 800; color: #2563eb; margin-right: 10px; }
 
 .type-pill-sm {
-  display: block;
+  display: inline-flex;
   font-size: 10px;
-  color: #64748b;
+  color: #526174;
   text-transform: uppercase;
   font-weight: 700;
-  margin-top: 2px;
+  margin-top: 7px;
+  max-width: 116px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.task-title-cell { display: flex; flex-direction: column; gap: 4px; }
-.task-title-text { font-size: 13px; color: #0f172a; }
+.task-title-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.task-title-text {
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: #172033;
+  display: -webkit-box;
+  font-size: 13.5px;
+  font-weight: 680;
+  line-height: 1.4;
+  overflow: hidden;
+  overflow-wrap: normal;
+  word-break: normal;
+}
 
 .tags-row {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .context-tag {
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 4px;
   background: #f1f5f9;
-  color: #475569;
+  border: 1px solid #e3e9f0;
+  border-radius: 4px;
+  color: #5c6b7d;
+  display: inline-block;
+  font-size: 10.5px;
+  max-width: 145px;
+  overflow: hidden;
+  padding: 3px 6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .assignee-cell {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .avatar-sm {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #2563eb;
+  background: #2b67a3;
   color: #fff;
   font-weight: 700;
   font-size: 11px;
@@ -2095,8 +2254,34 @@ onMounted(() => {
 .notif-mail-indicator {
   display: block;
   font-size: 11px;
-  color: #2563eb;
-  font-weight: 600;
+  color: #64748b;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assignee-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.assignee-copy strong {
+  color: #263548;
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assignee-email {
+  color: #64748b;
+  display: block;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Status Badges */
@@ -2147,7 +2332,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  width: 90px;
+  width: 104px;
 }
 
 .progress-bar-sm {
@@ -2167,10 +2352,15 @@ onMounted(() => {
 .action-btn {
   background: #fff;
   border: 1px solid #cbd5e1;
-  padding: 5px 8px;
+  align-items: center;
+  display: inline-flex;
+  height: 32px;
+  justify-content: center;
+  padding: 0;
   border-radius: 6px;
   cursor: pointer;
   color: #475569;
+  width: 32px;
 }
 .action-btn:hover { background: #f8fafc; color: #0f172a; }
 
@@ -2700,6 +2890,179 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
+/* Compact enterprise filter toolbar */
+.filters-bar.task-filters {
+  align-items: end;
+  background: #ffffff;
+  border: 1px solid #dce3eb;
+  border-radius: 8px;
+  box-shadow: none;
+  display: grid;
+  gap: 12px;
+  grid-template-columns:
+    minmax(300px, 1.8fr)
+    minmax(150px, .72fr)
+    minmax(140px, .64fr)
+    minmax(160px, .76fr)
+    auto;
+  margin-bottom: 16px;
+  padding: 14px !important;
+}
+
+.task-filters .filter-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.task-filters .filter-field label {
+  color: #627186;
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: .055em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.task-filters .search-wrap {
+  display: flex;
+  flex: none;
+  min-width: 0;
+  width: 100%;
+}
+
+.task-filters .search-wrap input,
+.task-filters .filter-select {
+  background: #ffffff;
+  border: 1px solid #cfd8e3;
+  border-radius: 6px;
+  box-shadow: none;
+  color: #27364a;
+  font-size: 12.5px;
+  height: 40px;
+  min-height: 40px;
+  width: 100%;
+}
+
+.task-filters .search-wrap input {
+  padding: 0 12px 0 36px;
+}
+
+.task-filters .filter-select {
+  padding: 0 34px 0 11px;
+}
+
+.task-filters .search-wrap input:hover,
+.task-filters .filter-select:hover {
+  border-color: #aebdce;
+}
+
+.task-filters .search-wrap input:focus,
+.task-filters .filter-select:focus {
+  border-color: #4f82b8;
+  box-shadow: 0 0 0 3px rgba(47, 110, 170, .1);
+  outline: none;
+}
+
+.filter-actions {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+.task-filters .btn-filter-pill {
+  background: #ffffff;
+  border: 1px solid #cfd8e3;
+  border-radius: 6px;
+  color: #526174;
+  height: 40px;
+  padding: 0 12px;
+}
+
+.task-filters .btn-filter-pill:hover {
+  background: #f8fafc;
+  border-color: #aebdce;
+}
+
+.task-filters .btn-filter-pill.active {
+  background: #fff4f2;
+  border-color: #e7b7b1;
+  color: #a33d35;
+}
+
+.task-filters .pill-dot {
+  background: #94a3b8;
+  height: 6px;
+  width: 6px;
+}
+
+.task-filters .pill-dot.red {
+  background: #c84b42;
+}
+
+.task-filters .view-mode-toggle {
+  border-color: #d7e0ea;
+  border-radius: 6px;
+  height: 40px;
+  margin-left: 0;
+  padding: 3px;
+}
+
+.task-filters .view-toggle-btn {
+  border-radius: 4px;
+  height: 32px;
+  padding: 0 10px;
+}
+
+.task-filters .view-toggle-btn.active {
+  color: #1f5f9f;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .08);
+}
+
+@media (max-width: 1180px) {
+  .filters-bar.task-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .task-search-field,
+  .filter-actions {
+    grid-column: 1 / -1;
+  }
+
+  .filter-actions {
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 640px) {
+  .filters-bar.task-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .task-search-field,
+  .filter-actions {
+    grid-column: auto;
+  }
+
+  .filter-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .task-filters .btn-filter-pill,
+  .task-filters .view-mode-toggle {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .task-filters .view-toggle-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
 /* View Mode Switcher Pill */
 .view-mode-toggle {
   display: inline-flex;
@@ -2926,6 +3289,523 @@ onMounted(() => {
 .modal-footer {
   padding: 16px 24px;
   border-top: 1px solid rgba(241, 245, 249, 1);
+}
+
+/* =========================================================
+   SWARAJYA TASKS — FINAL PRODUCT LAYER
+   Saffron interaction accents, charcoal hierarchy, quiet surfaces.
+   ========================================================= */
+.task-management-page {
+  --task-accent: #d9670e;
+  --task-accent-dark: #a94f0a;
+  --task-accent-soft: #fff4e5;
+  --task-ink: #241f1b;
+  --task-muted: #6d665f;
+  --task-line: #ded9d3;
+}
+
+.task-management-page :deep(.crm-page-header) {
+  margin-bottom: 18px !important;
+}
+
+.task-management-page :deep(.crm-page-header__eyebrow) {
+  color: #a9581d;
+}
+
+.task-management-page :deep(.crm-page-header__actions) {
+  gap: 8px;
+}
+
+.task-management-page :deep(.crm-page-header__actions .btn-tactile) {
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 700;
+  height: 38px;
+  padding: 0 14px;
+}
+
+.task-management-page :deep(.crm-page-header__actions .btn-tactile-primary) {
+  background: linear-gradient(135deg, #f28a1a, #d9670e);
+  border-color: #ca5a09;
+  box-shadow: 0 2px 5px rgba(169, 79, 10, .2);
+}
+
+.task-management-page :deep(.crm-page-header__actions .btn-tactile-secondary) {
+  background: #ffffff;
+  border-color: #d7d1ca;
+  box-shadow: none;
+  color: #4d4741;
+}
+
+.task-management-page :deep(.crm-page-header__actions .btn-tactile-secondary:hover) {
+  background: #fff8ef;
+  border-color: #e1aa72;
+  color: var(--task-accent-dark);
+}
+
+.tasks-tabs-nav.bento-card {
+  background: #ffffff;
+  border: 1px solid var(--task-line);
+  border-radius: 9px;
+  box-shadow: 0 1px 2px rgba(36, 31, 27, .04);
+  display: grid;
+  gap: 3px;
+  grid-template-columns: repeat(6, minmax(max-content, 1fr));
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding: 4px;
+}
+
+.tasks-tabs-nav.bento-card:hover {
+  border-color: var(--task-line);
+  box-shadow: 0 1px 2px rgba(36, 31, 27, .04);
+  transform: none;
+}
+
+.tasks-tabs-nav button {
+  border-radius: 6px;
+  color: #655f59;
+  font-size: 12.5px;
+  font-weight: 650;
+  height: 40px;
+  justify-content: center;
+  padding: 0 13px;
+}
+
+.tasks-tabs-nav button:hover {
+  background: #fff8ef;
+  color: #8f4109;
+}
+
+.tasks-tabs-nav button.active {
+  background: var(--task-accent-soft);
+  box-shadow: none;
+  color: var(--task-accent-dark);
+  font-weight: 750;
+}
+
+.tasks-tabs-nav button.active svg {
+  color: var(--task-accent);
+}
+
+.tasks-tabs-nav .tab-badge {
+  background: #ede9e5;
+  color: #615a53;
+  min-height: 20px;
+  padding: 3px 6px !important;
+}
+
+.tasks-tabs-nav button.active .tab-badge,
+.tasks-tabs-nav .tab-badge.primary {
+  background: #f5d2ad !important;
+  color: #873b07 !important;
+}
+
+.dashboard-content .metrics-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.dashboard-content .metric-card {
+  border: 1px solid var(--task-line);
+  border-radius: 8px;
+  box-shadow: none;
+  min-height: 120px;
+  padding: 14px 15px;
+}
+
+.dashboard-content .metric-card:hover {
+  border-color: #d9a875;
+  box-shadow: 0 5px 14px rgba(80, 52, 31, .07);
+  transform: translateY(-1px);
+}
+
+.dashboard-content .metric-label {
+  color: #6b645d;
+  font-size: 10.5px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.dashboard-content .metric-value {
+  color: var(--task-ink);
+  font-size: 25px;
+}
+
+.dashboard-content .metric-icon-box {
+  border-radius: 7px;
+  height: 30px;
+  width: 30px;
+}
+
+.dashboard-content .metric-icon-box.blue,
+.dashboard-content .metric-icon-box.indigo {
+  background: #fff0dc;
+  color: var(--task-accent);
+}
+
+.dashboard-widgets-grid {
+  gap: 14px;
+}
+
+.dashboard-content .widget-card {
+  border: 1px solid var(--task-line);
+  border-radius: 8px;
+  box-shadow: none;
+  padding: 17px;
+}
+
+.dashboard-content .widget-card:hover {
+  border-color: var(--task-line);
+  box-shadow: none;
+  transform: none;
+}
+
+.filters-bar.task-filters {
+  border-color: var(--task-line);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(36, 31, 27, .03);
+}
+
+.task-filters .filter-field label {
+  color: #756c63;
+}
+
+.task-filters .search-wrap input:focus,
+.task-filters .filter-select:focus {
+  border-color: #e18a3a;
+  box-shadow: 0 0 0 3px rgba(242, 138, 26, .12);
+}
+
+.task-filters .view-toggle-btn.active {
+  color: var(--task-accent-dark);
+}
+
+.task-filters .view-toggle-btn.active svg {
+  color: var(--task-accent);
+}
+
+.task-table-shell {
+  border-color: var(--task-line);
+  background: #ffffff;
+  overflow-x: auto;
+}
+
+.task-table-toolbar {
+  align-items: center;
+  background: #ffffff;
+  border-bottom: 1px solid var(--task-line);
+  display: flex;
+  justify-content: space-between;
+  min-width: 1318px;
+  min-height: 54px;
+  padding: 10px 16px;
+}
+
+.task-table-toolbar__summary {
+  align-items: baseline;
+  display: flex;
+  gap: 9px;
+}
+
+.task-table-toolbar__summary strong {
+  color: var(--task-ink);
+  font-size: 13.5px;
+  font-weight: 750;
+}
+
+.task-table-toolbar__summary span,
+.task-table-toolbar__hint {
+  color: #7a726b;
+  font-size: 11.5px;
+}
+
+.task-table-toolbar__hint {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.task-table-toolbar__hint::before {
+  background: #e28a38;
+  border-radius: 50%;
+  content: '';
+  height: 5px;
+  width: 5px;
+}
+
+.task-list-table .task-number {
+  color: var(--task-accent-dark);
+}
+
+.task-list-table {
+  min-width: 1318px;
+}
+
+.task-list-table .task-col-number { width: 144px; }
+.task-list-table .task-col-title { width: 330px; }
+.task-list-table .task-col-assignee { width: 260px; }
+.task-list-table .task-col-priority { width: 96px; }
+.task-list-table .task-col-date { width: 130px; }
+.task-list-table .task-col-subtasks { width: 126px; }
+.task-list-table .task-col-status { width: 128px; }
+.task-list-table .task-col-action { width: 104px; }
+
+.task-list-table th {
+  background: #faf9f7;
+  border-bottom-color: #ddd7d0;
+  color: #6b635c;
+  height: 42px;
+}
+
+.task-list-table td {
+  border-bottom-color: #eeeae6;
+  height: 72px;
+  padding-block: 11px;
+}
+
+.task-list-table .task-identity-cell {
+  vertical-align: middle !important;
+}
+
+.task-list-table .task-title-text {
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  display: -webkit-box;
+  line-height: 1.35;
+  overflow: hidden;
+}
+
+.task-list-table .avatar-sm,
+.kanban-card .avatar-sm {
+  background: linear-gradient(135deg, #f28a1a, #d9670e);
+}
+
+.task-list-table tbody tr:hover td {
+  background: #fffbf6 !important;
+}
+
+.task-open-button {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d8d1ca;
+  border-radius: 6px;
+  color: #554e48;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  gap: 3px;
+  height: 32px;
+  justify-content: center;
+  padding: 0 9px 0 11px;
+}
+
+.task-open-button:hover {
+  background: #fff4e5;
+  border-color: #e1aa72;
+  color: var(--task-accent-dark);
+}
+
+.task-create-form .form-grid {
+  gap: 14px 16px;
+}
+
+.task-create-form .form-group label {
+  color: #554e48;
+  font-size: 11.5px;
+  letter-spacing: .005em;
+}
+
+.task-create-form .form-group :is(input, select, textarea) {
+  border-color: #d7d1ca;
+  border-radius: 7px;
+  min-height: 40px;
+}
+
+.task-create-form .form-group textarea {
+  line-height: 1.5;
+  min-height: 104px;
+  resize: vertical;
+}
+
+.task-form-section-title {
+  align-items: center;
+  border-top: 1px solid #eeeae6;
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+  padding-top: 17px;
+}
+
+.task-form-section-title:first-child {
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.task-form-section-title > span {
+  align-items: center;
+  background: #fff1df;
+  border: 1px solid #f2d1ad;
+  border-radius: 6px;
+  color: #a54a08;
+  display: inline-flex;
+  font-size: 10px;
+  font-weight: 800;
+  height: 27px;
+  justify-content: center;
+  width: 27px;
+}
+
+.task-form-section-title div {
+  display: grid;
+  gap: 1px;
+}
+
+.task-form-section-title strong {
+  color: #2d2824;
+  font-size: 12.5px;
+}
+
+.task-form-section-title small {
+  color: #80766e;
+  font-size: 10.5px;
+}
+
+.task-create-form .review-panel,
+.task-create-form .checklist-panel {
+  background: #faf9f7;
+  border-color: #e3ddd7;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.task-create-form .checkbox-label {
+  align-items: flex-start;
+}
+
+.task-create-form .checkbox-label > span {
+  display: grid;
+  gap: 2px;
+}
+
+.task-create-form .checkbox-label small {
+  color: #7a726b;
+  font-size: 10.5px;
+  font-weight: 500;
+}
+
+.task-create-form input[type="checkbox"] {
+  accent-color: #d9670e !important;
+}
+
+.task-management-page .progress-fill {
+  background: #df7a20;
+}
+
+.kanban-column.bento-card {
+  background: #faf9f7;
+  border-color: var(--task-line);
+  border-radius: 9px;
+}
+
+.kanban-column.bento-card:hover {
+  border-color: var(--task-line);
+  box-shadow: none;
+  transform: none;
+}
+
+.kanban-card.bento-card {
+  border-color: #e2ddd7;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(36, 31, 27, .04);
+}
+
+.kanban-card.bento-card:hover {
+  border-color: #d9a875;
+  box-shadow: 0 5px 14px rgba(80, 52, 31, .08);
+  transform: translateY(-1px);
+}
+
+.kanban-col-header.blue .kanban-status-dot {
+  background: var(--task-accent);
+  box-shadow: none;
+}
+
+.task-management-page .button:not(.secondary):not(.danger):not(.warning),
+.task-management-page .btn-flow:not(.danger):not(.warning):not(.success):not(.muted-btn):not(.review-btn):not(.danger-text) {
+  background: linear-gradient(135deg, #f28a1a, #d9670e);
+  border-color: #ca5a09;
+  box-shadow: 0 2px 4px rgba(169, 79, 10, .16);
+  color: #ffffff;
+}
+
+.task-management-page .button {
+  border-radius: 7px;
+  min-height: 36px;
+}
+
+.task-management-page .button.secondary {
+  background: #ffffff;
+  border-color: #d7d1ca;
+  box-shadow: none;
+  color: #4d4741;
+}
+
+.task-management-page .button.secondary:hover {
+  background: #fff8ef;
+  border-color: #e1aa72;
+  color: var(--task-accent-dark);
+}
+
+.task-management-page .modal-dialog {
+  border-color: #ddd7d0;
+  border-radius: 11px !important;
+  box-shadow: 0 22px 50px rgba(36, 31, 27, .2) !important;
+}
+
+.task-management-page .modal-header,
+.task-management-page .modal-footer {
+  border-color: #ebe7e2;
+}
+
+.task-management-page .close-btn:hover {
+  color: var(--task-accent-dark);
+}
+
+.toast-notification.info {
+  border-left-color: var(--task-accent);
+}
+
+.toast-notification.info .toast-icon {
+  color: #f4a248;
+}
+
+@media (max-width: 1280px) {
+  .dashboard-content .metrics-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .tasks-tabs-nav.bento-card {
+    display: flex;
+  }
+}
+
+@media (max-width: 700px) {
+  .dashboard-content .metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .task-management-page :deep(.crm-page-header__actions) {
+    width: 100%;
+  }
+
+  .task-management-page :deep(.crm-page-header__actions .btn-tactile) {
+    flex: 1;
+  }
 }
 
 </style>

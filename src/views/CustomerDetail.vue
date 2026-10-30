@@ -1,4 +1,5 @@
 <template>
+  <div class="customer-detail-page">
   <CrmRecordHeader
     v-if="customer"
     record-type="Customer"
@@ -11,48 +12,44 @@
     </template>
   </CrmRecordHeader>
 
-  <!-- Edit Modal Overlay -->
-  <transition name="fade">
-    <div v-if="showEditModal" class="modal-overlay" @click.self="showEditModal = false">
-      <div class="modal-content">
-        <header class="modal-header">
-          <div>
-            <p class="eyebrow">Sales Module</p>
-            <h2>Edit Customer</h2>
-          </div>
-          <button type="button" class="close-btn" @click="showEditModal = false">×</button>
-        </header>
-        <main class="modal-body">
-          <CustomerForm :id="id" :is-modal="true" @save-success="handleSaveSuccess" @cancel="showEditModal = false" />
-        </main>
-      </div>
-    </div>
-  </transition>
+  <CrmModal
+    v-model="showEditModal"
+    title="Edit customer"
+    description="Update account, contact, address, and commercial information."
+    size="lg"
+  >
+    <CustomerForm :id="id" :is-modal="true" @save-success="handleSaveSuccess" @cancel="showEditModal = false" />
+  </CrmModal>
 
   <CustomerServiceCard v-if="customer" :customer="customer" @saved="customer = $event" />
 
-  <section v-if="customer" class="record-layout">
-    <div class="form-grid record-card">
-      <div class="span-2 card-section-title"><h2>Customer Details</h2></div>
-      <label v-for="field in fields" :key="field.label" :class="field.long ? 'span-2' : ''">{{ field.label }}
-        <textarea v-if="field.long" readonly rows="5" :value="field.value"></textarea>
-        <input v-else readonly :value="field.value">
-      </label>
-      <div class="span-2">
-        <SystemInfo :record="customer" />
-      </div>
-    </div>
+  <section v-if="customer" class="customer-workspace">
+    <article class="customer-profile-card">
+      <header class="customer-section-header">
+        <div><p>Account profile</p><h2>Customer information</h2></div>
+        <span class="customer-record-status">{{ customer.status || 'Lead' }}</span>
+      </header>
+      <dl class="customer-information-grid">
+        <div v-for="field in fields" :key="field.label" :class="{ 'customer-field--wide': field.long }">
+          <dt>{{ field.label }}</dt>
+          <dd :class="{ 'customer-field--multiline': field.long }">{{ field.value || '—' }}</dd>
+        </div>
+      </dl>
+      <div class="customer-system-info"><SystemInfo :record="customer" /></div>
+    </article>
     <aside class="related-pane">
       <div class="panel related-section">
-        <div class="related-heading"><span>Opportunities</span><RouterLink :to="{ name: 'opportunity-new', query: { customer_id: id }}">New</RouterLink></div>
+        <div class="related-heading"><div><span>Opportunities</span><small>{{ opportunities.length }} linked records</small></div><RouterLink :to="{ name: 'opportunity-new', query: { customer_id: id }}">New</RouterLink></div>
         <div class="list compact">
           <RouterLink v-for="opp in opportunities" :key="opp.id" class="list-item" :to="`/opportunities/${opp.id}`"><strong>{{ opp.title }}</strong><span>{{ opp.stage }}</span></RouterLink>
+          <p v-if="!opportunities.length" class="related-empty">No opportunities linked yet.</p>
         </div>
       </div>
       <div class="panel related-section">
-        <div class="related-heading"><span>Projects</span><RouterLink to="/projects/new">New</RouterLink></div>
+        <div class="related-heading"><div><span>Projects</span><small>{{ projects.length }} linked records</small></div><RouterLink to="/projects/new">New</RouterLink></div>
         <div class="list compact">
           <RouterLink v-for="project in projects" :key="project.id" class="list-item" :to="`/projects/${project.id}`"><strong>{{ project.project_name }}</strong><span>{{ project.status }}</span></RouterLink>
+          <p v-if="!projects.length" class="related-empty">No projects linked yet.</p>
         </div>
       </div>
       <div class="panel related-section">
@@ -69,6 +66,7 @@
       </div>
     </aside>
   </section>
+  </div>
 </template>
 
 <script setup>
@@ -167,93 +165,32 @@ function mergeProfileFields(fields) {
 </script>
 
 <style scoped>
-/* Glassmorphic Modal Overlay styling */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(15, 23, 42, 0.4);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 24px;
-}
-
-.modal-content {
-  background: var(--surface, #ffffff);
-  border-radius: 16px;
-  border: 1px solid var(--line, #e2e8f0);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-  max-width: 800px;
-  width: 100%;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--line, #e2e8f0);
-  background: var(--surface-soft, #f8fafc);
-}
-
-.modal-header h2 {
-  font-size: 20px;
-  font-weight: 800;
-  margin: 4px 0 0;
-  color: var(--text, #0f172a);
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 28px;
-  cursor: pointer;
-  color: var(--muted, #64748b);
-  transition: color 0.2s;
-  line-height: 1;
-}
-
-.close-btn:hover {
-  color: var(--primary, #ea580c);
-}
-
-.modal-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px;
-}
-
-.btn-animate {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.btn-animate:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
-}
-
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
-}
+.customer-detail-page { margin: 0 auto; max-width: 1440px; }
+.customer-workspace { align-items: start; display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) 340px; }
+.customer-profile-card, .related-section { background: #fff; border: 1px solid #ded8d1; border-radius: 9px; box-shadow: 0 1px 2px rgba(36,31,27,.04); }
+.customer-section-header { align-items: center; border-bottom: 1px solid #ebe7e2; display: flex; justify-content: space-between; padding: 16px 18px; }
+.customer-section-header p { color: #8d4a16; font-size: 10px; font-weight: 800; letter-spacing: .07em; margin: 0 0 3px; text-transform: uppercase; }
+.customer-section-header h2 { color: #241f1b; font-size: 16px; margin: 0; }
+.customer-record-status { background: #fff3e4; border: 1px solid #f0c99f; border-radius: 999px; color: #984408; font-size: 11px; font-weight: 750; padding: 5px 9px; }
+.customer-information-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); margin: 0; padding: 5px 18px 18px; }
+.customer-information-grid > div { border-bottom: 1px solid #f0ece8; min-width: 0; padding: 14px 4px; }
+.customer-information-grid > div:nth-child(odd) { padding-right: 22px; }
+.customer-field--wide { grid-column: 1 / -1; }
+.customer-information-grid dt { color: #7a726b; font-size: 10.5px; font-weight: 700; margin-bottom: 5px; text-transform: uppercase; }
+.customer-information-grid dd { color: #302a25; font-size: 13px; font-weight: 600; margin: 0; overflow-wrap: anywhere; }
+.customer-field--multiline { font-weight: 500 !important; line-height: 1.6; white-space: pre-wrap; }
+.customer-system-info { padding: 0 18px 18px; }
+.related-pane { display: grid; gap: 12px; }
+.related-section { overflow: hidden; padding: 0; }
+.related-heading { align-items: center; border-bottom: 1px solid #ebe7e2; display: flex; justify-content: space-between; padding: 13px 14px; }
+.related-heading div { display: grid; gap: 2px; }
+.related-heading span { color: #302a25; font-size: 12.5px; font-weight: 750; }
+.related-heading small { color: #857c74; font-size: 10px; }
+.related-heading a { color: #a94f0a; font-size: 11px; font-weight: 750; text-decoration: none; }
+.related-section .list-item { border-bottom: 1px solid #f0ece8; padding: 11px 14px; }
+.related-section .list-item:last-child { border-bottom: 0; }
+.related-empty { color: #8a8179; font-size: 11.5px; margin: 0; padding: 18px 14px; }
+@media (max-width: 1000px) { .customer-workspace { grid-template-columns: 1fr; } .related-pane { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 640px) { .customer-information-grid { grid-template-columns: 1fr; } .customer-field--wide { grid-column: auto; } .related-pane { grid-template-columns: 1fr; } }
 
 </style>

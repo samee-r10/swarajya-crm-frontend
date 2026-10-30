@@ -1,12 +1,5 @@
 <template>
   <div class="transaction-detail-view">
-    <!-- Breadcrumb -->
-    <nav class="breadcrumb-nav">
-      <RouterLink to="/finance/transactions" class="crumb-link">Transaction Ledger</RouterLink>
-      <span class="crumb-sep">/</span>
-      <span class="crumb-current">#{{ headerTransactionId }}</span>
-    </nav>
-
     <!-- Header -->
     <header class="detail-header">
       <div class="header-left">

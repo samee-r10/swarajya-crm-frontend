@@ -1,13 +1,8 @@
 <template>
   <div class="bank-page">
-    <header class="page-header">
-      <div>
-        <p class="eyebrow">Treasury</p>
-        <h1>Company Bank Accounts</h1>
-        <p class="muted">Manage legal-entity bank accounts, balances, and transaction history.</p>
-      </div>
-      <button class="button" type="button" @click="openForm()">New Bank Account</button>
-    </header>
+    <CrmPageHeader eyebrow="Treasury" title="Company Bank Accounts" description="Manage legal-entity bank accounts, balances, and transaction history.">
+      <template #actions><button class="button" type="button" @click="openForm()">New Bank Account</button></template>
+    </CrmPageHeader>
 
     <p v-if="statusMessage" class="flash success" role="status">{{ statusMessage }}</p>
     <p v-if="error && !showForm" class="flash warning" role="alert">{{ error }}</p>
@@ -34,7 +29,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="account in bankAccounts" :key="account.id">
+          <tr v-for="account in paginatedBankAccounts" :key="account.id">
             <td>
               <button class="account-link" type="button" @click="openStatement(account)">
                 <strong>{{ account.account_name }}</strong>
@@ -64,7 +59,7 @@
     <!-- Mobile Responsive Bank Account Cards (Visible on mobile <768px) -->
     <div class="mobile-card-list mobile-only">
       <div
-        v-for="account in bankAccounts"
+        v-for="account in paginatedBankAccounts"
         :key="account.id"
         class="mobile-card"
         @click="openStatement(account)"
@@ -100,6 +95,14 @@
       </div>
       <div v-if="bankAccounts.length === 0" class="empty-state" style="text-align: center; padding: 24px;">No company bank accounts configured.</div>
     </div>
+
+    <CrmPagination
+      v-model:page="currentPage"
+      :total-pages="totalPages"
+      :total-items="bankAccounts.length"
+      :page-size="itemsPerPage"
+      aria-label="Company bank accounts table pagination"
+    />
 
     <section v-if="balanceResult" class="record-card balance-check-card">
       <div>
@@ -229,6 +232,13 @@ import { apiGet, apiPost, apiPut } from '../api/client'
 import { getBankBalance, loadSalaryLedgerTransactions } from '../utils/hrStorage'
 
 const bankAccounts = ref([])
+const currentPage = ref(1)
+const itemsPerPage = 10
+const totalPages = computed(() => Math.max(1, Math.ceil(bankAccounts.value.length / itemsPerPage)))
+const paginatedBankAccounts = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  return bankAccounts.value.slice(start, start + itemsPerPage)
+})
 const transactions = ref([])
 const stats = ref({})
 const showForm = ref(false)

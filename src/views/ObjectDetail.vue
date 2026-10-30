@@ -1,12 +1,5 @@
 <template>
   <div class="object-detail-page">
-    <!-- Breadcrumbs -->
-    <nav class="breadcrumbs">
-      <RouterLink to="/setup">Setup</RouterLink>
-      <span class="separator">/</span>
-      <span class="current">Object Manager</span>
-    </nav>
-
     <!-- Header Section -->
     <header class="page-header" v-if="objectInfo">
       <div>

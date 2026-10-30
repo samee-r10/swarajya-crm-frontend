@@ -1,16 +1,8 @@
 <template>
   <div class="vendors-page">
-    <header class="page-header">
-      <div>
-        <p class="eyebrow">Finance</p>
-        <h1>Vendors</h1>
-        <p class="muted">Manage your suppliers and business partners.</p>
-      </div>
-      <button class="button" @click="showNewModal = true">
-        <svg viewBox="0 0 24 24" width="18" height="18" style="margin-right: 8px;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/></svg>
-        New Vendor
-      </button>
-    </header>
+    <CrmPageHeader eyebrow="Finance" title="Vendors" description="Manage suppliers and business partners.">
+      <template #actions><button class="button" @click="showNewModal = true">New Vendor</button></template>
+    </CrmPageHeader>
 
     <section class="filters-bar">
       <div class="filter-group search">
@@ -48,23 +40,13 @@
         </tbody>
       </table>
       
-      <div v-if="totalPages > 1" class="pagination-bar">
-        <button 
-          class="pagination-btn" 
-          :disabled="currentPage === 1" 
-          @click="currentPage--"
-        >
-          Previous
-        </button>
-        <span class="pagination-info">Page {{ currentPage }} of {{ totalPages }} ({{ filteredVendors.length }} records)</span>
-        <button 
-          class="pagination-btn" 
-          :disabled="currentPage === totalPages" 
-          @click="currentPage++"
-        >
-          Next
-        </button>
-      </div>
+      <CrmPagination
+        v-model:page="currentPage"
+        :total-pages="totalPages"
+        :total-items="filteredVendors.length"
+        :page-size="itemsPerPage"
+        aria-label="Vendors table pagination"
+      />
     </section>
 
     <!-- Modal -->

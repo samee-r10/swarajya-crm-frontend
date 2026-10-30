@@ -1,4 +1,6 @@
 <template>
+  <a v-if="route.name !== 'login'" class="skip-link" href="#main-content">Skip to main content</a>
+
   <!-- Non-blocking Top Glowing Laser Bar (Active during Route Transitions & Loading) -->
   <transition name="laser-fade">
     <div v-if="isRouteNavigating || isAppLoading" class="app-loader-track" aria-hidden="true">
@@ -33,11 +35,30 @@
     </div>
   </transition>
 
-  <RouterView v-if="route.name === 'login'" />
+  <RouterView v-if="route.name === 'login'" v-slot="{ Component }">
+    <motion.div
+      :key="route.fullPath"
+      class="auth-route-view"
+      :initial="{ opacity: 0 }"
+      :animate="{ opacity: 1 }"
+      :transition="{ duration: 0.24, ease: 'easeOut' }"
+    >
+      <component :is="Component" />
+    </motion.div>
+  </RouterView>
 
   <div v-else class="app-shell" :class="{ 'sidebar-collapsed': sidebarCollapsed, 'mobile-nav-open': mobileNavOpen }">
-    <!-- 1. Fixed Top Navbar -->
-    <header class="global-header">
+    <AppHeader
+      :user-name="userName"
+      :user-initial="userInitial"
+      :user-email="userEmail"
+      :user-profile="userProfile"
+      @open-navigation="mobileNavOpen = true"
+      @logout="logout"
+    />
+
+    <!-- Legacy header retained temporarily for safe rollback; it is not rendered. -->
+    <header v-if="false" class="global-header">
     <div class="header-left">
       <button
         class="mobile-menu-button"
@@ -249,25 +270,19 @@
 
       <!-- 3. Main Layout Container (Scrollable Content + Fixed Enterprise Footer) -->
       <div class="main-layout-container">
-        <main class="main main-content-scrollable">
-          <div class="top-bar">
-            <nav class="breadcrumb-trail" aria-label="Breadcrumb">
-              <RouterLink to="/" class="breadcrumb-home">
-                <svg viewBox="0 0 24 24" width="14" height="14"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor"/></svg>
-                <span>Home</span>
-              </RouterLink>
-              <span v-for="crumb in breadcrumbs" :key="crumb.path" class="breadcrumb-item">
-                <svg viewBox="0 0 24 24" width="12" height="12" class="breadcrumb-sep"><path d="m9 18 6-6-6-6 1.4-1.4L17.8 12l-7.4 7.4L9 18Z" fill="currentColor"/></svg>
-                <RouterLink v-if="crumb.path && crumb.path !== route.path" :to="crumb.path">{{ crumb.label }}</RouterLink>
-                <strong v-else class="breadcrumb-active">{{ crumb.label }}</strong>
-              </span>
-            </nav>
-            <button v-if="showBack" class="back-button btn-tactile btn-tactile-secondary" type="button" @click="goBack">
-              <svg viewBox="0 0 24 24" width="15" height="15" class="back-arrow"><path d="M20 11H7.8l5.6-5.6L12 4 4 12l8 8 1.4-1.4L7.8 13H20v-2Z" fill="currentColor"/></svg>
-              Back
-            </button>
-          </div>
-          <RouterView />
+        <main id="main-content" class="main main-content-scrollable" tabindex="-1">
+          <CrmBreadcrumbs />
+          <RouterView v-slot="{ Component }">
+            <motion.div
+              :key="route.fullPath"
+              class="route-view"
+              :initial="{ opacity: 0, y: 8 }"
+              :animate="{ opacity: 1, y: 0 }"
+              :transition="{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }"
+            >
+              <component :is="Component" />
+            </motion.div>
+          </RouterView>
         </main>
 
         <!-- 4. Fixed Enterprise Footer (Corevian Style) -->
@@ -291,10 +306,13 @@
 </template>
 
 <script setup>
+import { motion } from 'motion-v'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { apiGet, apiPost } from '../api/client'
 import { hasHrPermission, loadHrSettings } from '../utils/hrStorage'
+import AppHeader from './AppHeader.vue'
+import CrmBreadcrumbs from './CrmBreadcrumbs.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -550,7 +568,7 @@ const breadcrumbs = computed(() => {
     const path = `/${segments.slice(0, index + 1).join('/')}`
     return {
       path,
-      label: breadcrumbLabels[path] || titleizeSegment(segment)
+      label: breadcrumbLabels[path] || titleizeSegment(segment, segments[index - 1])
     }
   })
 })
@@ -591,10 +609,23 @@ function isNavActive(item) {
   return item.match.some((prefix) => route.path.startsWith(prefix))
 }
 
-function titleizeSegment(segment) {
-  if (/^\d+$/.test(segment)) return `#TXN${String(Number(segment)).padStart(3, '0')}`
+function titleizeSegment(segment, parentSegment = '') {
+  if (/^\d+$/.test(segment)) {
+    const recordLabels = {
+      customers: 'Customer',
+      opportunities: 'Opportunity',
+      projects: 'Project',
+      vendors: 'Vendor',
+      invoices: 'Invoice',
+      transactions: 'Transaction',
+      tasks: 'Task',
+      products: 'Product',
+      loans: 'Loan'
+    }
+    return `${recordLabels[parentSegment] || 'Record'} #${segment}`
+  }
   const txMatch = segment.match(/^TXN(\d+)$/i)
-  if (txMatch) return `#TXN${String(Number(txMatch[1])).padStart(3, '0')}`
+  if (txMatch) return `Transaction #${String(Number(txMatch[1])).padStart(3, '0')}`
   return segment
     .split('-')
     .filter(Boolean)

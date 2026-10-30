@@ -1,10 +1,7 @@
 <template>
   <header class="crm-page-header">
     <div class="crm-page-header__copy">
-      <div v-if="eyebrow" class="eyebrow-pill">
-        <span class="eyebrow-dot"></span>
-        <span class="eyebrow-text">{{ eyebrow }}</span>
-      </div>
+      <span v-if="eyebrow" class="crm-page-header__eyebrow">{{ eyebrow }}</span>
       <h1 class="page-title">{{ title }}</h1>
       <p v-if="description" class="page-description">{{ description }}</p>
     </div>
@@ -25,48 +22,32 @@ defineProps({
 <style scoped>
 .crm-page-header {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 24px;
+  gap: 24px;
+  margin-bottom: 20px;
+  min-height: 68px;
 }
 
 .crm-page-header__copy {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
-.eyebrow-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  width: fit-content;
-  padding: 3px 10px;
-  background: rgba(2, 132, 199, 0.08);
-  border: 1px solid rgba(2, 132, 199, 0.2);
-  border-radius: 9999px;
-  font-family: var(--font-sans, sans-serif);
-  font-size: 11px;
-  font-weight: 700;
+.crm-page-header__eyebrow {
+  color: #a9581d;
+  font-size: 10.5px;
+  font-weight: 750;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #0284c7;
-}
-
-.eyebrow-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #0284c7;
-  box-shadow: 0 0 6px #0284c7;
+  letter-spacing: 0.09em;
 }
 
 .page-title {
-  font-family: var(--font-display, 'Outfit', sans-serif);
-  font-size: 28px;
-  font-weight: 800;
-  color: #0f172a;
+  font-family: var(--font-display, sans-serif);
+  font-size: clamp(24px, 2.3vw, 30px);
+  font-weight: 720;
+  color: var(--heading);
   letter-spacing: -0.025em;
   line-height: 1.2;
   margin: 0;
@@ -74,11 +55,11 @@ defineProps({
 
 .page-description {
   font-family: var(--font-sans, sans-serif);
-  font-size: 13.5px;
-  color: #64748b;
+  font-size: 13px;
+  color: var(--muted);
   margin: 0;
   max-width: 680px;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 .crm-page-header__actions {
@@ -92,6 +73,9 @@ defineProps({
   .crm-page-header {
     flex-direction: column;
     align-items: flex-start;
+    min-height: 0;
   }
+
+  .crm-page-header__actions { width: 100%; }
 }
 </style>

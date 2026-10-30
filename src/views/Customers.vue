@@ -98,23 +98,13 @@
         </table>
       </div>
       
-      <div v-if="totalPages > 1" class="pagination-bar">
-        <button 
-          class="pagination-btn" 
-          :disabled="currentPage === 1" 
-          @click="currentPage--"
-        >
-          Previous
-        </button>
-        <span class="pagination-info">Page {{ currentPage }} of {{ totalPages }} ({{ filteredCustomers.length }} records)</span>
-        <button 
-          class="pagination-btn" 
-          :disabled="currentPage === totalPages" 
-          @click="currentPage++"
-        >
-          Next
-        </button>
-      </div>
+      <CrmPagination
+        v-model:page="currentPage"
+        :total-pages="totalPages"
+        :total-items="filteredCustomers.length"
+        :page-size="itemsPerPage"
+        aria-label="Customers table pagination"
+      />
     </section>
 
     <!-- Mobile Responsive Customer Cards (Visible on mobile <768px) -->
@@ -156,6 +146,14 @@
       </div>
       <div v-if="!loading && filteredCustomers.length === 0" class="empty-state" style="text-align: center; padding: 24px;">No customers found.</div>
     </div>
+    <CrmPagination
+      class="mobile-only"
+      v-model:page="currentPage"
+      :total-pages="totalPages"
+      :total-items="filteredCustomers.length"
+      :page-size="itemsPerPage"
+      aria-label="Customers mobile pagination"
+    />
 
     <!-- Modal -->
     <div v-if="showNewModal" class="modal-overlay" @click.self="showNewModal = false">

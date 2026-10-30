@@ -1,16 +1,11 @@
 <template>
   <div class="payables-page">
-    <header class="page-header">
-      <div>
-        <p class="eyebrow">Treasury</p>
-        <h1>Payables</h1>
-        <p class="muted">Review expense obligations and deduct company fund only when paid.</p>
-      </div>
-      <div class="action-row">
-        <button class="button secondary" type="button" @click="openRecipientAccountOptions">Recipient Bank Accounts</button>
+    <CrmPageHeader eyebrow="Treasury" title="Payables" description="Review expense obligations and payment status.">
+      <template #actions>
+        <button class="button secondary" type="button" @click="openRecipientAccountOptions">Bank Accounts</button>
         <button class="button secondary" type="button" @click="loadPayables">Refresh</button>
-      </div>
-    </header>
+      </template>
+    </CrmPageHeader>
 
     <section class="metrics-grid">
       <div class="metric-card"><span>Company Fund</span><strong>{{ money(stats.company_fund_available) }}</strong></div>
@@ -113,6 +108,15 @@
       </div>
       <div v-if="visiblePayables.length === 0" class="empty-state" style="text-align: center; padding: 24px;">No {{ activeTab === 'pending' ? 'payment pending' : 'paid' }} payables found.</div>
     </div>
+
+    <CrmPagination
+      v-if="!loading"
+      v-model:page="currentPage"
+      :total-pages="totalPages"
+      :total-items="activePayables.length"
+      :page-size="itemsPerPage"
+      aria-label="Payables table pagination"
+    />
 
     <div v-if="selectedPayable" class="modal-overlay" @click.self="selectedPayable = null">
       <div class="modal-content payable-modal">
@@ -283,7 +287,14 @@ const filteredPayables = computed(() => {
 
 const pendingPayables = computed(() => filteredPayables.value.filter(payable => ['Pending', 'Partially Paid'].includes(payable.status)))
 const paidPayables = computed(() => filteredPayables.value.filter(payable => payable.status === 'Paid'))
-const visiblePayables = computed(() => activeTab.value === 'paid' ? paidPayables.value : pendingPayables.value)
+const activePayables = computed(() => activeTab.value === 'paid' ? paidPayables.value : pendingPayables.value)
+const currentPage = ref(1)
+const itemsPerPage = 10
+const totalPages = computed(() => Math.max(1, Math.ceil(activePayables.value.length / itemsPerPage)))
+const visiblePayables = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  return activePayables.value.slice(start, start + itemsPerPage)
+})
 const recipientOwnerLabel = computed(() => {
   if (payment.recipient_owner_type === 'Stakeholder') return 'stakeholder'
   if (payment.recipient_owner_type === 'Channel Partner') return 'channel partner'
@@ -315,6 +326,10 @@ onMounted(async () => {
 
 watch(paymentRecipientOwnerKey, () => {
   payment.recipient_account_id = ''
+})
+
+watch([search, activeTab], () => {
+  currentPage.value = 1
 })
 
 function defaultPayment() {

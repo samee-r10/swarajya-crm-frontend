@@ -1,6 +1,6 @@
 <template>
   <div class="customer-form-page">
-    <section class="page-header">
+    <section v-if="!isModal" class="page-header">
       <div>
         <p class="eyebrow">Sales</p>
         <h1>{{ id ? 'Edit Customer' : 'New Customer' }}</h1>
@@ -8,7 +8,7 @@
       </div>
     </section>
 
-    <form class="form-grid record-card" @submit.prevent="save">
+    <form class="form-grid record-card customer-editor" :class="{ 'customer-editor--modal': isModal }" @submit.prevent="save">
       <template v-for="section in groupedFields" :key="section.title">
         <div class="span-2 card-section-title"><h2>{{ section.title }}</h2></div>
         <label 
@@ -181,6 +181,10 @@ async function save() {
   max-width: 1000px;
   margin: 0 auto;
 }
+
+.customer-editor--modal { border: 0; box-shadow: none; margin: 0; padding: 0; }
+.customer-editor--modal .card-section-title:first-child { margin-top: 0; }
+.customer-editor--modal .action-row { border-top: 1px solid #ebe7e2; margin: 10px -24px -24px; padding: 14px 24px 0; }
 
 .card-section-title {
   margin: 24px 0 8px;

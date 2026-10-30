@@ -121,18 +121,23 @@
                 </svg>
               </div>
               <div>
-                <h2 class="panel-title">Revenue Overview</h2>
-                <p class="panel-subtitle">Pipeline value grouped by operational currency.</p>
+                <h2 class="panel-title">Pipeline Distribution</h2>
+                <p class="panel-subtitle">Relative opportunity value by operational currency.</p>
               </div>
             </div>
           </div>
           <div class="summary-stack">
-            <div v-for="item in data.metrics.pipeline_values" :key="item.currency" class="summary-row">
-              <div class="currency-tag">
-                <span class="currency-dot"></span>
-                <strong>{{ item.currency }}</strong>
+            <div v-for="item in data.metrics.pipeline_values" :key="item.currency" class="summary-row pipeline-row">
+              <div class="pipeline-row__header">
+                <div class="currency-tag">
+                  <span class="currency-dot"></span>
+                  <strong>{{ item.currency }}</strong>
+                </div>
+                <strong class="currency-val">{{ Number(item.total || 0).toLocaleString() }}</strong>
               </div>
-              <strong class="currency-val">{{ Number(item.total || 0).toLocaleString() }}</strong>
+              <div class="pipeline-track" aria-hidden="true">
+                <span :style="{ width: `${pipelineBarWidth(item.total)}%` }"></span>
+              </div>
             </div>
             <div v-if="!data.metrics.pipeline_values.length" class="summary-row empty">
               <span>No currency data recorded</span>
@@ -160,7 +165,14 @@
             </div>
           </div>
 
-          <div class="approval-breakdown">
+          <div class="approval-analytics">
+            <div class="approval-donut" :style="approvalDonutStyle" aria-hidden="true">
+              <div class="approval-donut__center">
+                <strong>{{ pendingApprovals.total }}</strong>
+                <span>Pending</span>
+              </div>
+            </div>
+            <div class="approval-breakdown">
             <div class="approval-breakdown-row">
               <div class="breakdown-label">
                 <span class="breakdown-dot claims"></span>
@@ -181,6 +193,7 @@
                 <span>Channel Partner (CP) Payouts</span>
               </div>
               <strong class="breakdown-val">{{ pendingApprovals.breakdown.cp_payments }}</strong>
+            </div>
             </div>
           </div>
 
@@ -224,6 +237,14 @@ const pipelineTotal = computed(() => {
   return data.metrics.pipeline_values.map((item) => `${item.currency} ${Number(item.total || 0).toLocaleString()}`).join(', ')
 })
 
+
+const pipelineMaximum = computed(() => Math.max(0, ...data.metrics.pipeline_values.map(item => Number(item.total || 0))))
+
+function pipelineBarWidth(value) {
+  if (!pipelineMaximum.value) return 0
+  return Math.max(4, Math.round((Number(value || 0) / pipelineMaximum.value) * 100))
+}
+
 const pendingApprovals = computed(() => ({
   total: Number(data.pending_approvals?.total || 0),
   breakdown: {
@@ -232,6 +253,17 @@ const pendingApprovals = computed(() => ({
     cp_payments: Number(data.pending_approvals?.breakdown?.cp_payments || 0)
   }
 }))
+
+const approvalDonutStyle = computed(() => {
+  const { claims, stakeholder_payouts: stakeholder, cp_payments: partner } = pendingApprovals.value.breakdown
+  const total = claims + stakeholder + partner
+  if (!total) return { background: 'conic-gradient(#e4e9f0 0deg 360deg)' }
+  const claimsEnd = (claims / total) * 360
+  const stakeholderEnd = claimsEnd + (stakeholder / total) * 360
+  return {
+    background: `conic-gradient(#c88a24 0deg ${claimsEnd}deg, #3575dc ${claimsEnd}deg ${stakeholderEnd}deg, #697f9c ${stakeholderEnd}deg 360deg)`
+  }
+})
 
 let lastLoadedTime = 0
 
@@ -500,6 +532,33 @@ async function loadDashboard() {
   box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.05);
 }
 
+.pipeline-row {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pipeline-row__header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.pipeline-track {
+  background: #e9eef5;
+  border-radius: 999px;
+  height: 7px;
+  overflow: hidden;
+}
+
+.pipeline-track span {
+  background: linear-gradient(90deg, var(--brand-700), var(--brand-500));
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+  transition: width 400ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 .currency-tag {
   display: inline-flex;
   align-items: center;
@@ -541,6 +600,49 @@ async function loadDashboard() {
   transform: translateY(-2px);
   border-color: rgba(245, 158, 11, 0.4);
   box-shadow: 0 12px 28px -6px rgba(15, 23, 42, 0.08), 0 0 20px rgba(245, 158, 11, 0.08);
+}
+
+.approval-analytics {
+  align-items: center;
+  display: grid;
+  gap: 22px;
+  grid-template-columns: 132px minmax(0, 1fr);
+}
+
+.approval-donut {
+  align-items: center;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}
+
+.approval-donut__center {
+  align-items: center;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--line);
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  height: 100%;
+  justify-content: center;
+}
+
+.approval-donut__center strong {
+  color: var(--heading);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.approval-donut__center span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  margin-top: 5px;
+  text-transform: uppercase;
 }
 
 .approval-total-badge {
@@ -645,9 +747,19 @@ async function loadDashboard() {
   .executive-summary-grid {
     grid-template-columns: 1fr;
   }
+
 }
 
 @media (max-width: 600px) {
+  .approval-analytics {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .approval-donut {
+    margin: 0 auto;
+    width: 128px;
+  }
   .metrics-grid,
   .quick-action-strip {
     grid-template-columns: 1fr;

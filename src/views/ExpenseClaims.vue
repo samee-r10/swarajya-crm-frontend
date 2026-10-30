@@ -1,13 +1,8 @@
 <template>
   <div class="claims-page">
-    <header class="page-header">
-      <div>
-        <p class="eyebrow">Employee Workspace</p>
-        <h1>Expense Claims</h1>
-        <p class="muted">Submit and track employee expense claims without opening financial ledgers.</p>
-      </div>
-      <button class="button" type="button" @click="openNewClaim">New Claim</button>
-    </header>
+    <CrmPageHeader eyebrow="Employee Workspace" title="Expense Claims" description="Submit and track employee expense claims.">
+      <template #actions><button class="button" type="button" @click="openNewClaim">New Claim</button></template>
+    </CrmPageHeader>
 
     <section class="metrics-grid">
       <div class="metric-card"><span>Pending</span><strong>{{ stats.pending }}</strong></div>
@@ -39,7 +34,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="claim in filteredClaims" :key="claim.id" @click="selectClaim(claim)">
+          <tr v-for="claim in paginatedClaims" :key="claim.id" @click="selectClaim(claim)">
             <td><strong>{{ claim.claim_number }}</strong></td>
             <td>{{ claim.employee_name || '-' }}<span class="muted block">{{ claim.department || '' }}</span></td>
             <td>{{ claim.employee_code || claim.employee_id || claim.employee_user_id || '-' }}</td>
@@ -57,7 +52,7 @@
     <!-- Mobile Responsive Claim Cards (Visible on mobile <768px) -->
     <div v-if="!loading" class="mobile-card-list mobile-only">
       <div
-        v-for="claim in filteredClaims"
+        v-for="claim in paginatedClaims"
         :key="claim.id"
         class="mobile-card"
         @click="selectClaim(claim)"
@@ -94,17 +89,23 @@
       <div v-if="filteredClaims.length === 0" class="empty-state" style="text-align: center; padding: 24px;">No claims found.</div>
     </div>
 
-    <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
-      <div class="modal-content claim-modal">
-        <div class="modal-header">
-          <div>
-            <p class="eyebrow">Expense Claim</p>
-            <h2>{{ selectedClaim ? selectedClaim.claim_number : 'New Claim' }}</h2>
-          </div>
-          <button class="modal-close" type="button" @click="closeModal">&times;</button>
-        </div>
+    <CrmPagination
+      v-if="!loading"
+      v-model:page="currentPage"
+      :total-pages="totalPages"
+      :total-items="filteredClaims.length"
+      :page-size="itemsPerPage"
+      aria-label="Expense claims table pagination"
+    />
 
-        <form class="form-grid modal-form" @submit.prevent="saveClaim">
+    <CrmModal
+      v-model="showModal"
+      :title="selectedClaim ? selectedClaim.claim_number : 'New expense claim'"
+      :description="selectedClaim ? 'Review claim evidence, workflow status, and financial actions.' : 'Record an employee expense with the supporting evidence required for approval.'"
+      size="lg"
+      @close="closeModal"
+    >
+        <form id="expense-claim-form" class="form-grid entity-modal-form claim-editor" @submit.prevent="saveClaim">
           <div class="span-2 card-section-title"><h2>Basic Details</h2></div>
           <label>Employee Name<input v-model="form.employee_name" required :readonly="isLocked"></label>
           <label>Employee ID<input :value="form.employee_code || form.employee_id || form.employee_user_id || '-'" readonly></label>
@@ -149,25 +150,24 @@
           </div>
 
           <p v-if="error" class="span-2 flash warning">{{ error }}</p>
-          <div class="span-2 action-row">
-            <button type="button" class="button secondary" @click="closeModal">Close</button>
-            <button v-if="isDraft" type="button" class="button secondary" @click="saveWithStatus('Draft')">Save Draft</button>
-            <button v-if="isDraft" type="button" class="button" @click="saveWithStatus('Submitted')">Submit Claim</button>
-            <button v-if="canManageClaimFinancialActions && selectedClaim && selectedClaim.status === 'Posted'" type="button" class="button" @click="claimAction('settle')">Settle</button>
-            <button v-if="isDraft" type="button" class="button secondary" @click="claimAction('cancel')">Cancel Claim</button>
-            <template v-if="pendingApproval">
-              <button type="button" class="button secondary danger-text" @click="approvalDecide('reject')">Reject</button>
-              <button type="button" class="button" @click="approvalDecide('approve')">Approve</button>
-            </template>
-          </div>
         </form>
-      </div>
-    </div>
+      <template #footer>
+        <button type="button" class="button secondary" @click="closeModal">Close</button>
+        <button v-if="isDraft && selectedClaim" type="button" class="button secondary danger-text" @click="claimAction('cancel')">Cancel claim</button>
+        <button v-if="isDraft" type="button" class="button secondary" @click="saveWithStatus('Draft')">Save draft</button>
+        <button v-if="isDraft" type="button" class="button" @click="saveWithStatus('Submitted')">Submit claim</button>
+        <button v-if="canManageClaimFinancialActions && selectedClaim && selectedClaim.status === 'Posted'" type="button" class="button" @click="claimAction('settle')">Settle claim</button>
+        <template v-if="pendingApproval">
+          <button type="button" class="button secondary danger-text" @click="approvalDecide('reject')">Reject</button>
+          <button type="button" class="button" @click="approvalDecide('approve')">Approve</button>
+        </template>
+      </template>
+    </CrmModal>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { apiGet, apiPost, apiPut, apiUploadFile } from '../api/client'
 import DocumentPreview from '../components/DocumentPreview.vue'
 import { DEPARTMENTS } from '../utils/sharedOptions'
@@ -219,6 +219,18 @@ const filteredClaims = computed(() => {
     const matchesSearch = !term || [claim.claim_number, claim.employee_name, claim.employee_code, claim.employee_id, claim.employee_user_id, claim.department, claim.expense_category].some(v => (v || '').toLowerCase().includes(term))
     return matchesStatus && matchesSearch
   })
+})
+
+const currentPage = ref(1)
+const itemsPerPage = 10
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredClaims.value.length / itemsPerPage)))
+const paginatedClaims = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  return filteredClaims.value.slice(start, start + itemsPerPage)
+})
+
+watch([search, statusFilter], () => {
+  currentPage.value = 1
 })
 
 onMounted(async () => {

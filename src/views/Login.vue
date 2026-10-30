@@ -168,7 +168,7 @@ async function submit() {
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap');
 
 .login-page {
-  background: #f8fafc;
+  background: var(--background);
   display: grid;
   font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   grid-template-columns: 1.22fr 0.78fr;
@@ -180,9 +180,9 @@ async function submit() {
    ========================================================= */
 .brand-panel {
   background:
-    linear-gradient(135deg, rgba(248, 250, 252, 0.98), rgba(241, 245, 249, 0.96)),
-    radial-gradient(circle at 25% 20%, rgba(255, 255, 255, 0.85), transparent 45%);
-  color: #0f172a;
+    radial-gradient(circle at 18% 14%, rgba(83, 142, 214, 0.2), transparent 30rem),
+    linear-gradient(145deg, var(--brand-950) 0%, #123653 58%, #173f66 100%);
+  color: #ffffff;
   display: flex;
   min-height: 100vh;
   padding: 64px 64px;
@@ -214,8 +214,8 @@ async function submit() {
   align-items: center;
   background: rgba(255, 255, 255, 0.85);
   border: 1px solid rgba(203, 213, 225, 0.8);
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 30px rgba(3, 14, 26, 0.2);
   display: inline-flex;
   justify-content: center;
   margin-bottom: 24px;
@@ -363,7 +363,7 @@ async function submit() {
    STANDARD BRAND COPY (WHEN FESTIVE OFF)
    ========================================================= */
 .brand-copy h1 {
-  color: #0f172a;
+  color: #ffffff;
   font-size: clamp(40px, 4.5vw, 68px);
   font-weight: 900;
   letter-spacing: -2px;
@@ -372,7 +372,7 @@ async function submit() {
 }
 
 .brand-copy p {
-  color: #64748b;
+  color: #c2d2e2;
   font-size: 19px;
   font-weight: 500;
   line-height: 1.6;
@@ -381,7 +381,7 @@ async function submit() {
 }
 
 .copyright {
-  color: #94a3b8;
+  color: #91acc5;
   font-size: 13px;
   font-weight: 500;
   margin: 24px 0 0;
@@ -397,7 +397,7 @@ async function submit() {
   justify-content: center;
   min-height: 100vh;
   padding: 48px;
-  box-shadow: -10px 0 35px rgba(0, 0, 0, 0.02);
+  box-shadow: -16px 0 48px rgba(3, 14, 26, 0.08);
 }
 
 .login-card {
@@ -428,7 +428,7 @@ async function submit() {
 }
 
 .form-heading h2 {
-  color: #0f172a;
+  color: var(--heading);
   font-size: 36px;
   font-weight: 850;
   letter-spacing: -0.8px;
@@ -437,7 +437,7 @@ async function submit() {
 }
 
 .form-heading p {
-  color: #64748b;
+  color: var(--muted);
   font-size: 15px;
   font-weight: 500;
   line-height: 1.45;
@@ -461,7 +461,7 @@ async function submit() {
 
 .field > span,
 .field-label-row span {
-  color: #1e293b;
+  color: #344054;
   display: block;
   font-size: 14px;
   font-weight: 700;
@@ -471,9 +471,9 @@ async function submit() {
 
 .input-shell {
   align-items: center;
-  background: #f8fafc;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 12px;
+  background: #f9fafb;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
   display: flex;
   gap: 12px;
   min-height: 52px;
@@ -483,8 +483,8 @@ async function submit() {
 
 .input-shell:focus-within {
   background: #ffffff;
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 4px rgba(53, 117, 220, 0.12);
 }
 
 .input-shell svg {
@@ -494,7 +494,7 @@ async function submit() {
 }
 
 .input-shell:focus-within svg {
-  color: #7c3aed;
+  color: var(--primary);
 }
 
 .input-shell input {
@@ -517,7 +517,7 @@ async function submit() {
 .password-toggle {
   background: transparent;
   border: 0;
-  color: #7c3aed;
+  color: var(--primary-dark);
   cursor: pointer;
   font-family: inherit;
   font-size: 13px;
@@ -528,7 +528,7 @@ async function submit() {
 }
 
 .password-toggle:hover {
-  background: #f3e8ff;
+  background: var(--primary-soft);
 }
 
 /* =========================================================
@@ -547,9 +547,9 @@ async function submit() {
 
 .submit-button {
   align-items: center;
-  background: #4f46e5;
+  background: var(--primary-gradient);
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--radius);
   color: #ffffff;
   cursor: pointer;
   display: flex;
@@ -560,7 +560,7 @@ async function submit() {
   justify-content: center;
   min-height: 54px;
   width: 100%;
-  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+  box-shadow: 0 8px 20px rgba(36, 95, 196, 0.24);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -601,7 +601,7 @@ async function submit() {
 }
 
 .forgot-link:hover {
-  color: #7c3aed;
+  color: var(--primary);
 }
 
 .spinner {

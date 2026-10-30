@@ -16,7 +16,7 @@
       </div>
 
       <div class="table-container desktop-only">
-        <table>
+        <table class="record-table">
           <thead>
             <tr>
               <th>Type</th>
